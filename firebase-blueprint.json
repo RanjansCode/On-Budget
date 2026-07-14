@@ -1,0 +1,77 @@
+{
+  "collections": {
+    "categories": {
+      "schema": {
+        "id": "string",
+        "name": "string",
+        "icon": "string"
+      }
+    },
+    "products": {
+      "schema": {
+        "id": "string",
+        "title": "string",
+        "price": "number",
+        "originalPrice": "number",
+        "discount": "number",
+        "description": "string",
+        "whyIRecommend": "string",
+        "brand": "string",
+        "category": "string",
+        "rating": "number",
+        "images": "array",
+        "videos": "array",
+        "affiliateLinks": "array",
+        "badges": "object",
+        "creatorReview": "object",
+        "pros": "array",
+        "cons": "array",
+        "specifications": "array",
+        "features": "array",
+        "couponCode": "string",
+        "alternatives": "array",
+        "frequentlyBoughtTogether": "array",
+        "faqs": "array",
+        "reelId": "string",
+        "status": "string",
+        "createdAt": "string"
+      }
+    },
+    "reels": {
+      "schema": {
+        "id": "string",
+        "title": "string",
+        "platform": "string",
+        "videoUrl": "string",
+        "thumbnailUrl": "string",
+        "category": "string",
+        "productId": "string",
+        "likes": "number",
+        "shares": "number"
+      }
+    },
+    "wishlists": {
+      "schema": {
+        "userId": "string",
+        "productIds": "array"
+      }
+    },
+    "notifications": {
+      "schema": {
+        "id": "string",
+        "title": "string",
+        "description": "string",
+        "type": "string",
+        "date": "string",
+        "read": "boolean"
+      }
+    },
+    "newsletter": {
+      "schema": {
+        "id": "string",
+        "email": "string",
+        "subscribedAt": "string"
+      }
+    }
+  }
+}

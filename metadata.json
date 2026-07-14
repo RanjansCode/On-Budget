@@ -1,0 +1,6 @@
+{
+  "name": "On Budget",
+  "description": "Premium E-Commerce curator platform featuring dynamic pricing filters, creator reviews, vertical video reels integration, and a server-side Gemini-powered AI deal assistant.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,61 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Global default-deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper function to check if the user is authenticated
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Helper function to check if the user is the owner of the document
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Helper function to check if the user is an admin
+    function isAdmin() {
+      return isSignedIn() && 
+             request.auth.token.email == 'ranjan.edits.designs@gmail.com';
+    }
+
+    // Products: anyone can read published products, only admin can read drafts and write
+    match /products/{productId} {
+      allow read: if isAdmin() || (resource != null && resource.data.status == 'Published');
+      allow write: if isAdmin();
+    }
+
+    // Categories: anyone can read, only admin can write
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Reels: anyone can read, only admin can write
+    match /reels/{reelId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Notifications: anyone can read, only admin can write
+    match /notifications/{notificationId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Wishlists: only authenticated owner can read/write
+    match /wishlists/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // Newsletter: anyone can create subscriptions, but only admin can manage
+    match /newsletter/{subscriptionId} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin();
+    }
+  }
+}
