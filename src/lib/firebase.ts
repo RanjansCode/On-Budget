@@ -4,9 +4,9 @@
 // directory structure.
 // -----------------------------------------------------------------------------
 
-export { auth, googleProvider, onAuthStateChanged } from '../firebase/auth';
-export type { User } from '../firebase/auth';
-export { db } from '../firebase/config';
+export { auth, googleProvider, onAuthStateChanged, RecaptchaVerifier, sendOtpToPhone } from '../firebase/auth';
+export type { User, ConfirmationResult } from '../firebase/auth';
+export { db, isFirebaseConfigured } from '../firebase/config';
 
 export {
   OperationType,
@@ -30,6 +30,7 @@ export {
   fetchNotificationsFromFirestore,
   markNotificationsAsReadInFirestore,
   subscribeNewsletterInFirestore,
+  syncUserProfile,
 } from '../firebase/firestore';
 
 export {

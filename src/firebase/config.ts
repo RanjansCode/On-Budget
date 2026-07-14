@@ -2,42 +2,58 @@ import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { getStorage } from 'firebase/storage';
-import firebaseConfig from '../../firebase-applet-config.json';
 
 // -----------------------------------------------------------------------------
 // Firebase Configuration & Service Initializations
-// Ensure settings are enabled in the Firebase Console:
-// 1. Authentication -> Sign-in method -> Enable Email/Password and Google.
-// 2. Firestore Database -> Rules & Indexes as deployed.
-// 3. Storage -> Rules & Bucket settings as deployed.
+// -----------------------------------------------------------------------------
+// Where to get Firebase config from Firebase Console:
+// 1. Go to your Firebase Console (https://console.firebase.google.com/).
+// 2. Select your Project.
+// 3. Click the Gear Icon (Project Settings) in the left sidebar -> Project Settings.
+// 4. In the General tab, scroll down to "Your Apps" section.
+// 5. Select your App (Web) to see the SDK setup and configuration details.
 // -----------------------------------------------------------------------------
 
-// Verify presence of all required Firebase configuration keys
-const requiredKeys = [
-  'apiKey',
-  'authDomain',
-  'projectId',
-  'storageBucket',
-  'messagingSenderId',
-  'appId'
-] as const;
+const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+};
 
-const missingKeys = requiredKeys.filter(
-  (key) => !firebaseConfig[key as keyof typeof firebaseConfig]
+// Check if any required environment variable is missing or empty
+export const isFirebaseConfigured = !!(
+  firebaseConfig.apiKey &&
+  firebaseConfig.authDomain &&
+  firebaseConfig.projectId &&
+  firebaseConfig.storageBucket &&
+  firebaseConfig.messagingSenderId &&
+  firebaseConfig.appId
 );
 
-if (missingKeys.length > 0) {
-  console.error(
-    `[Firebase Initialization Warning]: Missing essential config parameters: ${missingKeys.join(', ')}. Please verify firebase-applet-config.json.`
+let app: any = null;
+let db: any = null;
+let auth: any = null;
+let storage: any = null;
+
+if (isFirebaseConfigured) {
+  try {
+    // Ensure initializeApp() runs only once
+    app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+    db = getFirestore(app);
+    auth = getAuth(app);
+    storage = getStorage(app);
+  } catch (error) {
+    console.error('Failed to initialize Firebase with provided environment variables:', error);
+  }
+} else {
+  console.warn(
+    '[Firebase Connection Alert]: Environment variables are missing or not configured. ' +
+    'The website will display the "Firebase Not Connected" page instead of crashing.'
   );
 }
 
-// Initialize Firebase App only once
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
-
-// Initialize and export services
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId || '(default)');
-export const auth = getAuth(app);
-export const storage = getStorage(app);
-
+export { app, db, auth, storage };
 export default app;

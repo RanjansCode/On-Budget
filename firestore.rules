@@ -19,8 +19,16 @@ service cloud.firestore {
 
     // Helper function to check if the user is an admin
     function isAdmin() {
-      return isSignedIn() && 
-             request.auth.token.email == 'ranjan.edits.designs@gmail.com';
+      return isSignedIn() && (
+        request.auth.token.email == 'ranjan.edits.designs@gmail.com' ||
+        request.auth.token.phone_number == '+919876543210'
+      );
+    }
+
+    // Users: only the owner themselves can read/write their own user document, or admin
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow write: if isOwner(userId) || isAdmin();
     }
 
     // Products: anyone can read published products, only admin can read drafts and write

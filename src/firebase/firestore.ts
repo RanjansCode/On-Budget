@@ -13,7 +13,8 @@ import {
 
 import { db } from './config';
 import { auth } from './auth';
-import { Product, Category, Reel, NotificationItem, ADMIN_EMAILS } from '../types';
+import { Product, Category, Reel, NotificationItem, ADMIN_EMAILS, ADMIN_PHONES, UserProfile } from '../types';
+import { User } from 'firebase/auth';
 import { INITIAL_PRODUCTS, INITIAL_CATEGORIES, INITIAL_REELS } from '../data';
 
 // --- FIRESTORE ERROR HANDLING ---
@@ -74,7 +75,10 @@ export async function seedDatabaseIfEmpty() {
   const productsRef = collection(db, 'products');
   let productsSnapshot;
   try {
-    const isAdminUser = !!(auth.currentUser?.email && ADMIN_EMAILS.includes(auth.currentUser.email));
+    const isAdminUser = !!(auth.currentUser && (
+      (auth.currentUser.email && ADMIN_EMAILS.includes(auth.currentUser.email)) ||
+      (auth.currentUser.phoneNumber && ADMIN_PHONES.includes(auth.currentUser.phoneNumber))
+    ));
     const q = isAdminUser 
       ? productsRef 
       : query(productsRef, where('status', '==', 'Published'));
@@ -140,7 +144,10 @@ export async function fetchProductsFromFirestore(isAdminOverride?: boolean): Pro
   try {
     const isUserAdmin = isAdminOverride !== undefined 
       ? isAdminOverride 
-      : !!(auth.currentUser?.email && ADMIN_EMAILS.includes(auth.currentUser.email));
+      : !!(auth.currentUser && (
+          (auth.currentUser.email && ADMIN_EMAILS.includes(auth.currentUser.email)) ||
+          (auth.currentUser.phoneNumber && ADMIN_PHONES.includes(auth.currentUser.phoneNumber))
+        ));
     
     const q = isUserAdmin 
       ? collection(db, 'products') 
@@ -320,3 +327,50 @@ export async function subscribeNewsletterInFirestore(email: string) {
     handleFirestoreError(err, OperationType.CREATE, `newsletter/${id}`);
   }
 }
+
+// --- USER PROFILE API ---
+export async function syncUserProfile(user: User): Promise<UserProfile> {
+  const userRef = doc(db, 'users', user.uid);
+  try {
+    const docSnap = await getDoc(userRef);
+    const isAdminUser = !!(
+      (user.email && ADMIN_EMAILS.includes(user.email)) ||
+      (user.phoneNumber && ADMIN_PHONES.includes(user.phoneNumber))
+    );
+    
+    const role = isAdminUser ? 'admin' : 'user';
+    const now = new Date().toISOString();
+    
+    let profile: UserProfile;
+    if (docSnap.exists()) {
+      const existing = docSnap.data();
+      profile = {
+        uid: user.uid,
+        phoneNumber: user.phoneNumber || existing.phoneNumber || '',
+        email: user.email || existing.email || '',
+        displayName: user.displayName || existing.displayName || '',
+        photoURL: user.photoURL || existing.photoURL || '',
+        role: role, // Sync the role dynamically
+        createdAt: existing.createdAt || now,
+        lastLogin: now,
+      };
+      await updateDoc(userRef, cleanData({ lastLogin: now, role }));
+    } else {
+      profile = {
+        uid: user.uid,
+        phoneNumber: user.phoneNumber || '',
+        email: user.email || '',
+        displayName: user.displayName || '',
+        photoURL: user.photoURL || '',
+        role: role,
+        createdAt: now,
+        lastLogin: now,
+      };
+      await setDoc(userRef, cleanData(profile));
+    }
+    return profile;
+  } catch (err) {
+    handleFirestoreError(err, OperationType.WRITE, `users/${user.uid}`);
+  }
+}
+

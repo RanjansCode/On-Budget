@@ -31,7 +31,7 @@ interface AdminPanelProps {
   onDeleteReel: (reelId: string) => void;
 }
 
-const DEFAULT_PIN = '1234';
+const DEFAULT_PIN = '0013';
 
 export default function AdminPanel({
   products,
@@ -134,7 +134,7 @@ export default function AdminPanel({
             <Info className="w-3.5 h-3.5 text-neutral-500" /> Quick testing guideline:
           </span>
           <p className="text-[11px] text-neutral-400 mt-1">
-            Use PIN <code className="bg-neutral-950 px-1.5 py-0.5 rounded text-emerald-400 font-mono font-bold">1234</code> to log in and unlock full dashboard features.
+            Use PIN <code className="bg-neutral-950 px-1.5 py-0.5 rounded text-emerald-400 font-mono font-bold">0013</code> to log in and unlock full dashboard features.
           </p>
         </div>
       </div>

@@ -117,3 +117,19 @@ export interface NotificationItem {
 export const ADMIN_EMAILS = [
   'ranjan.edits.designs@gmail.com'
 ];
+
+export const ADMIN_PHONES = [
+  '+917654800013' // Default admin phone number. Can be expanded as needed.
+];
+
+export interface UserProfile {
+  uid: string;
+  phoneNumber?: string;
+  email?: string;
+  displayName?: string;
+  photoURL?: string;
+  role: 'admin' | 'user';
+  createdAt: string;
+  lastLogin: string;
+}
+

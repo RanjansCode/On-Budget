@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 
 import {
-  Product, Category, Reel, AnalyticsData, NotificationItem, ADMIN_EMAILS
+  Product, Category, Reel, AnalyticsData, NotificationItem, ADMIN_EMAILS, ADMIN_PHONES
 } from './types';
 
 import {
@@ -33,7 +33,8 @@ import {
   fetchNotificationsFromFirestore,
   markNotificationsAsReadInFirestore,
   subscribeNewsletterInFirestore,
-  User as FirebaseUser
+  User as FirebaseUser,
+  isFirebaseConfigured
 } from './lib/firebase';
 
 import Navbar from './components/Navbar';
@@ -146,10 +147,17 @@ export default function App() {
   // --- Voice Search status ---
   const [voiceActive, setVoiceActive] = useState(false);
 
-  const isAdmin = !!(currentUser && currentUser.email && ADMIN_EMAILS.includes(currentUser.email));
+  const isAdmin = !!(currentUser && (
+    (currentUser.email && ADMIN_EMAILS.includes(currentUser.email)) ||
+    (currentUser.phoneNumber && ADMIN_PHONES.includes(currentUser.phoneNumber))
+  ));
 
   // 1. Database Initialization and Seeding on boot
   useEffect(() => {
+    if (!isFirebaseConfigured) {
+      setDbLoading(false);
+      return;
+    }
     async function initAndFetch() {
       try {
         setDbLoading(true);
@@ -180,6 +188,10 @@ export default function App() {
 
   // 2. Real-time Firebase Authentication tracking & Wishlist Sync
   useEffect(() => {
+    if (!isFirebaseConfigured) {
+      setAuthLoading(false);
+      return;
+    }
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
       if (user) {
@@ -198,7 +210,10 @@ export default function App() {
         }
 
         // If the logged-in user is admin, fetch all products (including drafts)
-        const isUserAdmin = !!(user.email && ADMIN_EMAILS.includes(user.email));
+        const isUserAdmin = !!(
+          (user.email && ADMIN_EMAILS.includes(user.email)) ||
+          (user.phoneNumber && ADMIN_PHONES.includes(user.phoneNumber))
+        );
         if (isUserAdmin) {
           try {
             const adminProducts = await fetchProductsFromFirestore(true);
@@ -256,7 +271,10 @@ export default function App() {
 
     const pathname = window.location.pathname;
     const isTryingAdmin = pathname.startsWith('/admin');
-    const isAdmin = !!(currentUser && currentUser.email && ADMIN_EMAILS.includes(currentUser.email));
+    const isAdmin = !!(currentUser && (
+      (currentUser.email && ADMIN_EMAILS.includes(currentUser.email)) ||
+      (currentUser.phoneNumber && ADMIN_PHONES.includes(currentUser.phoneNumber))
+    ));
 
     if (isTryingAdmin) {
       if (!isAdmin) {
@@ -280,7 +298,10 @@ export default function App() {
   useEffect(() => {
     if (authLoading) return;
     const pathname = window.location.pathname;
-    const isAdmin = !!(currentUser && currentUser.email && ADMIN_EMAILS.includes(currentUser.email));
+    const isAdmin = !!(currentUser && (
+      (currentUser.email && ADMIN_EMAILS.includes(currentUser.email)) ||
+      (currentUser.phoneNumber && ADMIN_PHONES.includes(currentUser.phoneNumber))
+    ));
 
     if (activeTab === 'admin') {
       if (isAdmin && pathname !== '/admin') {
@@ -300,7 +321,10 @@ export default function App() {
   useEffect(() => {
     const handlePopState = () => {
       const pathname = window.location.pathname;
-      const isAdmin = !!(currentUser && currentUser.email && ADMIN_EMAILS.includes(currentUser.email));
+      const isAdmin = !!(currentUser && (
+        (currentUser.email && ADMIN_EMAILS.includes(currentUser.email)) ||
+        (currentUser.phoneNumber && ADMIN_PHONES.includes(currentUser.phoneNumber))
+      ));
 
       if (pathname.startsWith('/admin')) {
         if (isAdmin) {
