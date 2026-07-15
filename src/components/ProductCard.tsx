@@ -92,6 +92,13 @@ export default function ProductCard({
           <h3
             onClick={() => onOpenProduct(product.id)}
             className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white hover:text-[#FF5A00] dark:hover:text-[#FF5A00] transition-colors line-clamp-1 cursor-pointer font-display"
+            style={
+              product.id === 'prod-1'
+                ? { color: '#ff4f00' }
+                : product.id === 'prod-3'
+                ? { color: '#ff2c00' }
+                : undefined
+            }
           >
             {title}
           </h3>

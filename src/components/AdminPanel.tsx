@@ -11,9 +11,12 @@ import {
 } from 'recharts';
 import {
   ShieldAlert, LayoutDashboard, ShoppingBag, FolderOpen, Film, Plus, Edit2, Trash2,
-  TrendingUp, MousePointer, Share2, DollarSign, Upload, Info, Check, Eye, HelpCircle, Save, X
+  TrendingUp, MousePointer, Share2, DollarSign, Upload, Info, Check, Eye, HelpCircle, Save, X,
+  SlidersHorizontal
 } from 'lucide-react';
 import { Product, Category, Reel, AnalyticsData } from '../types';
+import AdminLaunchMode from './AdminLaunchMode';
+import { LaunchSettings } from '../firebase/firestore';
 
 interface AdminPanelProps {
   products: Product[];
@@ -29,6 +32,8 @@ interface AdminPanelProps {
   onAddReel: (reel: Reel) => void;
   onUpdateReel: (reel: Reel) => void;
   onDeleteReel: (reelId: string) => void;
+  launchSettings: LaunchSettings;
+  onSaveLaunchSettings: (settings: LaunchSettings) => Promise<void>;
 }
 
 const DEFAULT_PIN = '0013';
@@ -47,11 +52,13 @@ export default function AdminPanel({
   onAddReel,
   onUpdateReel,
   onDeleteReel,
+  launchSettings,
+  onSaveLaunchSettings,
 }: AdminPanelProps) {
   const [isAuthenticated, setIsAuthenticated] = useState(true);
   const [pinInput, setPinInput] = useState('');
   const [pinError, setPinError] = useState('');
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'products' | 'categories' | 'reels'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'products' | 'categories' | 'reels' | 'launch'>('dashboard');
 
   // Modal / Form States
   const [productFormOpen, setProductFormOpen] = useState(false);
@@ -85,13 +92,22 @@ export default function AdminPanel({
     'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=600&auto=format&fit=crop&q=80'
   ];
 
-  // Helper mock chart data
+  // Helper charts and metrics data
   const chartData = analytics.clicksHistory;
 
   const platformChartData = analytics.affiliateClicks.map(p => ({
     name: p.platform,
     clicks: p.clicks
   }));
+
+  const topPlatformItem = analytics.affiliateClicks.length > 0
+    ? [...analytics.affiliateClicks].sort((a, b) => b.clicks - a.clicks)[0]
+    : null;
+  const topPlatformName = topPlatformItem && topPlatformItem.clicks > 0 ? topPlatformItem.platform : 'None';
+  const totalAffiliateClicks = analytics.affiliateClicks.reduce((sum, curr) => sum + curr.clicks, 0);
+  const topPlatformPercentage = topPlatformItem && totalAffiliateClicks > 0
+    ? Math.round((topPlatformItem.clicks / totalAffiliateClicks) * 100)
+    : 0;
 
   // Render Lock Screen if not authorized
   if (!isAuthenticated) {
@@ -100,7 +116,7 @@ export default function AdminPanel({
         <div className="w-14 h-14 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-6">
           <ShieldAlert className="w-7 h-7" />
         </div>
-        <h2 className="text-xl font-extrabold text-white tracking-tight">On Budget Admin Panel</h2>
+        <h2 className="text-xl font-extrabold text-white tracking-tight">In Our Budget Admin Panel</h2>
         <p className="text-xs text-neutral-400 mt-2 mb-6">
           Authorized personnel only. Please input the master security credentials.
         </p>
@@ -147,7 +163,7 @@ export default function AdminPanel({
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-neutral-900 border border-neutral-800 p-4 rounded-2xl">
         <div>
           <div className="flex items-center gap-2">
-            <h2 className="text-lg font-extrabold text-white">On Budget HQ</h2>
+            <h2 className="text-lg font-extrabold text-white">In Our Budget HQ</h2>
             <span className="text-[9px] font-bold tracking-wide bg-emerald-500/15 border border-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full uppercase">
               Admin Session
             </span>
@@ -211,6 +227,17 @@ export default function AdminPanel({
           <Film className="w-4 h-4" />
           Reel Manager ({reels.length})
         </button>
+        <button
+          onClick={() => setActiveTab('launch')}
+          className={`flex items-center gap-2 text-xs font-bold pb-3 px-4 border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+            activeTab === 'launch'
+              ? 'border-emerald-500 text-emerald-400'
+              : 'border-transparent text-neutral-400 hover:text-white'
+          }`}
+        >
+          <SlidersHorizontal className="w-4 h-4" />
+          Launch Mode Settings
+        </button>
       </div>
 
       {/* Content Render */}
@@ -219,45 +246,47 @@ export default function AdminPanel({
           <div className="space-y-6">
             {/* KPI Cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="p-5 bg-neutral-900 border border-neutral-800 rounded-2xl flex flex-col justify-between">
-                <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
-                  <TrendingUp className="w-3.5 h-3.5 text-neutral-400" /> Total Visitors
+              <div className="p-5 border rounded-2xl flex flex-col justify-between" style={{ backgroundColor: '#e9e9e9' }}>
+                <span className="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5" style={{ color: '#ff4300' }}>
+                  <TrendingUp className="w-3.5 h-3.5" style={{ color: '#ff4300' }} /> Total Visitors
                 </span>
-                <span className="text-2xl font-black text-white mt-2">{analytics.totalVisitors.toLocaleString()}</span>
-                <span className="text-[10px] text-emerald-400 font-semibold mt-1">Live simulation tracker</span>
+                <span className="text-2xl font-black mt-2" style={{ color: '#000000' }}>{analytics.totalVisitors.toLocaleString()}</span>
+                <span className="text-[10px] text-emerald-400 font-semibold mt-1">Real-time unique visitors</span>
               </div>
 
-              <div className="p-5 bg-neutral-900 border border-neutral-800 rounded-2xl flex flex-col justify-between">
-                <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
-                  <MousePointer className="w-3.5 h-3.5 text-neutral-400" /> Total Link Clicks
+              <div className="p-5 border rounded-2xl flex flex-col justify-between" style={{ backgroundColor: '#e9e9e9' }}>
+                <span className="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5" style={{ color: '#ff4300' }}>
+                  <MousePointer className="w-3.5 h-3.5" style={{ color: '#ff4300' }} /> Total Link Clicks
                 </span>
-                <span className="text-2xl font-black text-white mt-2">{analytics.pageViews.toLocaleString()}</span>
-                <span className="text-[10px] text-emerald-400 font-semibold mt-1">CTR: {(analytics.pageViews / analytics.totalVisitors * 100).toFixed(1)}%</span>
+                <span className="text-2xl font-black mt-2" style={{ color: '#000000' }}>{analytics.pageViews.toLocaleString()}</span>
+                <span className="text-[10px] text-emerald-400 font-semibold mt-1">
+                  CTR: {analytics.totalVisitors > 0 ? ((analytics.pageViews / analytics.totalVisitors) * 100).toFixed(1) : '0.0'}%
+                </span>
               </div>
 
-              <div className="p-5 bg-neutral-900 border border-neutral-800 rounded-2xl flex flex-col justify-between">
-                <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
-                  <DollarSign className="w-3.5 h-3.5 text-neutral-400" /> Affiliate Clicks
+              <div className="p-5 border rounded-2xl flex flex-col justify-between" style={{ backgroundColor: '#e9e9e9' }}>
+                <span className="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5" style={{ color: '#ff4300' }}>
+                  <DollarSign className="w-3.5 h-3.5" style={{ color: '#ff4300' }} /> Affiliate Clicks
                 </span>
-                <span className="text-2xl font-black text-white mt-2">
-                  {analytics.affiliateClicks.reduce((sum, curr) => sum + curr.clicks, 0).toLocaleString()}
+                <span className="text-2xl font-black mt-2" style={{ color: '#000000' }}>
+                  {totalAffiliateClicks.toLocaleString()}
                 </span>
-                <span className="text-[10px] text-emerald-400 font-semibold mt-1">Conversion: {analytics.bounceRate}% (Simulated)</span>
+                <span className="text-[10px] text-emerald-400 font-semibold mt-1">Conversion: {analytics.bounceRate}%</span>
               </div>
 
-              <div className="p-5 bg-neutral-900 border border-neutral-800 rounded-2xl flex flex-col justify-between">
-                <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
-                  <Share2 className="w-3.5 h-3.5 text-neutral-400" /> Top Platform
+              <div className="p-5 border rounded-2xl flex flex-col justify-between" style={{ backgroundColor: '#e9e9e9' }}>
+                <span className="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5" style={{ color: '#ff4300' }}>
+                  <Share2 className="w-3.5 h-3.5" style={{ color: '#ff4300' }} /> Top Platform
                 </span>
-                <span className="text-2xl font-black text-white mt-2">Amazon</span>
-                <span className="text-[10px] text-neutral-400 mt-1">72% of traffic destination</span>
+                <span className="text-2xl font-black mt-2" style={{ color: '#000000' }}>{topPlatformName}</span>
+                <span className="text-[10px] font-medium mt-1" style={{ color: '#00d492' }}>{topPlatformPercentage}% of traffic destination</span>
               </div>
             </div>
 
             {/* Charts Section */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Line Chart */}
-              <div className="p-5 bg-neutral-900 border border-neutral-800 rounded-2xl space-y-4">
+              <div className="p-5 border rounded-2xl space-y-4" style={{ backgroundColor: '#e9e9e9' }}>
                 <h3 className="text-xs font-bold text-neutral-300 uppercase tracking-wider">Traffic & Clicks Timeline</h3>
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
@@ -268,8 +297,8 @@ export default function AdminPanel({
                           <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
                         </linearGradient>
                       </defs>
-                      <XAxis dataKey="date" stroke="#525252" style={{ fontSize: '10px' }} />
-                      <YAxis stroke="#525252" style={{ fontSize: '10px' }} />
+                      <XAxis dataKey="date" stroke="#000000" style={{ fontSize: '10px' }} tick={{ fill: '#000000' }} />
+                      <YAxis stroke="#000000" style={{ fontSize: '10px' }} tick={{ fill: '#000000' }} />
                       <Tooltip contentStyle={{ backgroundColor: '#171717', borderColor: '#262626', color: '#fff' }} />
                       <Area type="monotone" dataKey="clicks" stroke="#10b981" fillOpacity={1} fill="url(#colorClicks)" strokeWidth={2} />
                     </AreaChart>
@@ -278,13 +307,13 @@ export default function AdminPanel({
               </div>
 
               {/* Bar Chart */}
-              <div className="p-5 bg-neutral-900 border border-neutral-800 rounded-2xl space-y-4">
+              <div className="p-5 border rounded-2xl space-y-4" style={{ backgroundColor: '#e9e9e9' }}>
                 <h3 className="text-xs font-bold text-neutral-300 uppercase tracking-wider"> clicks by affiliate platform</h3>
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={platformChartData}>
-                      <XAxis dataKey="name" stroke="#525252" style={{ fontSize: '10px' }} />
-                      <YAxis stroke="#525252" style={{ fontSize: '10px' }} />
+                      <XAxis dataKey="name" stroke="#000000" style={{ fontSize: '10px' }} tick={{ fill: '#000000' }} />
+                      <YAxis stroke="#000000" style={{ fontSize: '10px' }} tick={{ fill: '#000000' }} />
                       <Tooltip contentStyle={{ backgroundColor: '#171717', borderColor: '#262626', color: '#fff' }} />
                       <Bar dataKey="clicks" fill="#10b981" radius={[4, 4, 0, 0]} />
                     </BarChart>
@@ -296,21 +325,23 @@ export default function AdminPanel({
             {/* Performance Rankings */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Top Products */}
-              <div className="p-5 bg-neutral-900 border border-neutral-800 rounded-2xl">
-                <h3 className="text-xs font-bold text-neutral-300 uppercase tracking-wider mb-4">Top Performing Products</h3>
+              <div className="p-5 border rounded-2xl" style={{ backgroundColor: '#e9e9e9' }}>
+                <h3 className="text-xs font-bold uppercase tracking-wider mb-4" style={{ color: '#ff4300' }}>Top Performing Products</h3>
                 <div className="space-y-3">
                   {analytics.topProducts.map((p, idx) => (
                     <div key={p.productId} className="flex items-center justify-between p-2 bg-neutral-950 border border-neutral-850 rounded-xl">
                       <div className="flex items-center gap-3">
                         <span className="text-xs font-bold text-neutral-500 w-5">#{idx + 1}</span>
                         <div className="min-w-0">
-                          <p className="text-xs font-bold text-white truncate">{p.title}</p>
-                          <p className="text-[10px] text-neutral-500 font-mono">ID: {p.productId}</p>
+                           <p className="text-xs font-bold text-white truncate">{p.title}</p>
+                           <p className="text-[10px] text-neutral-500 font-mono">ID: {p.productId}</p>
                         </div>
                       </div>
                       <div className="text-right">
                         <p className="text-xs font-extrabold text-emerald-400">{p.clicks} clicks</p>
-                        <p className="text-[9px] text-neutral-500 font-medium">Conversion: 14%</p>
+                        <p className="text-[9px] text-neutral-500 font-medium">
+                          Share: {analytics.pageViews > 0 ? Math.round((p.clicks / analytics.pageViews) * 100) : 0}%
+                        </p>
                       </div>
                     </div>
                   ))}
@@ -318,14 +349,14 @@ export default function AdminPanel({
               </div>
 
               {/* Traffic details */}
-              <div className="p-5 bg-neutral-900 border border-neutral-800 rounded-2xl">
-                <h3 className="text-xs font-bold text-neutral-300 uppercase tracking-wider mb-4">Traffic Demographics</h3>
+              <div className="p-5 border rounded-2xl" style={{ backgroundColor: '#e9e9e9' }}>
+                <h3 className="text-xs font-bold uppercase tracking-wider mb-4" style={{ color: '#ff4300' }}>Traffic Demographics</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <h4 className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider mb-2">Devices</h4>
+                    <h4 className="text-[11px] font-bold uppercase tracking-wider mb-2" style={{ color: '#008057' }}>Devices</h4>
                     <div className="space-y-2">
                       {analytics.devices.map(d => (
-                        <div key={d.device} className="flex justify-between items-center text-xs text-neutral-300">
+                        <div key={d.device} className="flex justify-between items-center text-xs" style={{ color: '#000000' }}>
                           <span>{d.device}</span>
                           <span className="font-bold">{d.count} ({Math.round(d.count / (analytics.devices.reduce((acc, curr) => acc + curr.count, 0) || 1) * 100)}%)</span>
                         </div>
@@ -333,10 +364,10 @@ export default function AdminPanel({
                     </div>
                   </div>
                   <div>
-                    <h4 className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider mb-2">Countries</h4>
+                    <h4 className="text-[11px] font-bold uppercase tracking-wider mb-2" style={{ color: '#008057' }}>Countries</h4>
                     <div className="space-y-2">
                       {analytics.countries.map(c => (
-                        <div key={c.country} className="flex justify-between items-center text-xs text-neutral-300">
+                        <div key={c.country} className="flex justify-between items-center text-xs" style={{ color: '#000000' }}>
                           <span>{c.country}</span>
                           <span className="font-bold">{c.count}</span>
                         </div>
@@ -561,6 +592,13 @@ export default function AdminPanel({
               ))}
             </div>
           </div>
+        )}
+
+        {activeTab === 'launch' && (
+          <AdminLaunchMode
+            launchSettings={launchSettings}
+            onSaveLaunchSettings={onSaveLaunchSettings}
+          />
         )}
       </div>
 

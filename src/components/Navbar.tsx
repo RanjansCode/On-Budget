@@ -5,19 +5,18 @@ import {
   Shield, Check, ArrowRight, LogIn, LogOut, Mail, Lock, Info, Eye, EyeOff, ShieldAlert,
   Phone, Smartphone, ArrowLeft, ChevronDown, KeyRound
 } from 'lucide-react';
-import { NotificationItem, Category, ADMIN_EMAILS, ADMIN_PHONES } from '../types';
+import { NotificationItem, Category, ADMIN_EMAILS } from '../types';
 import { 
   auth, 
   signInWithGoogle, 
   signInWithEmail, 
   signUpWithEmail, 
-  signOutUser,
-  sendOtpToPhone,
-  RecaptchaVerifier
+  signOutUser
 } from '../firebase/auth';
 import { syncUserProfile } from '../firebase/firestore';
 import { updateProfile, User as FirebaseUser } from 'firebase/auth';
 import { useToast } from './Toast';
+import inOurBudgetLogo from '../assets/images/in_our_budget_logo_1784107312483.jpg';
 
 interface NavbarProps {
   activeTab: 'home' | 'wishlist' | 'profile' | 'admin';
@@ -30,7 +29,9 @@ interface NavbarProps {
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   onVoiceSearch: () => void;
-  user: FirebaseUser | null;
+  user: any;
+  onBypassLogin?: (user: any) => void;
+  onBypassLogout?: () => void;
 }
 
 export default function Navbar({
@@ -45,6 +46,8 @@ export default function Navbar({
   setSearchQuery,
   onVoiceSearch,
   user,
+  onBypassLogin,
+  onBypassLogout,
 }: NavbarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -58,231 +61,30 @@ export default function Navbar({
   const [showPassword, setShowPassword] = useState(false);
   const [isAuthUnconfigured, setIsAuthUnconfigured] = useState(false);
 
-  // --- Phone Authentication State ---
-  const [authType, setAuthType] = useState<'email' | 'phone'>('email');
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [countryCode, setCountryCode] = useState('+91');
-  const [otpSent, setOtpSent] = useState(false);
-  const [otpCode, setOtpCode] = useState<string[]>(Array(6).fill(''));
-  const [otpCountdown, setOtpCountdown] = useState(0);
-  const [confirmationResult, setConfirmationResult] = useState<any>(null);
-  const [recaptchaVerifier, setRecaptchaVerifier] = useState<any>(null);
-
-  const otpInputsRef = useRef<(HTMLInputElement | null)[]>([]);
-
-  // Focus the first OTP input box when OTP screen loads
-  useEffect(() => {
-    if (otpSent) {
-      setTimeout(() => {
-        otpInputsRef.current[0]?.focus();
-      }, 100);
-    }
-  }, [otpSent]);
-
-  // Countdown for Resend OTP
-  useEffect(() => {
-    let timer: any;
-    if (otpCountdown > 0) {
-      timer = setInterval(() => {
-        setOtpCountdown(prev => prev - 1);
-      }, 1000);
-    }
-    return () => clearInterval(timer);
-  }, [otpCountdown]);
-
-  const getOrCreateRecaptchaVerifier = () => {
-    if ((window as any).recaptchaVerifier) {
-      return (window as any).recaptchaVerifier;
-    }
-    try {
-      // Invisible Recaptcha
-      const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-        size: 'invisible',
-        callback: () => {
-          // Solved
-        },
-        'expired-callback': () => {
-          toast.error('reCAPTCHA expired. Please try again.');
-        }
-      });
-      (window as any).recaptchaVerifier = verifier;
-      setRecaptchaVerifier(verifier);
-      return verifier;
-    } catch (err: any) {
-      console.error('reCAPTCHA initialization error:', err);
-      toast.error('Failed to initialize security reCAPTCHA.');
-      return null;
-    }
-  };
-
-  const handleSendOtp = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    setAuthLoading(true);
-    setAuthError(null);
-
-    // Clean and parse phone number
-    let cleaned = phoneNumber.trim().replace(/\s+/g, '').replace(/-/g, '');
-    if (cleaned.startsWith('+91')) {
-      cleaned = cleaned.substring(3);
-    } else if (cleaned.startsWith('91') && cleaned.length === 12) {
-      cleaned = cleaned.substring(2);
-    }
-
-    // Validate Indian mobile numbers
-    const isIndia = countryCode === '+91';
-    if (isIndia) {
-      const indiaRegex = /^[6-9]\d{9}$/;
-      if (!indiaRegex.test(cleaned)) {
-        const errorMsg = 'Please enter a valid 10-digit Indian mobile number starting with 6-9.';
-        setAuthError(errorMsg);
-        toast.error(errorMsg);
-        setAuthLoading(false);
-        return;
-      }
-    } else {
-      if (cleaned.length < 7 || cleaned.length > 15) {
-        const errorMsg = 'Please enter a valid mobile number.';
-        setAuthError(errorMsg);
-        toast.error(errorMsg);
-        setAuthLoading(false);
-        return;
-      }
-    }
-
-    const fullPhoneNumber = countryCode + cleaned;
-
-    try {
-      const verifier = getOrCreateRecaptchaVerifier();
-      if (!verifier) {
-        throw new Error('reCAPTCHA verifier could not be created.');
-      }
-
-      const confirmation = await sendOtpToPhone(fullPhoneNumber, verifier);
-      setConfirmationResult(confirmation);
-      setOtpSent(true);
-      setOtpCountdown(30);
-      setOtpCode(Array(6).fill(''));
-      toast.success(`OTP sent successfully to ${fullPhoneNumber}`);
-    } catch (err: any) {
-      console.error('Failed to send OTP:', err);
-      const isUnconfigured = err.message?.includes('Authentication is not configured') || err.message?.includes('operation-not-allowed');
-      if (isUnconfigured) {
-        setIsAuthUnconfigured(true);
-      }
-      const msg = err.message || 'Failed to send OTP. Please check your phone number.';
-      setAuthError(msg);
-      toast.error(msg);
-      
-      // Reset reCAPTCHA on failure
-      if ((window as any).recaptchaVerifier) {
-        try {
-          (window as any).recaptchaVerifier.clear();
-          (window as any).recaptchaVerifier = null;
-          setRecaptchaVerifier(null);
-        } catch (e) {
-          console.error(e);
-        }
-      }
-    } finally {
-      setAuthLoading(false);
-    }
-  };
-
-  const handleVerifyOtp = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    const codeString = otpCode.join('');
-    if (codeString.length !== 6) {
-      toast.error('Please enter the full 6-digit verification code.');
-      return;
-    }
-
-    setAuthLoading(true);
-    setAuthError(null);
-
-    try {
-      if (!confirmationResult) {
-        throw new Error('No active verification session. Please request a new OTP.');
-      }
-
-      const credential = await confirmationResult.confirm(codeString);
-      const loggedUser = credential.user;
-
-      if (loggedUser) {
-        const profile = await syncUserProfile(loggedUser);
-        toast.success(`Welcome back ${profile.displayName || loggedUser.phoneNumber || 'User'}!`);
-        closeAuthModal();
-      }
-    } catch (err: any) {
-      console.error('OTP Verification Error:', err);
-      const msg = err.message || 'The OTP verification code is incorrect. Please verify and try again.';
-      setAuthError(msg);
-      toast.error(msg);
-    } finally {
-      setAuthLoading(false);
-    }
-  };
-
-  const handleOtpChange = (index: number, val: string) => {
-    const numericVal = val.replace(/\D/g, '');
-    if (!numericVal) {
-      const newOtp = [...otpCode];
-      newOtp[index] = '';
-      setOtpCode(newOtp);
-      return;
-    }
-
-    const digit = numericVal[numericVal.length - 1];
-    const newOtp = [...otpCode];
-    newOtp[index] = digit;
-    setOtpCode(newOtp);
-
-    if (index < 5) {
-      otpInputsRef.current[index + 1]?.focus();
-    }
-  };
-
-  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Backspace') {
-      if (!otpCode[index] && index > 0) {
-        const newOtp = [...otpCode];
-        newOtp[index - 1] = '';
-        setOtpCode(newOtp);
-        otpInputsRef.current[index - 1]?.focus();
-      } else {
-        const newOtp = [...otpCode];
-        newOtp[index] = '';
-        setOtpCode(newOtp);
-      }
-    } else if (e.key === 'ArrowLeft' && index > 0) {
-      otpInputsRef.current[index - 1]?.focus();
-    } else if (e.key === 'ArrowRight' && index < 5) {
-      otpInputsRef.current[index + 1]?.focus();
-    }
-  };
-
-  const handleOtpPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
-    e.preventDefault();
-    const pastedData = e.clipboardData.getData('Text').replace(/\D/g, '').slice(0, 6);
-    if (pastedData.length > 0) {
-      const newOtp = [...otpCode];
-      for (let i = 0; i < 6; i++) {
-        newOtp[i] = pastedData[i] || '';
-      }
-      setOtpCode(newOtp);
-
-      const nextFocusIndex = Math.min(pastedData.length, 5);
-      otpInputsRef.current[nextFocusIndex]?.focus();
-    }
-  };
-
   const closeAuthModal = () => {
     setAuthModalOpen(false);
     setAuthError(null);
-    setPhoneNumber('');
-    setOtpSent(false);
-    setOtpCode(Array(6).fill(''));
-    setConfirmationResult(null);
-    setAuthType('email');
+  };
+
+  const handleBypassLogin = (role: 'admin' | 'user') => {
+    const mockUser = role === 'admin' ? {
+      uid: 'demo_admin_uid_999',
+      email: 'ranjan.edits.designs@gmail.com',
+      displayName: 'Ranjan Admin (Sandbox)',
+      photoURL: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80',
+    } : {
+      uid: 'demo_user_uid_111',
+      email: 'demo.shopper@gmail.com',
+      displayName: 'Demo Shopper',
+      photoURL: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&auto=format&fit=crop&q=80',
+    };
+
+    localStorage.setItem('onbudget_bypass_user', JSON.stringify(mockUser));
+    if (onBypassLogin) {
+      onBypassLogin(mockUser);
+    }
+    toast.success(`Signed in as ${mockUser.displayName} (Bypass Mode)`);
+    closeAuthModal();
   };
 
   const toast = useToast();
@@ -379,6 +181,15 @@ export default function Navbar({
 
   const handleLogout = async () => {
     try {
+      if (localStorage.getItem('onbudget_bypass_user')) {
+        localStorage.removeItem('onbudget_bypass_user');
+        if (onBypassLogout) {
+          onBypassLogout();
+        }
+        toast.success('Bypass session ended successfully.');
+        setActiveTab('home');
+        return;
+      }
       await signOutUser();
       toast.success('Logged out successfully.');
       setActiveTab('home');
@@ -388,8 +199,7 @@ export default function Navbar({
   };
 
   const isAdmin = !!(user && (
-    (user.email && ADMIN_EMAILS.includes(user.email)) ||
-    (user.phoneNumber && ADMIN_PHONES.includes(user.phoneNumber))
+    (user.email && ADMIN_EMAILS.includes(user.email))
   ));
 
   const navItems = [
@@ -411,19 +221,16 @@ export default function Navbar({
                 setActiveTab('home');
                 setMobileMenuOpen(false);
               }}
-              className="flex items-center gap-2 cursor-pointer shrink-0"
+              className="flex items-center cursor-pointer shrink-0"
               id="navbar-logo"
             >
-              <div className="w-10 h-10 bg-[#FF5A00] rounded-xl flex items-center justify-center shadow-lg shadow-[#FF5A00]/20 hover:scale-105 transition-transform duration-200">
-                <span className="text-white font-black text-xl font-display">₹</span>
-              </div>
-              <div className="flex flex-col">
-                <span className="text-sm font-black text-slate-900 dark:text-white tracking-wider uppercase leading-none font-display">
-                  On Budget
-                </span>
-                <span className="text-[10px] text-[#FF5A00] font-bold uppercase tracking-widest mt-1">
-                  Tested Curations
-                </span>
+              <div className="bg-white p-1 rounded-xl flex items-center justify-center border border-slate-100 dark:border-slate-800 shadow-xs">
+                <img
+                  src={inOurBudgetLogo}
+                  alt="In Our Budget Logo"
+                  className="h-10 w-auto object-contain hover:scale-102 transition-transform duration-200"
+                  referrerPolicy="no-referrer"
+                />
               </div>
             </div>
 
@@ -687,13 +494,16 @@ export default function Navbar({
               <div className="space-y-6">
                 {/* Modal Header */}
                 <div className="text-center">
-                  <div className="inline-flex w-12 h-12 bg-[#FF5A00]/10 rounded-2xl items-center justify-center text-[#FF5A00] mb-3">
-                    <span className="text-xl font-extrabold font-display">₹</span>
+                  <div className="inline-flex mb-3 bg-white p-1 rounded-2xl shadow-sm border border-slate-100">
+                    <img
+                      src={inOurBudgetLogo}
+                      alt="In Our Budget"
+                      className="w-14 h-14 object-contain"
+                      referrerPolicy="no-referrer"
+                    />
                   </div>
                   <h3 className="text-lg font-bold text-slate-950 dark:text-white font-display">
-                    {authType === 'phone' 
-                      ? (otpSent ? 'Verify OTP Code' : 'Mobile OTP Sign In') 
-                      : (authMode === 'signin' ? 'Welcome back' : 'Create your account')}
+                    {authMode === 'signin' ? 'Welcome back' : 'Create your account'}
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5">
                     Save your wishlist, follow dynamic pricing, and submit real reviews.
@@ -702,338 +512,213 @@ export default function Navbar({
 
                 {/* Error Panel or Setup Warning */}
                 {isAuthUnconfigured ? (
-                  <div className="p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 text-amber-800 dark:text-amber-300 text-xs rounded-2xl space-y-2.5">
+                  <div className="p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 text-amber-800 dark:text-amber-300 text-xs rounded-2xl space-y-3">
                     <div className="flex items-center gap-2 font-bold text-amber-900 dark:text-amber-200">
                       <ShieldAlert className="w-5 h-5 shrink-0 text-amber-600 dark:text-amber-400" />
                       <span>Setup Firebase Auth Providers</span>
                     </div>
                     <p className="leading-relaxed text-slate-600 dark:text-slate-300">
-                      Authentication is not configured. Please enable Email/Password, Google, and Phone in Firebase Console:
+                      Authentication is not configured. Please enable Email/Password and Google in Firebase Console:
                     </p>
                     <ol className="list-decimal pl-4 space-y-1.5 text-slate-600 dark:text-slate-300 font-medium">
                       <li>Open the <a href="https://console.firebase.google.com/" target="_blank" rel="noopener noreferrer" className="underline font-bold text-[#FF5A00] hover:text-[#E04F00]">Firebase Console</a>.</li>
                       <li>Select your project, then click <strong>Authentication</strong> in the sidebar.</li>
                       <li>Go to the <strong>Sign-in method</strong> tab.</li>
-                      <li>Enable <strong>Email/Password</strong>, <strong>Google</strong>, and <strong>Phone</strong> providers.</li>
+                      <li>Enable <strong>Email/Password</strong> and <strong>Google</strong> providers.</li>
                       <li>Click save, then reload this page and try again!</li>
                     </ol>
+                    <div className="pt-3 border-t border-amber-200/60 dark:border-amber-900/40">
+                      <p className="text-[10px] font-bold text-amber-950 dark:text-amber-200 mb-2 uppercase tracking-wider block">
+                        🚀 Sandbox Bypass (AI Studio Preview)
+                      </p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleBypassLogin('admin')}
+                          className="px-3 py-2 bg-[#FF5A00] hover:bg-[#E04F00] text-white font-bold rounded-xl text-[10px] text-center transition-all cursor-pointer shadow-sm"
+                        >
+                          Bypass as Admin
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleBypassLogin('user')}
+                          className="px-3 py-2 bg-slate-700 hover:bg-slate-800 text-white font-bold rounded-xl text-[10px] text-center transition-all cursor-pointer"
+                        >
+                          Bypass as User
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 ) : authError ? (
-                  <div className="p-3.5 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/30 text-red-600 dark:text-red-400 text-xs rounded-2xl flex items-start gap-2">
-                    <Info className="w-4 h-4 shrink-0 mt-0.5" />
-                    <span className="leading-normal">{authError}</span>
+                  <div className="p-3.5 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/30 text-red-600 dark:text-red-400 text-xs rounded-2xl flex flex-col gap-2.5">
+                    <div className="flex items-start gap-2">
+                      <Info className="w-4 h-4 shrink-0 mt-0.5" />
+                      <span className="leading-normal">{authError}</span>
+                    </div>
+                    <div className="pt-2 border-t border-red-200/50 dark:border-red-900/30 flex flex-col gap-1.5">
+                      <span className="text-[10px] text-red-700 dark:text-red-300 font-semibold">Stuck? Use sandbox bypass for testing:</span>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleBypassLogin('admin')}
+                          className="px-2 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-[9px] font-bold text-center cursor-pointer transition-colors"
+                        >
+                          Bypass as Admin
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleBypassLogin('user')}
+                          className="px-2 py-1.5 bg-slate-600 hover:bg-slate-700 text-white rounded-lg text-[9px] font-bold text-center cursor-pointer transition-colors"
+                        >
+                          Bypass as User
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 ) : null}
 
-                {/* Auth Type Tabs */}
-                {!otpSent && (
-                  <div className="flex bg-slate-50 dark:bg-slate-950 p-1 rounded-2xl border border-slate-200 dark:border-slate-800">
-                    <button
-                      type="button"
-                      onClick={() => { setAuthType('email'); setAuthError(null); }}
-                      className={`flex-1 text-center py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
-                        authType === 'email'
-                          ? 'bg-white dark:bg-slate-900 text-[#FF5A00] shadow-sm'
-                          : 'text-slate-500 hover:text-slate-750 dark:text-slate-400 dark:hover:text-slate-300'
-                      }`}
-                    >
-                      Email Sign In
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { setAuthType('phone'); setAuthError(null); }}
-                      className={`flex-1 text-center py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
-                        authType === 'phone'
-                          ? 'bg-white dark:bg-slate-900 text-[#FF5A00] shadow-sm'
-                          : 'text-slate-500 hover:text-slate-755 dark:text-slate-400 dark:hover:text-slate-300'
-                      }`}
-                    >
-                      Mobile OTP (India)
-                    </button>
-                  </div>
-                )}
-
-                {/* Conditional forms based on authType */}
-                {authType === 'email' ? (
-                  <>
-                    {/* Main Auth Form */}
-                    <form onSubmit={handleEmailAuth} className="space-y-4">
-                      {authMode === 'signup' && (
-                        <div className="space-y-1.5">
-                          <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Your Name</label>
-                          <div className="relative">
-                            <input
-                              type="text"
-                              required
-                              value={authName}
-                              onChange={e => setAuthName(e.target.value)}
-                              placeholder="John Doe"
-                              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus:border-[#FF5A00] focus:ring-1 focus:ring-[#FF5A00] rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none"
-                            />
-                            <User className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2" />
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Email Address</label>
-                        <div className="relative">
-                          <input
-                            type="email"
-                            required
-                            value={authEmail}
-                            onChange={e => setAuthEmail(e.target.value)}
-                            placeholder="john@example.com"
-                            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus:border-[#FF5A00] focus:ring-1 focus:ring-[#FF5A00] rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none"
-                          />
-                          <Mail className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2" />
-                        </div>
+                {/* Main Auth Form */}
+                <form onSubmit={handleEmailAuth} className="space-y-4">
+                  {authMode === 'signup' && (
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Your Name</label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          required
+                          value={authName}
+                          onChange={e => setAuthName(e.target.value)}
+                          placeholder="John Doe"
+                          className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus:border-[#FF5A00] focus:ring-1 focus:ring-[#FF5A00] rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none"
+                        />
+                        <User className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2" />
                       </div>
-
-                      <div className="space-y-1.5">
-                        <div className="flex justify-between items-center">
-                          <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Password</label>
-                          {authMode === 'signin' && (
-                            <button
-                              type="button"
-                              onClick={() => setAuthError('Password reset link is coming soon! Please check your credentials or log in with Google.')}
-                              className="text-[10px] text-[#FF5A00] font-bold hover:underline"
-                            >
-                              Forgot?
-                            </button>
-                          )}
-                        </div>
-                        <div className="relative">
-                          <input
-                            type={showPassword ? 'text' : 'password'}
-                            required
-                            value={authPassword}
-                            onChange={e => setAuthPassword(e.target.value)}
-                            placeholder="••••••••"
-                            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus:border-[#FF5A00] focus:ring-1 focus:ring-[#FF5A00] rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowPassword(!showPassword)}
-                            className="p-1 text-slate-400 hover:text-[#FF5A00] absolute right-3.5 top-1/2 -translate-y-1/2 transition-colors"
-                          >
-                            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                          </button>
-                        </div>
-                      </div>
-
-                      <button
-                        type="submit"
-                        disabled={authLoading}
-                        className="w-full bg-[#FF5A00] hover:bg-[#E04F00] text-white py-3.5 rounded-xl text-xs font-bold shadow-lg shadow-[#FF5A00]/10 flex items-center justify-center gap-2 cursor-pointer transition-colors"
-                      >
-                        {authLoading ? (
-                          <div className="w-4.5 h-4.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        ) : (
-                          <>
-                            <span>{authMode === 'signin' ? 'Sign In with Email' : 'Create My Account'}</span>
-                            <ArrowRight className="w-4 h-4" />
-                          </>
-                        )}
-                      </button>
-                    </form>
-
-                    {/* Divider */}
-                    <div className="relative flex py-1 items-center">
-                      <div className="flex-grow border-t border-slate-200 dark:border-slate-800"></div>
-                      <span className="flex-shrink mx-4 text-[10px] text-slate-400 font-bold uppercase tracking-widest">Or Continue With</span>
-                      <div className="flex-grow border-t border-slate-200 dark:border-slate-800"></div>
                     </div>
+                  )}
 
-                    {/* Google Sign In Button */}
-                    <button
-                      type="button"
-                      onClick={handleGoogleLogin}
-                      disabled={authLoading}
-                      className="w-full bg-slate-50 dark:bg-slate-950 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-800 py-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-98"
-                    >
-                      <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
-                        <path
-                          fill="#4285F4"
-                          d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v3.9h6.6c-.28 1.5-1.11 2.76-2.39 3.62v3h3.86c2.26-2.08 3.67-5.14 3.67-8.45z"
-                        />
-                        <path
-                          fill="#34A853"
-                          d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.86-3c-1.08.72-2.45 1.16-4.07 1.16-3.13 0-5.78-2.11-6.73-4.96H1.29v3.12C3.26 22.27 7.4 24 12 24z"
-                        />
-                        <path
-                          fill="#FBBC05"
-                          d="M5.27 14.29a7.18 7.18 0 0 1 0-4.58V6.59H1.29a11.94 11.94 0 0 0 0 10.82l3.98-3.12z"
-                        />
-                        <path
-                          fill="#EA4335"
-                          d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.4 0 3.26 1.73 1.29 4.75l3.98 3.12c.95-2.85 3.6-4.96 6.73-4.96z"
-                        />
-                      </svg>
-                      <span>Google Account</span>
-                    </button>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Email Address</label>
+                    <div className="relative">
+                      <input
+                        type="email"
+                        required
+                        value={authEmail}
+                        onChange={e => setAuthEmail(e.target.value)}
+                        placeholder="john@example.com"
+                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus:border-[#FF5A00] focus:ring-1 focus:ring-[#FF5A00] rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none"
+                      />
+                      <Mail className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2" />
+                    </div>
+                  </div>
 
-                    {/* Switch Sign In / Sign Up */}
-                    <div className="text-center pt-2">
-                      <p className="text-xs text-slate-500 dark:text-slate-400">
-                        {authMode === 'signin' ? "Don't have an account?" : 'Already have an account?'}
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between items-center">
+                      <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Password</label>
+                      {authMode === 'signin' && (
                         <button
                           type="button"
-                          onClick={() => {
-                            setAuthMode(authMode === 'signin' ? 'signup' : 'signin');
-                            setAuthError(null);
-                          }}
-                          className="text-[#FF5A00] font-bold hover:underline ml-1.5"
+                          onClick={() => setAuthError('Password reset link is coming soon! Please check your credentials or log in with Google.')}
+                          className="text-[10px] text-[#FF5A00] font-bold hover:underline"
                         >
-                          {authMode === 'signin' ? 'Create one now' : 'Sign in here'}
+                          Forgot?
                         </button>
-                      </p>
+                      )}
                     </div>
-                  </>
-                ) : (
-                  <>
-                    {/* Phone Authentication */}
-                    {!otpSent ? (
-                      <form onSubmit={handleSendOtp} className="space-y-4">
-                        <div className="space-y-1.5">
-                          <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">Mobile Number</label>
-                          <div className="flex gap-2">
-                            {/* Country Selector */}
-                            <div className="relative shrink-0">
-                              <select
-                                value={countryCode}
-                                onChange={e => setCountryCode(e.target.value)}
-                                className="appearance-none w-24 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl pl-3 pr-8 py-2.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#FF5A00] font-medium cursor-pointer"
-                              >
-                                <option value="+91">🇮🇳 +91</option>
-                                <option value="+1">🇺🇸 +1</option>
-                                <option value="+44">🇬🇧 +44</option>
-                                <option value="+61">🇦🇺 +61</option>
-                                <option value="+65">🇸🇬 +65</option>
-                                <option value="+971">🇦🇪 +971</option>
-                              </select>
-                              <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                            </div>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        required
+                        value={authPassword}
+                        onChange={e => setAuthPassword(e.target.value)}
+                        placeholder="••••••••"
+                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus:border-[#FF5A00] focus:ring-1 focus:ring-[#FF5A00] rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="p-1 text-slate-400 hover:text-[#FF5A00] absolute right-3.5 top-1/2 -translate-y-1/2 transition-colors"
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
 
-                            {/* Mobile Number Input */}
-                            <div className="relative flex-1">
-                              <input
-                                type="tel"
-                                required
-                                value={phoneNumber}
-                                onChange={e => setPhoneNumber(e.target.value)}
-                                placeholder="9876543210"
-                                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus:border-[#FF5A00] focus:ring-1 focus:ring-[#FF5A00] rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none font-medium"
-                              />
-                              <Smartphone className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2" />
-                            </div>
-                          </div>
-                          {countryCode === '+91' && (
-                            <p className="text-[10px] text-slate-400 dark:text-slate-500 leading-normal">
-                              Enter a 10-digit Indian mobile number. Pre-existing country codes like +91 are parsed automatically.
-                            </p>
-                          )}
-                        </div>
-
-                        {/* Hidden ReCAPTCHA container */}
-                        <div id="recaptcha-container" className="hidden"></div>
-
-                        <button
-                          type="submit"
-                          disabled={authLoading}
-                          className="w-full bg-[#FF5A00] hover:bg-[#E04F00] text-white py-3.5 rounded-xl text-xs font-bold shadow-lg shadow-[#FF5A00]/10 flex items-center justify-center gap-2 cursor-pointer transition-colors"
-                        >
-                          {authLoading ? (
-                            <div className="w-4.5 h-4.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                          ) : (
-                            <>
-                              <span>Continue</span>
-                              <ArrowRight className="w-4 h-4" />
-                            </>
-                          )}
-                        </button>
-                      </form>
+                  <button
+                    type="submit"
+                    disabled={authLoading}
+                    className="w-full bg-[#FF5A00] hover:bg-[#E04F00] text-white py-3.5 rounded-xl text-xs font-bold shadow-lg shadow-[#FF5A00]/10 flex items-center justify-center gap-2 cursor-pointer transition-colors"
+                  >
+                    {authLoading ? (
+                      <div className="w-4.5 h-4.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     ) : (
-                      <div className="space-y-6">
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => { setOtpSent(false); setAuthError(null); }}
-                              className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
-                            >
-                              <ArrowLeft className="w-4 h-4" />
-                            </button>
-                            <span className="text-xs font-bold text-slate-600 dark:text-slate-300">Change Mobile Number</span>
-                          </div>
-                          
-                          <p className="text-xs text-slate-500 dark:text-slate-400">
-                            We sent a 6-digit verification code to <strong className="text-slate-900 dark:text-white">{countryCode} {phoneNumber}</strong>.
-                          </p>
-                        </div>
-
-                        <form onSubmit={handleVerifyOtp} className="space-y-6">
-                          <div className="space-y-2.5">
-                            <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block text-center">
-                              Enter 6-Digit OTP Code
-                            </label>
-                            <div className="flex justify-between gap-2 max-w-[280px] mx-auto" onPaste={handleOtpPaste}>
-                              {otpCode.map((digit, idx) => (
-                                <input
-                                  key={idx}
-                                  ref={(el) => (otpInputsRef.current[idx] = el)}
-                                  type="text"
-                                  inputMode="numeric"
-                                  pattern="[0-9]*"
-                                  maxLength={1}
-                                  value={digit}
-                                  onChange={e => handleOtpChange(idx, e.target.value)}
-                                  onKeyDown={e => handleOtpKeyDown(idx, e)}
-                                  className="w-10 h-12 text-center bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus:border-[#FF5A00] focus:ring-1 focus:ring-[#FF5A00] rounded-xl text-lg font-bold text-slate-900 dark:text-white focus:outline-none transition-all shadow-sm"
-                                />
-                              ))}
-                            </div>
-                          </div>
-
-                          <div className="space-y-3">
-                            <button
-                              type="submit"
-                              disabled={authLoading}
-                              className="w-full bg-[#FF5A00] hover:bg-[#E04F00] text-white py-3.5 rounded-xl text-xs font-bold shadow-lg shadow-[#FF5A00]/10 flex items-center justify-center gap-2 cursor-pointer transition-colors"
-                            >
-                              {authLoading ? (
-                                <div className="w-4.5 h-4.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                              ) : (
-                                <>
-                                  <span>Verify OTP</span>
-                                  <Check className="w-4 h-4" />
-                                </>
-                              )}
-                            </button>
-
-                            {/* Resend Logic */}
-                            <div className="text-center">
-                              {otpCountdown > 0 ? (
-                                <p className="text-[11px] text-slate-400 dark:text-slate-500">
-                                  Resend code in <strong className="text-[#FF5A00] font-bold">{otpCountdown}s</strong>
-                                </p>
-                              ) : (
-                                <button
-                                  type="button"
-                                  onClick={() => handleSendOtp()}
-                                  disabled={authLoading}
-                                  className="text-[11px] text-[#FF5A00] font-bold hover:underline"
-                                >
-                                  Resend OTP
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        </form>
-                      </div>
+                      <>
+                        <span>{authMode === 'signin' ? 'Sign In with Email' : 'Create My Account'}</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </>
                     )}
-                  </>
-                )}
+                  </button>
+                </form>
+
+                {/* Divider */}
+                <div className="relative flex py-1 items-center">
+                  <div className="flex-grow border-t border-slate-200 dark:border-slate-800"></div>
+                  <span className="flex-shrink mx-4 text-[10px] text-slate-400 font-bold uppercase tracking-widest">Or Continue With</span>
+                  <div className="flex-grow border-t border-slate-200 dark:border-slate-800"></div>
+                </div>
+
+                {/* Google Sign In Button */}
+                <button
+                  type="button"
+                  onClick={handleGoogleLogin}
+                  disabled={authLoading}
+                  className="w-full bg-slate-50 dark:bg-slate-950 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-800 py-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-98"
+                >
+                  <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+                    <path
+                      fill="#4285F4"
+                      d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v3.9h6.6c-.28 1.5-1.11 2.76-2.39 3.62v3h3.86c2.26-2.08 3.67-5.14 3.67-8.45z"
+                    />
+                    <path
+                      fill="#34A853"
+                      d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.86-3c-1.08.72-2.45 1.16-4.07 1.16-3.13 0-5.78-2.11-6.73-4.96H1.29v3.12C3.26 22.27 7.4 24 12 24z"
+                    />
+                    <path
+                      fill="#FBBC05"
+                      d="M5.27 14.29a7.18 7.18 0 0 1 0-4.58V6.59H1.29a11.94 11.94 0 0 0 0 10.82l3.98-3.12z"
+                    />
+                    <path
+                      fill="#EA4335"
+                      d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.4 0 3.26 1.73 1.29 4.75l3.98 3.12c.95-2.85 3.6-4.96 6.73-4.96z"
+                    />
+                  </svg>
+                  <span>Google Account</span>
+                </button>
+
+                {/* Switch Sign In / Sign Up */}
+                <div className="text-center pt-2 space-y-2">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    {authMode === 'signin' ? "Don't have an account?" : 'Already have an account?'}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAuthMode(authMode === 'signin' ? 'signup' : 'signin');
+                        setAuthError(null);
+                      }}
+                      className="text-[#FF5A00] font-bold hover:underline ml-1.5 cursor-pointer"
+                    >
+                      {authMode === 'signin' ? 'Create one now' : 'Sign in here'}
+                    </button>
+                  </p>
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() => setIsAuthUnconfigured(true)}
+                      className="text-[10px] text-slate-400 dark:text-slate-500 hover:text-[#FF5A00] font-medium transition-colors cursor-pointer"
+                    >
+                      ⚠️ Trouble signing in? Use Sandbox Bypass
+                    </button>
+                  </div>
+                </div>
               </div>
             </motion.div>
           </div>

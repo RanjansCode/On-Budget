@@ -21,7 +21,7 @@ service cloud.firestore {
     function isAdmin() {
       return isSignedIn() && (
         request.auth.token.email == 'ranjan.edits.designs@gmail.com' ||
-        request.auth.token.phone_number == '+919876543210'
+        request.auth.token.email == 'amitadevi7654@gmail.com'
       );
     }
 
@@ -64,6 +64,24 @@ service cloud.firestore {
     match /newsletter/{subscriptionId} {
       allow create: if true;
       allow read, update, delete: if isAdmin();
+    }
+
+    // Visitors: anyone can log a visit, only admin can query/read
+    match /visitors/{visitorId} {
+      allow create, update: if true;
+      allow read, delete: if isAdmin();
+    }
+
+    // Clicks: anyone can log affiliate or product click events, only admin can query/read
+    match /clicks/{clickId} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin();
+    }
+
+    // Settings (Launch Mode, etc.): anyone can read, only admin can write
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
     }
   }
 }

@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 
 import {
-  Product, Category, Reel, AnalyticsData, NotificationItem, ADMIN_EMAILS, ADMIN_PHONES
+  Product, Category, Reel, AnalyticsData, NotificationItem, ADMIN_EMAILS
 } from './types';
 
 import {
@@ -34,8 +34,15 @@ import {
   markNotificationsAsReadInFirestore,
   subscribeNewsletterInFirestore,
   User as FirebaseUser,
-  isFirebaseConfigured
+  isFirebaseConfigured,
+  trackVisitorInFirestore,
+  trackClickInFirestore,
+  fetchAnalyticsFromFirestore,
+  fetchLaunchSettingsFromFirestore,
+  saveLaunchSettingsToFirestore,
+  LaunchSettings
 } from './lib/firebase';
+import { onSnapshot, doc } from 'firebase/firestore';
 
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
@@ -43,13 +50,17 @@ import ProductCard from './components/ProductCard';
 import ProductDetail from './components/ProductDetail';
 import AdminPanel from './components/AdminPanel';
 import OnBudgetAI from './components/OnBudgetAI';
+import LaunchModeOverlay from './components/LaunchModeOverlay';
 import { useToast } from './components/Toast';
 
 export default function App() {
   const toast = useToast();
 
   // --- Firebase User Auth State ---
-  const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
+  const [currentUser, setCurrentUser] = useState<any>(() => {
+    const cached = localStorage.getItem('onbudget_bypass_user');
+    return cached ? JSON.parse(cached) : null;
+  });
   const [authLoading, setAuthLoading] = useState(true);
   const [dbLoading, setDbLoading] = useState(true);
 
@@ -79,46 +90,22 @@ export default function App() {
     if (local) return JSON.parse(local);
 
     return {
-      totalVisitors: 840,
-      pageViews: 1940,
-      averageTime: 140,
-      bounceRate: 38,
-      devices: [
-        { device: 'Mobile', count: 520 },
-        { device: 'Desktop', count: 280 },
-        { device: 'Tablet', count: 40 }
-      ],
-      countries: [
-        { country: 'India', count: 740 },
-        { country: 'US', count: 60 },
-        { country: 'UK', count: 40 }
-      ],
+      totalVisitors: 0,
+      pageViews: 0,
+      averageTime: 0,
+      bounceRate: 0,
+      devices: [],
+      countries: [],
       affiliateClicks: [
-        { platform: 'Amazon', clicks: 124 },
-        { platform: 'Meesho', clicks: 42 },
-        { platform: 'Flipkart', clicks: 28 },
-        { platform: 'Croma', clicks: 12 },
-        { platform: 'Myntra', clicks: 10 }
+        { platform: 'Amazon', clicks: 0 },
+        { platform: 'Meesho', clicks: 0 },
+        { platform: 'Flipkart', clicks: 0 },
+        { platform: 'Croma', clicks: 0 },
+        { platform: 'Myntra', clicks: 0 }
       ],
-      topCategories: [
-        { category: 'desk-setup', clicks: 84 },
-        { category: 'tech', clicks: 64 },
-        { category: 'gaming', clicks: 52 }
-      ],
-      topProducts: [
-        { productId: 'prod-1', title: 'Minimalist Magnetic Cable Organizer', clicks: 45 },
-        { productId: 'prod-7', title: 'Sunset Projection Lamp', clicks: 38 },
-        { productId: 'prod-8', title: 'Astronaut Galaxy Star Projector', clicks: 35 }
-      ],
-      clicksHistory: [
-        { date: '07-08', clicks: 120 },
-        { date: '07-09', clicks: 155 },
-        { date: '07-10', clicks: 140 },
-        { date: '07-11', clicks: 195 },
-        { date: '07-12', clicks: 165 },
-        { date: '07-13', clicks: 210 },
-        { date: '07-14', clicks: 190 }
-      ]
+      topCategories: [],
+      topProducts: [],
+      clicksHistory: []
     };
   });
 
@@ -126,6 +113,17 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<'home' | 'wishlist' | 'profile' | 'admin'>('home');
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [showAccessDenied, setShowAccessDenied] = useState(false);
+
+  // --- Launch Mode States ---
+  const [launchSettings, setLaunchSettings] = useState<LaunchSettings>({
+    id: 'launch',
+    enabled: false,
+    launchDate: '2026-08-01',
+    launchTime: '12:00',
+    timezone: '+05:30',
+    updatedAt: new Date().toISOString()
+  });
+  const [adminBypassed, setAdminBypassed] = useState(false);
 
   // --- Filter / Sorting States ---
   const [searchQuery, setSearchQuery] = useState('');
@@ -148,8 +146,7 @@ export default function App() {
   const [voiceActive, setVoiceActive] = useState(false);
 
   const isAdmin = !!(currentUser && (
-    (currentUser.email && ADMIN_EMAILS.includes(currentUser.email)) ||
-    (currentUser.phoneNumber && ADMIN_PHONES.includes(currentUser.phoneNumber))
+    (currentUser.email && ADMIN_EMAILS.includes(currentUser.email))
   ));
 
   // 1. Database Initialization and Seeding on boot
@@ -165,17 +162,21 @@ export default function App() {
         await seedDatabaseIfEmpty();
 
         // Load all data sets in parallel from cloud
-        const [cloudProducts, cloudCategories, cloudReels, cloudNotifs] = await Promise.all([
+        const [cloudProducts, cloudCategories, cloudReels, cloudNotifs, cloudAnalytics, cloudLaunch] = await Promise.all([
           fetchProductsFromFirestore(),
           fetchCategoriesFromFirestore(),
           fetchReelsFromFirestore(),
-          fetchNotificationsFromFirestore()
+          fetchNotificationsFromFirestore(),
+          fetchAnalyticsFromFirestore(),
+          fetchLaunchSettingsFromFirestore()
         ]);
 
         if (cloudProducts.length > 0) setProducts(cloudProducts);
         if (cloudCategories.length > 0) setCategories(cloudCategories);
         if (cloudReels.length > 0) setReels(cloudReels);
         if (cloudNotifs.length > 0) setNotifications(cloudNotifs);
+        if (cloudAnalytics) setAnalytics(cloudAnalytics);
+        if (cloudLaunch) setLaunchSettings(cloudLaunch);
 
       } catch (err) {
         console.error("Failed to load Cloud Firestore database collections:", err);
@@ -184,6 +185,31 @@ export default function App() {
       }
     }
     initAndFetch();
+  }, []);
+
+  // --- Live Launch Mode Real-Time Listener ---
+  useEffect(() => {
+    if (!isFirebaseConfigured) {
+      const local = localStorage.getItem('onbudget_launch_settings');
+      if (local) {
+        setLaunchSettings(JSON.parse(local));
+      }
+      return;
+    }
+
+    try {
+      const docRef = doc(db, 'settings', 'launch');
+      const unsubscribe = onSnapshot(docRef, (docSnap) => {
+        if (docSnap.exists()) {
+          setLaunchSettings(docSnap.data() as LaunchSettings);
+        }
+      }, (error) => {
+        console.warn('Launch settings subscription warning:', error);
+      });
+      return () => unsubscribe();
+    } catch (err) {
+      console.error('Failed to subscribe to launch settings:', err);
+    }
   }, []);
 
   // 2. Real-time Firebase Authentication tracking & Wishlist Sync
@@ -211,8 +237,7 @@ export default function App() {
 
         // If the logged-in user is admin, fetch all products (including drafts)
         const isUserAdmin = !!(
-          (user.email && ADMIN_EMAILS.includes(user.email)) ||
-          (user.phoneNumber && ADMIN_PHONES.includes(user.phoneNumber))
+          (user.email && ADMIN_EMAILS.includes(user.email))
         );
         if (isUserAdmin) {
           try {
@@ -272,8 +297,7 @@ export default function App() {
     const pathname = window.location.pathname;
     const isTryingAdmin = pathname.startsWith('/admin');
     const isAdmin = !!(currentUser && (
-      (currentUser.email && ADMIN_EMAILS.includes(currentUser.email)) ||
-      (currentUser.phoneNumber && ADMIN_PHONES.includes(currentUser.phoneNumber))
+      (currentUser.email && ADMIN_EMAILS.includes(currentUser.email))
     ));
 
     if (isTryingAdmin) {
@@ -299,8 +323,7 @@ export default function App() {
     if (authLoading) return;
     const pathname = window.location.pathname;
     const isAdmin = !!(currentUser && (
-      (currentUser.email && ADMIN_EMAILS.includes(currentUser.email)) ||
-      (currentUser.phoneNumber && ADMIN_PHONES.includes(currentUser.phoneNumber))
+      (currentUser.email && ADMIN_EMAILS.includes(currentUser.email))
     ));
 
     if (activeTab === 'admin') {
@@ -322,8 +345,7 @@ export default function App() {
     const handlePopState = () => {
       const pathname = window.location.pathname;
       const isAdmin = !!(currentUser && (
-        (currentUser.email && ADMIN_EMAILS.includes(currentUser.email)) ||
-        (currentUser.phoneNumber && ADMIN_PHONES.includes(currentUser.phoneNumber))
+        (currentUser.email && ADMIN_EMAILS.includes(currentUser.email))
       ));
 
       if (pathname.startsWith('/admin')) {
@@ -343,16 +365,73 @@ export default function App() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, [currentUser]);
 
-  // Record safe live visitor stats
+  // Record real live visitor stats in Firestore
   useEffect(() => {
-    setAnalytics(prev => ({
-      ...prev,
-      totalVisitors: prev.totalVisitors + 1,
-      pageViews: prev.pageViews + 2
-    }));
-  }, []);
+    if (!isFirebaseConfigured) return;
+    
+    const trackVisitor = async () => {
+      try {
+        let sessionId = sessionStorage.getItem('onbudget_session_id');
+        const hasBeenTracked = sessionStorage.getItem('onbudget_visitor_tracked') === 'true';
+        
+        if (!sessionId) {
+          sessionId = 'sess_' + Math.random().toString(36).substring(2, 15);
+          sessionStorage.setItem('onbudget_session_id', sessionId);
+        }
+        
+        if (!hasBeenTracked) {
+          const userAgent = navigator.userAgent;
+          const isMobile = /Mobi|Android/i.test(userAgent);
+          const isTablet = /Tablet|iPad/i.test(userAgent);
+          const device = isMobile ? 'Mobile' : isTablet ? 'Tablet' : 'Desktop';
+          
+          // Track in database
+          await trackVisitorInFirestore(sessionId, device);
+          sessionStorage.setItem('onbudget_visitor_tracked', 'true');
+          
+          // Refresh analytics with latest cloud values
+          const updatedAnalytics = await fetchAnalyticsFromFirestore();
+          if (updatedAnalytics) {
+            setAnalytics(updatedAnalytics);
+          }
+        }
+      } catch (err) {
+        console.error('Visitor tracking error:', err);
+      }
+    };
+    
+    trackVisitor();
+  }, [isFirebaseConfigured]);
 
   // --- Callbacks for state management ---
+
+  // --- Launch Mode Callbacks ---
+  const handleSaveLaunchSettings = async (settings: LaunchSettings) => {
+    try {
+      await saveLaunchSettingsToFirestore(settings);
+      setLaunchSettings(settings);
+    } catch (error) {
+      console.error('Failed to save launch settings:', error);
+      throw error;
+    }
+  };
+
+  const handleCountdownComplete = async () => {
+    if (launchSettings.enabled) {
+      const updatedSettings = {
+        ...launchSettings,
+        enabled: false,
+        updatedAt: new Date().toISOString()
+      };
+      try {
+        await saveLaunchSettingsToFirestore(updatedSettings);
+        setLaunchSettings(updatedSettings);
+        toast.success('Launch Countdown Complete! Site is now fully live.');
+      } catch (error) {
+        console.error('Failed to disable launch mode automatically:', error);
+      }
+    }
+  };
 
   const handleToggleWishlist = async (productId: string) => {
     let updatedWishlist: string[];
@@ -380,7 +459,7 @@ export default function App() {
     }
   };
 
-  const handleOpenProduct = (productId: string) => {
+  const handleOpenProduct = async (productId: string) => {
     setSelectedProductId(productId);
     setActiveTab('home');
 
@@ -392,48 +471,32 @@ export default function App() {
 
     // Record click metrics in analytics
     const targetProduct = products.find(p => p.id === productId);
-    if (targetProduct) {
-      setAnalytics(prev => {
-        const updatedTopProducts = [...prev.topProducts];
-        const matchIdx = updatedTopProducts.findIndex(tp => tp.productId === productId);
-        if (matchIdx > -1) {
-          updatedTopProducts[matchIdx].clicks += 1;
-        } else {
-          updatedTopProducts.push({ productId, title: targetProduct.title, clicks: 1 });
+    if (targetProduct && isFirebaseConfigured) {
+      try {
+        await trackClickInFirestore('view', productId, undefined, targetProduct.category, targetProduct.title);
+        const updatedAnalytics = await fetchAnalyticsFromFirestore();
+        if (updatedAnalytics) {
+          setAnalytics(updatedAnalytics);
         }
-
-        const updatedTopCategories = [...prev.topCategories];
-        const catIdx = updatedTopCategories.findIndex(tc => tc.category === targetProduct.category);
-        if (catIdx > -1) {
-          updatedTopCategories[catIdx].clicks += 1;
-        } else {
-          updatedTopCategories.push({ category: targetProduct.category, clicks: 1 });
-        }
-
-        return {
-          ...prev,
-          pageViews: prev.pageViews + 1,
-          topProducts: updatedTopProducts.sort((a, b) => b.clicks - a.clicks),
-          topCategories: updatedTopCategories.sort((a, b) => b.clicks - a.clicks),
-        };
-      });
+      } catch (err) {
+        console.error('Failed to track product view in Firestore:', err);
+      }
     }
   };
 
-  const handleTrackAffiliateClick = (productId: string, platform: string) => {
-    setAnalytics(prev => {
-      const updatedAffiliateClicks = prev.affiliateClicks.map(ac => {
-        if (ac.platform === platform) {
-          return { ...ac, clicks: ac.clicks + 1 };
+  const handleTrackAffiliateClick = async (productId: string, platform: string) => {
+    const targetProduct = products.find(p => p.id === productId);
+    if (isFirebaseConfigured) {
+      try {
+        await trackClickInFirestore('affiliate', productId, platform, targetProduct?.category, targetProduct?.title);
+        const updatedAnalytics = await fetchAnalyticsFromFirestore();
+        if (updatedAnalytics) {
+          setAnalytics(updatedAnalytics);
         }
-        return ac;
-      });
-
-      return {
-        ...prev,
-        affiliateClicks: updatedAffiliateClicks,
-      };
-    });
+      } catch (err) {
+        console.error('Failed to track affiliate click in Firestore:', err);
+      }
+    }
   };
 
   // --- CRUD callbacks for ADMIN PANEL with firestore sync ---
@@ -594,7 +657,7 @@ export default function App() {
       tgSub: "Get real-time flash deal alerts under ₹199",
       waTitle: "WhatsApp Channel",
       waSub: "Get daily product reviews and unboxings directly in chat",
-      footerTxt: "© 2026 On Budget. All rights reserved. Personally tested products curated for students and setup enthusiasts.",
+      footerTxt: "© 2026 In Our Budget. All rights reserved. Personally tested products curated for students and setup enthusiasts.",
     },
     hi: {
       heroTitle: "क्यूरेटेड गैजेट्स।",
@@ -615,7 +678,7 @@ export default function App() {
       tgSub: "₹199 से कम के त्वरित सौदे प्राप्त करें",
       waTitle: "व्हाट्सएप चैनल",
       waSub: "सीधे चैट में दैनिक उत्पाद समीक्षा और अनबॉक्सिंग प्राप्त करें",
-      footerTxt: "© 2026 ऑन बजट। सर्वाधिकार सुरक्षित। छात्रों और होम सेटअप प्रेमियों के लिए क्यूरेट किया गया।",
+      footerTxt: "© 2026 इन आवर बजट। सर्वाधिकार सुरक्षित। छात्रों और होम सेटअप प्रेमियों के लिए क्यूरेट किया गया।",
     }
   };
 
@@ -660,6 +723,13 @@ export default function App() {
           setSearchQuery={setSearchQuery}
           onVoiceSearch={handleVoiceSearch}
           user={currentUser}
+          onBypassLogin={(bypassUser) => {
+            setCurrentUser(bypassUser);
+            setAuthLoading(false);
+          }}
+          onBypassLogout={() => {
+            setCurrentUser(null);
+          }}
         />
 
         {/* LOADING DATABASE OVERLAY */}
@@ -981,6 +1051,8 @@ export default function App() {
                     onAddReel={handleAddReel}
                     onUpdateReel={handleUpdateReel}
                     onDeleteReel={handleDeleteReel}
+                    launchSettings={launchSettings}
+                    onSaveLaunchSettings={handleSaveLaunchSettings}
                   />
                 )}
 
@@ -1134,6 +1206,22 @@ export default function App() {
               </button>
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      {/* Launch Mode Landing Overlay */}
+      <AnimatePresence>
+        {launchSettings.enabled && !adminBypassed && (
+          <LaunchModeOverlay
+            settings={launchSettings}
+            onCountdownComplete={handleCountdownComplete}
+            isAdmin={isAdmin}
+            onAdminBypass={() => {
+              setAdminBypassed(true);
+              setActiveTab('admin');
+              toast.success('Admin authorization bypassed. Welcome back to HQ!');
+            }}
+          />
         )}
       </AnimatePresence>
 

@@ -4,8 +4,8 @@
 // directory structure.
 // -----------------------------------------------------------------------------
 
-export { auth, googleProvider, onAuthStateChanged, RecaptchaVerifier, sendOtpToPhone } from '../firebase/auth';
-export type { User, ConfirmationResult } from '../firebase/auth';
+export { auth, googleProvider, onAuthStateChanged } from '../firebase/auth';
+export type { User } from '../firebase/auth';
 export { db, isFirebaseConfigured } from '../firebase/config';
 
 export {
@@ -31,7 +31,14 @@ export {
   markNotificationsAsReadInFirestore,
   subscribeNewsletterInFirestore,
   syncUserProfile,
+  trackVisitorInFirestore,
+  trackClickInFirestore,
+  fetchAnalyticsFromFirestore,
+  fetchLaunchSettingsFromFirestore,
+  saveLaunchSettingsToFirestore,
 } from '../firebase/firestore';
+
+export type { LaunchSettings } from '../firebase/firestore';
 
 export {
   uploadFileToStorage,

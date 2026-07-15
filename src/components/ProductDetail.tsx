@@ -297,7 +297,7 @@ export default function ProductDetail({
           <div className="space-y-1">
             <h3 className="text-sm font-extrabold text-slate-950 dark:text-white flex items-center gap-2 font-display">
               <Sparkles className="w-4.5 h-4.5 text-[#FF5A00] animate-pulse" />
-              On Budget AI Review Summarizer
+              In Our Budget AI Review Summarizer
             </h3>
             <p className="text-[11px] text-slate-500 dark:text-slate-400">
               Generate an unbiased, bulleted highlight breakdown powered by the server-side Gemini AI model.

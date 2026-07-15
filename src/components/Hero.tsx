@@ -1,6 +1,4 @@
 import React from 'react';
-import { motion } from 'motion/react';
-import { Sparkles, Star, CheckCircle2 } from 'lucide-react';
 import { Category } from '../types';
 
 interface HeroProps {
@@ -30,64 +28,6 @@ export default function Hero({
 
   return (
     <div className="space-y-8">
-      {/* Premium Hero Banner */}
-      <div className="relative overflow-hidden rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 p-8 sm:p-12 text-center lg:text-left flex flex-col lg:flex-row items-center justify-between gap-8 bg-gradient-to-tr from-white via-white to-[#FF5A00]/5 dark:from-slate-900 dark:via-slate-900 dark:to-[#FF5A00]/5 transition-colors duration-300 shadow-xs">
-        <div className="space-y-5 max-w-2xl text-left">
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="inline-flex items-center gap-1.5 bg-[#FF5A00]/10 border border-[#FF5A00]/20 text-[#FF5A00] font-bold text-[10px] uppercase tracking-widest px-3 py-1 rounded-full font-display"
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            100% Ad-Free, No Sponsored Affiliate Traps
-          </motion.div>
-
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-slate-900 dark:text-white tracking-tight leading-tight font-display">
-            Curated Gadgets. <br className="hidden sm:block" />
-            Personally Tested. <br />
-            <span className="text-[#FF5A00] bg-[#FF5A00]/10 border border-[#FF5A00]/20 px-3.5 py-0.5 rounded-2xl inline-block mt-1">Strictly On Budget.</span>
-          </h1>
-
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-xl leading-relaxed font-sans">
-            Discover viral workspace setups, hidden pocket lights, and smart home upgrades featured in creator reels. Every item is handpicked, unboxed, and tested with links that guarantee the lowest price.
-          </p>
-
-          <div className="flex flex-wrap gap-4 pt-1">
-            <div className="flex items-center gap-1.5 text-[11px] text-slate-600 dark:text-slate-300 font-bold bg-slate-50 dark:bg-slate-950 px-3 py-1.5 border border-slate-200/50 dark:border-slate-850 rounded-full font-display">
-              <CheckCircle2 className="w-3.5 h-3.5 text-[#FF5A00] shrink-0" />
-              Personally Tested Badging
-            </div>
-            <div className="flex items-center gap-1.5 text-[11px] text-slate-600 dark:text-slate-300 font-bold bg-slate-50 dark:bg-slate-950 px-3 py-1.5 border border-slate-200/50 dark:border-slate-850 rounded-full font-display">
-              <Star className="w-3.5 h-3.5 text-[#FF5A00] shrink-0" />
-              Creator Detailed Logs
-            </div>
-          </div>
-        </div>
-
-        {/* Dynamic Highlight Card */}
-        <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ type: 'spring', damping: 20 }}
-          className="w-full max-w-sm p-6 bg-slate-50 dark:bg-slate-950/80 border border-slate-200/60 dark:border-slate-800 rounded-3xl relative overflow-hidden shrink-0 group hover:border-[#FF5A00]/30 transition-all shadow-xs text-left"
-        >
-          <div className="absolute top-0 right-0 w-24 h-24 bg-[#FF5A00]/10 rounded-full blur-2xl pointer-events-none" />
-          <span className="text-[10px] bg-red-500/10 dark:bg-red-950 text-red-600 dark:text-red-400 font-bold px-2.5 py-0.5 rounded-full border border-red-200 dark:border-red-900/35 uppercase font-display">
-            Viral Highlight
-          </span>
-          <h3 className="text-sm font-extrabold text-slate-950 dark:text-white mt-3 group-hover:text-[#FF5A00] transition-colors font-display">Astronaut Galaxy Projector</h3>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1.5 leading-snug">
-            VIRAL HIT! Turn any plain bedroom into a celestial galaxy. 360-degree rotating helmet, multiple star combinations, and sleep timer.
-          </p>
-
-          <div className="flex items-baseline gap-2 mt-4">
-            <span className="text-lg font-black text-[#FF5A00]">₹949</span>
-            <span className="text-xs text-slate-400 dark:text-slate-500 line-through">₹2,499</span>
-            <span className="text-[10px] font-bold text-red-500 font-mono">62% OFF</span>
-          </div>
-        </motion.div>
-      </div>
-
       {/* Dynamic Pricing Budget Selector */}
       <div className="space-y-3">
         <div className="flex justify-between items-center">

@@ -72,6 +72,16 @@
         "email": "string",
         "subscribedAt": "string"
       }
+    },
+    "settings": {
+      "schema": {
+        "id": "string",
+        "enabled": "boolean",
+        "launchDate": "string",
+        "launchTime": "string",
+        "timezone": "string",
+        "updatedAt": "string"
+      }
     }
   }
 }
