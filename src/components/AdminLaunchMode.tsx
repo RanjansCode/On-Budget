@@ -48,8 +48,20 @@ export default function AdminLaunchMode({
 
   useEffect(() => {
     function updateTimer() {
-      const targetStr = `${launchDate}T${launchTime}:00${timezone}`;
-      const targetTime = new Date(targetStr).getTime();
+      const cleanTz = (timezone || '+05:30').replace('GMT', '').trim();
+      const targetStr = `${launchDate}T${launchTime}:00${cleanTz}`;
+      let targetTime = new Date(targetStr).getTime();
+
+      if (isNaN(targetTime)) {
+        try {
+          const [year, month, day] = launchDate.split('-').map(Number);
+          const [hours, minutes] = launchTime.split(':').map(Number);
+          targetTime = new Date(year, month - 1, day, hours, minutes).getTime();
+        } catch (e) {
+          targetTime = NaN;
+        }
+      }
+
       const now = Date.now();
       const totalMs = targetTime - now;
 

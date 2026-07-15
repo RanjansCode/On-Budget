@@ -30,8 +30,20 @@ export default function LaunchModeOverlay({
 
   useEffect(() => {
     function updateTimer() {
-      const targetStr = `${launchDate}T${launchTime}:00${timezone}`;
-      const targetTime = new Date(targetStr).getTime();
+      const cleanTz = (timezone || '+05:30').replace('GMT', '').trim();
+      const targetStr = `${launchDate}T${launchTime}:00${cleanTz}`;
+      let targetTime = new Date(targetStr).getTime();
+
+      if (isNaN(targetTime)) {
+        try {
+          const [year, month, day] = launchDate.split('-').map(Number);
+          const [hours, minutes] = launchTime.split(':').map(Number);
+          targetTime = new Date(year, month - 1, day, hours, minutes).getTime();
+        } catch (e) {
+          targetTime = NaN;
+        }
+      }
+
       const now = Date.now();
       const totalMs = targetTime - now;
 
@@ -88,7 +100,7 @@ export default function LaunchModeOverlay({
         {/* Brand Logo */}
         <div className="flex justify-center" id="launch-logo-container">
           <img
-            src="/logo_inourbudget.png"
+            src="src/assets/image/logo_inourbudget.png"
             alt="In Our Budget"
             className="h-12 sm:h-14 object-contain"
             onError={(e) => {

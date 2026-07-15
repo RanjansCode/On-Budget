@@ -849,7 +849,7 @@ const DEFAULT_LAUNCH_SETTINGS: LaunchSettings = {
   enabled: false,
   launchDate: '2026-08-01',
   launchTime: '12:00',
-  timezone: 'GMT+05:30',
+  timezone: '+05:30',
   updatedAt: new Date().toISOString()
 };
 
