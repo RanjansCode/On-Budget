@@ -255,7 +255,7 @@ export default function AdminLaunchMode({
             {/* Mock Logo */}
             <div className="flex justify-center">
               <img
-                src="/logo_inourbudget.png"
+                src="src/assets/image/logo_inourbudget.png"
                 alt="In Our Budget"
                 className="h-9 object-contain"
                 onError={(e) => {
