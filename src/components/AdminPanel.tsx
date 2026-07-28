@@ -14,8 +14,9 @@ import {
   TrendingUp, MousePointer, Share2, DollarSign, Upload, Info, Check, Eye, HelpCircle, Save, X,
   SlidersHorizontal
 } from 'lucide-react';
-import { Product, Category, Reel, AnalyticsData } from '../types';
-import { validateSocialUrl } from '../utils/validation';
+import { Product, Category, Reel, AnalyticsData, PurchaseLink } from '../types';
+import { validateSocialUrl, validatePurchaseUrl, formatUrl } from '../utils/validation';
+import { getPurchaseLinks } from '../utils/purchaseLinks';
 import AdminLaunchMode from './AdminLaunchMode';
 import { LaunchSettings } from '../firebase/firestore';
 
@@ -687,8 +688,42 @@ function ProductFormModal({ product, categories, onClose, onSave, imagePresets }
   const [category, setCategory] = useState(product?.category || categories[0]?.id || 'desk-setup');
   const [rating, setRating] = useState(product?.rating || 4.5);
   const [imageUrl, setImageUrl] = useState(product?.images?.[0] || '');
-  const [amazonUrl, setAmazonUrl] = useState(product?.affiliateLinks.find(l => l.platform === 'Amazon')?.url || '');
-  const [meeshoUrl, setMeeshoUrl] = useState(product?.affiliateLinks.find(l => l.platform === 'Meesho')?.url || '');
+  // Purchase Links state initialization
+  const [purchaseLinks, setPurchaseLinks] = useState<PurchaseLink[]>(() => {
+    const loaded = getPurchaseLinks(product);
+    if (loaded.length > 0) return loaded;
+    return [{ name: 'Amazon', url: '' }];
+  });
+  const [purchaseLinkErrors, setPurchaseLinkErrors] = useState<{ [index: number]: string }>({});
+
+  const handleAddPurchaseLink = () => {
+    setPurchaseLinks(prev => [...prev, { name: '', url: '' }]);
+  };
+
+  const handleRemovePurchaseLink = (index: number) => {
+    setPurchaseLinks(prev => prev.filter((_, i) => i !== index));
+    setPurchaseLinkErrors(prev => {
+      const copy = { ...prev };
+      delete copy[index];
+      return copy;
+    });
+  };
+
+  const handlePurchaseLinkChange = (index: number, field: 'name' | 'url', value: string) => {
+    setPurchaseLinks(prev => {
+      const copy = [...prev];
+      copy[index] = { ...copy[index], [field]: value };
+      return copy;
+    });
+
+    if (field === 'url') {
+      const valResult = validatePurchaseUrl(value);
+      setPurchaseLinkErrors(prev => ({
+        ...prev,
+        [index]: value.trim() ? (valResult.isValid ? '' : valResult.errorMessage || 'Invalid URL') : ''
+      }));
+    }
+  };
 
   // Photo / Video Links
   const [youtubeUrl, setYoutubeUrl] = useState(product?.youtubeUrl || '');
@@ -753,11 +788,46 @@ function ProductFormModal({ product, categories, onClose, onSave, imagePresets }
     parsedRating = Math.round(parsedRating * 10) / 10;
     setReviewRatingError(null);
 
+    // Validate Purchase Links
+    let hasPurchaseLinkError = false;
+    const newLinkErrors: { [index: number]: string } = {};
+    const validPurchaseLinks: PurchaseLink[] = [];
+
+    purchaseLinks.forEach((link, idx) => {
+      const trimmedName = link.name.trim();
+      const trimmedUrl = link.url.trim();
+
+      if (trimmedName || trimmedUrl) {
+        if (!trimmedName) {
+          newLinkErrors[idx] = 'Platform Name is required.';
+          hasPurchaseLinkError = true;
+        }
+        const valResult = validatePurchaseUrl(trimmedUrl);
+        if (!valResult.isValid) {
+          newLinkErrors[idx] = valResult.errorMessage || 'Invalid URL format.';
+          hasPurchaseLinkError = true;
+        } else {
+          validPurchaseLinks.push({
+            name: trimmedName,
+            url: formatUrl(trimmedUrl)
+          });
+        }
+      }
+    });
+
+    if (hasPurchaseLinkError) {
+      setPurchaseLinkErrors(newLinkErrors);
+      return;
+    }
+    setPurchaseLinkErrors({});
+
     const discountPercentage = originalPrice > 0 ? Math.round(((originalPrice - price) / originalPrice) * 100) : 0;
 
-    const affiliateLinks: Product['affiliateLinks'] = [];
-    if (amazonUrl) affiliateLinks.push({ platform: 'Amazon', url: amazonUrl });
-    if (meeshoUrl) affiliateLinks.push({ platform: 'Meesho', url: meeshoUrl });
+    // Backward compatibility: build affiliateLinks array from purchaseLinks
+    const affiliateLinks: Product['affiliateLinks'] = validPurchaseLinks.map(l => ({
+      platform: l.name,
+      url: l.url
+    }));
 
     // Build product spec objects
     const specifications = specText.split('\n').filter(Boolean).map(line => {
@@ -782,6 +852,7 @@ function ProductFormModal({ product, categories, onClose, onSave, imagePresets }
       images: [imageUrl],
       videos: ['https://assets.mixkit.co/videos/preview/mixkit-working-with-various-tools-and-devices-on-desk-43301-large.mp4'],
       affiliateLinks,
+      purchaseLinks: validPurchaseLinks,
       youtubeUrl: youtubeUrl.trim(),
       instagramUrl: instagramUrl.trim(),
       badges: {
@@ -933,51 +1004,116 @@ function ProductFormModal({ product, categories, onClose, onSave, imagePresets }
             </div>
           </div>
 
-          {/* Section 2: Affiliate & Badging */}
+          {/* Section 2: Purchase Links & Badges */}
           <div className="space-y-4">
-            <h4 className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest border-b border-neutral-800 pb-1">Affiliate Links & Badges</h4>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="flex items-center justify-between border-b border-neutral-800 pb-2">
               <div>
-                <label className="block text-[11px] font-bold text-neutral-400 mb-1">Amazon Link</label>
-                <input
-                  type="url"
-                  value={amazonUrl}
-                  onChange={e => setAmazonUrl(e.target.value)}
-                  placeholder="https://amazon.in/dp/..."
-                  className="w-full bg-neutral-950 border border-neutral-800 focus:border-emerald-500 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
-                />
+                <h4 className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">
+                  Purchase Links
+                </h4>
+                <p className="text-[11px] text-neutral-400 mt-0.5">
+                  Add custom purchase links for various platforms (Amazon, Flipkart, Meesho, Myntra, Croma, etc.)
+                </p>
               </div>
-              <div>
-                <label className="block text-[11px] font-bold text-neutral-400 mb-1">Meesho Link</label>
-                <input
-                  type="url"
-                  value={meeshoUrl}
-                  onChange={e => setMeeshoUrl(e.target.value)}
-                  placeholder="https://meesho.com/..."
-                  className="w-full bg-neutral-950 border border-neutral-800 focus:border-emerald-500 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
-                />
-              </div>
+              <button
+                type="button"
+                onClick={handleAddPurchaseLink}
+                className="flex items-center gap-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold px-3 py-1.5 rounded-xl transition-all cursor-pointer shadow-xs"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add Another Platform</span>
+              </button>
+            </div>
 
-              <div className="col-span-2">
-                <span className="block text-[11px] font-bold text-neutral-400 mb-2">Configure Badges</span>
-                <div className="grid grid-cols-4 gap-2.5">
-                  <label className="flex items-center gap-2 p-2 bg-neutral-950 border border-neutral-850 rounded-xl text-xs cursor-pointer hover:bg-neutral-800 transition-colors">
-                    <input type="checkbox" checked={seenInReel} onChange={e => setSeenInReel(e.target.checked)} className="accent-emerald-500" />
-                    <span>Seen in Reel</span>
-                  </label>
-                  <label className="flex items-center gap-2 p-2 bg-neutral-950 border border-neutral-850 rounded-xl text-xs cursor-pointer hover:bg-neutral-800 transition-colors">
-                    <input type="checkbox" checked={personallyTested} onChange={e => setPersonallyTested(e.target.checked)} className="accent-emerald-500" />
-                    <span>Tested</span>
-                  </label>
-                  <label className="flex items-center gap-2 p-2 bg-neutral-950 border border-neutral-850 rounded-xl text-xs cursor-pointer hover:bg-neutral-800 transition-colors">
-                    <input type="checkbox" checked={recommended} onChange={e => setRecommended(e.target.checked)} className="accent-emerald-500" />
-                    <span>Recommended</span>
-                  </label>
-                  <label className="flex items-center gap-2 p-2 bg-neutral-950 border border-neutral-850 rounded-xl text-xs cursor-pointer hover:bg-neutral-800 transition-colors">
-                    <input type="checkbox" checked={trending} onChange={e => setTrending(e.target.checked)} className="accent-emerald-500" />
-                    <span>Trending</span>
-                  </label>
+            <div className="space-y-3">
+              {purchaseLinks.map((link, idx) => (
+                <div key={idx} className="bg-neutral-950 p-3.5 rounded-2xl border border-neutral-850 space-y-2">
+                  <div className="flex items-center gap-3">
+                    <div className="w-1/3 min-w-[130px]">
+                      <label className="block text-[10px] font-bold text-neutral-400 mb-1">
+                        Platform Name
+                      </label>
+                      <input
+                        type="text"
+                        list="popular-platforms-list"
+                        value={link.name}
+                        onChange={e => handlePurchaseLinkChange(idx, 'name', e.target.value)}
+                        placeholder="e.g. Amazon, Flipkart"
+                        className="w-full bg-neutral-900 border border-neutral-800 focus:border-emerald-500 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+                      />
+                    </div>
+
+                    <div className="flex-1">
+                      <label className="block text-[10px] font-bold text-neutral-400 mb-1">
+                        Platform URL
+                      </label>
+                      <input
+                        type="url"
+                        value={link.url}
+                        onChange={e => handlePurchaseLinkChange(idx, 'url', e.target.value)}
+                        placeholder="https://..."
+                        className={`w-full bg-neutral-900 border ${
+                          purchaseLinkErrors[idx] ? 'border-red-500 focus:border-red-400' : 'border-neutral-800 focus:border-emerald-500'
+                        } rounded-xl px-3 py-2 text-xs text-white focus:outline-none transition-colors`}
+                      />
+                    </div>
+
+                    <div className="pt-5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => handleRemovePurchaseLink(idx)}
+                        disabled={purchaseLinks.length === 1 && idx === 0 && !link.name && !link.url}
+                        className="p-2 text-neutral-500 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-colors cursor-pointer border border-transparent hover:border-red-500/20 disabled:opacity-30 disabled:cursor-not-allowed"
+                        title="Delete purchase link"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {purchaseLinkErrors[idx] && (
+                    <p className="text-[10px] text-red-400 font-semibold pl-1">
+                      {purchaseLinkErrors[idx]}
+                    </p>
+                  )}
                 </div>
+              ))}
+
+              <datalist id="popular-platforms-list">
+                <option value="Amazon" />
+                <option value="Flipkart" />
+                <option value="Meesho" />
+                <option value="Myntra" />
+                <option value="Ajio" />
+                <option value="Croma" />
+                <option value="Reliance Digital" />
+                <option value="Tata CliQ" />
+                <option value="Nykaa" />
+                <option value="Snapdeal" />
+                <option value="Official Website" />
+              </datalist>
+            </div>
+
+            {/* Badges sub-section */}
+            <div className="pt-2">
+              <span className="block text-[11px] font-bold text-neutral-400 mb-2">Configure Badges</span>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                <label className="flex items-center gap-2 p-2 bg-neutral-950 border border-neutral-850 rounded-xl text-xs cursor-pointer hover:bg-neutral-800 transition-colors">
+                  <input type="checkbox" checked={seenInReel} onChange={e => setSeenInReel(e.target.checked)} className="accent-emerald-500" />
+                  <span>Seen in Reel</span>
+                </label>
+                <label className="flex items-center gap-2 p-2 bg-neutral-950 border border-neutral-850 rounded-xl text-xs cursor-pointer hover:bg-neutral-800 transition-colors">
+                  <input type="checkbox" checked={personallyTested} onChange={e => setPersonallyTested(e.target.checked)} className="accent-emerald-500" />
+                  <span>Tested</span>
+                </label>
+                <label className="flex items-center gap-2 p-2 bg-neutral-950 border border-neutral-850 rounded-xl text-xs cursor-pointer hover:bg-neutral-800 transition-colors">
+                  <input type="checkbox" checked={recommended} onChange={e => setRecommended(e.target.checked)} className="accent-emerald-500" />
+                  <span>Recommended</span>
+                </label>
+                <label className="flex items-center gap-2 p-2 bg-neutral-950 border border-neutral-850 rounded-xl text-xs cursor-pointer hover:bg-neutral-800 transition-colors">
+                  <input type="checkbox" checked={trending} onChange={e => setTrending(e.target.checked)} className="accent-emerald-500" />
+                  <span>Trending</span>
+                </label>
               </div>
             </div>
           </div>

@@ -46,7 +46,13 @@ export const INITIAL_PRODUCTS: Product[] = [
     videos: ['https://assets.mixkit.co/videos/preview/mixkit-working-with-various-tools-and-devices-on-desk-43301-large.mp4'],
     affiliateLinks: [
       { platform: 'Amazon', url: 'https://amazon.in/dp/mock-magnetic-organizer' },
+      { platform: 'Flipkart', url: 'https://flipkart.com/mock-magnetic-organizer' },
       { platform: 'Meesho', url: 'https://meesho.com/mock-magnetic-organizer' }
+    ],
+    purchaseLinks: [
+      { name: 'Amazon', url: 'https://amazon.in/dp/mock-magnetic-organizer' },
+      { name: 'Flipkart', url: 'https://flipkart.com/mock-magnetic-organizer' },
+      { name: 'Meesho', url: 'https://meesho.com/mock-magnetic-organizer' }
     ],
     badges: {
       seenInReel: true,

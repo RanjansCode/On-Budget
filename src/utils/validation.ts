@@ -58,3 +58,34 @@ export function validateSocialUrl(url: string, platform?: 'youtube' | 'instagram
 
   return { isValid: true };
 }
+
+/**
+ * Validates a purchase platform URL.
+ */
+export function validatePurchaseUrl(url: string): ValidationResult {
+  const trimmed = (url || '').trim();
+  if (!trimmed) {
+    return { isValid: false, errorMessage: 'URL is required.' };
+  }
+
+  try {
+    const urlWithProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+    const parsed = new URL(urlWithProtocol);
+    if (!parsed.hostname || !parsed.hostname.includes('.')) {
+      return { isValid: false, errorMessage: 'Invalid web address. Example: https://amazon.in' };
+    }
+    return { isValid: true };
+  } catch {
+    return { isValid: false, errorMessage: 'Invalid URL format. Example: https://example.com' };
+  }
+}
+
+/**
+ * Formats a URL ensuring it has http:// or https:// protocol.
+ */
+export function formatUrl(url: string): string {
+  const trimmed = (url || '').trim();
+  if (!trimmed) return '';
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return `https://${trimmed}`;
+}

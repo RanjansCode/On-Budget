@@ -7,6 +7,9 @@ import {
 } from 'lucide-react';
 import { Product, Reel } from '../types';
 import SocialLinksModal from './SocialLinksModal';
+import PlatformLogo from './PlatformLogo';
+import { getPurchaseLinks } from '../utils/purchaseLinks';
+import { formatUrl } from '../utils/validation';
 
 interface ProductDetailProps {
   product: Product;
@@ -244,28 +247,49 @@ export default function ProductDetail({
 
             </div>
 
-            {/* Multiple platform Links */}
-            <div className="space-y-2.5 pt-3 border-t border-slate-100 dark:border-slate-800">
-              <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase block tracking-wider font-display">Verified E-Commerce Partners (Comparison):</span>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                {product.affiliateLinks.map(link => (
-                  <a
-                    key={link.platform}
-                    href={link.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    onClick={() => onTrackAffiliateClick(product.id, link.platform)}
-                    className="flex items-center justify-between p-3.5 bg-slate-50 dark:bg-slate-950 hover:bg-slate-100/60 dark:hover:bg-slate-800/40 border border-slate-200/50 dark:border-slate-800 hover:border-[#FF5A00]/40 dark:hover:border-[#FF5A00]/40 text-slate-800 dark:text-slate-100 rounded-2xl transition-all font-semibold text-xs group shadow-2xs"
-                  >
-                    <span className="flex items-center gap-1.5">
-                      <ExternalLink className="w-4 h-4 text-[#FF5A00]" />
-                      Buy on <strong className="text-slate-900 dark:text-white group-hover:text-[#FF5A00] transition-colors">{link.platform}</strong>
-                    </span>
-                    <span className="text-[9px] text-slate-400 group-hover:text-[#FF5A00] font-bold transition-all">Direct Deal →</span>
-                  </a>
-                ))}
-              </div>
-            </div>
+            {/* Multiple Purchase Platform Links */}
+            {(() => {
+              const purchaseLinks = getPurchaseLinks(product);
+              if (purchaseLinks.length === 0) return null;
+              return (
+                <div className="space-y-2.5 pt-3 border-t border-slate-100 dark:border-slate-800">
+                  <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase block tracking-wider font-display">
+                    Purchase Links & Verified Retailers:
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {purchaseLinks.map((link, idx) => {
+                      const finalUrl = formatUrl(link.url);
+                      return (
+                        <button
+                          key={`${link.name}-${idx}`}
+                          type="button"
+                          onClick={() => {
+                            if (link.name) {
+                              onTrackAffiliateClick(product.id, link.name);
+                            }
+                            if (finalUrl) {
+                              window.open(finalUrl, "_blank", "noopener,noreferrer");
+                            }
+                          }}
+                          className="flex items-center justify-between p-3.5 bg-slate-50 dark:bg-slate-950 hover:bg-slate-100/60 dark:hover:bg-slate-800/40 border border-slate-200/50 dark:border-slate-800 hover:border-[#FF5A00]/40 dark:hover:border-[#FF5A00]/40 text-slate-800 dark:text-slate-100 rounded-2xl transition-all font-semibold text-xs group shadow-2xs text-left cursor-pointer"
+                        >
+                          <span className="flex items-center gap-2">
+                            <PlatformLogo platformName={link.name} className="w-5 h-5 shrink-0" />
+                            <span>
+                              Buy on <strong className="text-slate-900 dark:text-white group-hover:text-[#FF5A00] transition-colors">{link.name}</strong>
+                            </span>
+                          </span>
+                          <span className="flex items-center gap-1 text-[10px] text-slate-400 group-hover:text-[#FF5A00] font-bold transition-all shrink-0">
+                            <span>Deal</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
           {/* Creator notes block */}

@@ -4,7 +4,12 @@
  */
 
 export interface AffiliateLink {
-  platform: 'Amazon' | 'Meesho' | 'Flipkart' | 'Ajio' | 'Myntra' | 'Nykaa' | 'Croma' | 'Tata CliQ';
+  platform: string;
+  url: string;
+}
+
+export interface PurchaseLink {
+  name: string;
   url: string;
 }
 
@@ -42,6 +47,7 @@ export interface Product {
   images: string[];
   videos: string[]; // Product video clip
   affiliateLinks: AffiliateLink[];
+  purchaseLinks?: PurchaseLink[];
   badges: {
     seenInReel: boolean;
     personallyTested: boolean;
