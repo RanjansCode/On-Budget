@@ -29,36 +29,18 @@ export const isFirebaseConfigured = !!(
   firebaseConfig.apiKey &&
   firebaseConfig.authDomain &&
   firebaseConfig.projectId &&
-  firebaseConfig.storageBucket &&
-  firebaseConfig.messagingSenderId &&
   firebaseConfig.appId
 );
 
-let app: any = null;
-let db: any = null;
-let auth: any = null;
-let storage: any = null;
+// Ensure initializeApp() runs before getAuth() and auth is guaranteed to be non-null
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
-if (isFirebaseConfigured) {
-  try {
-    // Ensure initializeApp() runs only once
-    app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
-    
-    // Support custom/named database ID from applet config
-    const dbId = import.meta.env.VITE_FIREBASE_DATABASE_ID || appletConfig.firestoreDatabaseId;
-    db = dbId ? getFirestore(app, dbId) : getFirestore(app);
-    
-    auth = getAuth(app);
-    storage = getStorage(app);
-  } catch (error) {
-    console.error('Failed to initialize Firebase with provided environment variables:', error);
-  }
-} else {
-  console.warn(
-    '[Firebase Connection Alert]: Environment variables are missing or not configured. ' +
-    'The website will display the "Firebase Not Connected" page instead of crashing.'
-  );
-}
+// Support custom/named database ID from applet config
+const dbId = import.meta.env.VITE_FIREBASE_DATABASE_ID || appletConfig.firestoreDatabaseId;
+const db = dbId ? getFirestore(app, dbId) : getFirestore(app);
+
+const auth = getAuth(app);
+const storage = getStorage(app);
 
 export { app, db, auth, storage };
 export default app;

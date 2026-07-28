@@ -49,11 +49,12 @@ import Hero from './components/Hero';
 import ProductCard from './components/ProductCard';
 import ProductDetail from './components/ProductDetail';
 import AdminPanel from './components/AdminPanel';
-import OnBudgetAI from './components/OnBudgetAI';
 import LaunchModeOverlay from './components/LaunchModeOverlay';
+import SocialLinksModal from './components/SocialLinksModal';
 import { useToast } from './components/Toast';
 
 export default function App() {
+  const [socialModalProduct, setSocialModalProduct] = useState<Product | null>(null);
   const toast = useToast();
 
   // --- Firebase User Auth State ---
@@ -771,27 +772,7 @@ export default function App() {
                       totalProducts={products.length}
                     />
 
-                    {/* Trending Search Shortcuts */}
-                    <div className="flex flex-wrap items-center gap-2 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 p-3 rounded-2xl shadow-2xs">
-                      <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider pl-1.5 font-display">{t.trendingSearches}</span>
-                      {['Cable Organizer', 'Flashlight', 'RGB Lights', 'Sunset Lamp', 'Galaxy Projector', 'Felt Desk Mat'].map(phrase => (
-                        <button
-                          key={phrase}
-                          onClick={() => setSearchQuery(phrase)}
-                          className="text-[11px] bg-slate-50 dark:bg-slate-950 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold px-3 py-1 rounded-full border border-slate-200 dark:border-slate-800 transition-all cursor-pointer"
-                        >
-                          {phrase}
-                        </button>
-                      ))}
-                      {searchQuery && (
-                        <button
-                          onClick={() => setSearchQuery('')}
-                          className="text-[10px] font-bold text-red-500 ml-auto pr-1 hover:underline cursor-pointer"
-                        >
-                          Clear Search
-                        </button>
-                      )}
-                    </div>
+
 
                     {/* TODAY'S TOP PICKS SECTION */}
                     {searchQuery === '' && selectedCategory === '' && selectedPriceRange === null && (
@@ -814,6 +795,7 @@ export default function App() {
                               onOpenProduct={handleOpenProduct}
                               isWishlisted={wishlist.includes(p.id)}
                               onToggleWishlist={handleToggleWishlist}
+                              onOpenSocialLinks={setSocialModalProduct}
                             />
                           ))}
                         </div>
@@ -887,6 +869,7 @@ export default function App() {
                               onOpenProduct={handleOpenProduct}
                               isWishlisted={wishlist.includes(p.id)}
                               onToggleWishlist={handleToggleWishlist}
+                              onOpenSocialLinks={setSocialModalProduct}
                             />
                           ))}
                         </div>
@@ -925,6 +908,7 @@ export default function App() {
                               onOpenProduct={handleOpenProduct}
                               isWishlisted={true}
                               onToggleWishlist={handleToggleWishlist}
+                              onOpenSocialLinks={setSocialModalProduct}
                             />
                           ))}
                       </div>
@@ -1062,9 +1046,6 @@ export default function App() {
           </main>
         )}
       </div>
-
-      {/* FLOAT AI ASSISTANT BUTTON */}
-      <OnBudgetAI products={products} onOpenProduct={handleOpenProduct} />
 
       {/* FOOTER & NEWSLETTER */}
       {!selectedProductId && (
@@ -1224,6 +1205,13 @@ export default function App() {
           />
         )}
       </AnimatePresence>
+
+      {/* Social Links Modal Popup */}
+      <SocialLinksModal
+        isOpen={!!socialModalProduct}
+        onClose={() => setSocialModalProduct(null)}
+        product={socialModalProduct}
+      />
 
     </div>
   );

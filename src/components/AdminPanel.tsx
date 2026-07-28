@@ -15,6 +15,7 @@ import {
   SlidersHorizontal
 } from 'lucide-react';
 import { Product, Category, Reel, AnalyticsData } from '../types';
+import { validateSocialUrl } from '../utils/validation';
 import AdminLaunchMode from './AdminLaunchMode';
 import { LaunchSettings } from '../firebase/firestore';
 
@@ -689,6 +690,24 @@ function ProductFormModal({ product, categories, onClose, onSave, imagePresets }
   const [amazonUrl, setAmazonUrl] = useState(product?.affiliateLinks.find(l => l.platform === 'Amazon')?.url || '');
   const [meeshoUrl, setMeeshoUrl] = useState(product?.affiliateLinks.find(l => l.platform === 'Meesho')?.url || '');
 
+  // Photo / Video Links
+  const [youtubeUrl, setYoutubeUrl] = useState(product?.youtubeUrl || '');
+  const [instagramUrl, setInstagramUrl] = useState(product?.instagramUrl || '');
+  const [youtubeError, setYoutubeError] = useState<string | null>(null);
+  const [instagramError, setInstagramError] = useState<string | null>(null);
+
+  const handleYoutubeChange = (val: string) => {
+    setYoutubeUrl(val);
+    const result = validateSocialUrl(val, 'youtube');
+    setYoutubeError(result.isValid ? null : result.errorMessage || 'Invalid YouTube URL');
+  };
+
+  const handleInstagramChange = (val: string) => {
+    setInstagramUrl(val);
+    const result = validateSocialUrl(val, 'instagram');
+    setInstagramError(result.isValid ? null : result.errorMessage || 'Invalid Instagram URL');
+  };
+
   // Badges
   const [seenInReel, setSeenInReel] = useState(product?.badges.seenInReel || false);
   const [personallyTested, setPersonallyTested] = useState(product?.badges.personallyTested || true);
@@ -711,6 +730,19 @@ function ProductFormModal({ product, categories, onClose, onSave, imagePresets }
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title || !description || !imageUrl) return;
+
+    // Validate Social Media URLs before saving
+    const ytVal = validateSocialUrl(youtubeUrl, 'youtube');
+    const igVal = validateSocialUrl(instagramUrl, 'instagram');
+
+    if (!ytVal.isValid) {
+      setYoutubeError(ytVal.errorMessage || 'Invalid YouTube URL');
+      return;
+    }
+    if (!igVal.isValid) {
+      setInstagramError(igVal.errorMessage || 'Invalid Instagram URL');
+      return;
+    }
 
     const discountPercentage = originalPrice > 0 ? Math.round(((originalPrice - price) / originalPrice) * 100) : 0;
 
@@ -741,6 +773,8 @@ function ProductFormModal({ product, categories, onClose, onSave, imagePresets }
       images: [imageUrl],
       videos: ['https://assets.mixkit.co/videos/preview/mixkit-working-with-various-tools-and-devices-on-desk-43301-large.mp4'],
       affiliateLinks,
+      youtubeUrl: youtubeUrl.trim(),
+      instagramUrl: instagramUrl.trim(),
       badges: {
         seenInReel,
         personallyTested,
@@ -935,6 +969,54 @@ function ProductFormModal({ product, categories, onClose, onSave, imagePresets }
                     <span>Trending</span>
                   </label>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Photo / Video Links Section */}
+          <div className="space-y-4">
+            <h4 className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest border-b border-neutral-800 pb-1">
+              Photo / Video Links
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-[11px] font-bold text-neutral-400 mb-1">
+                  YouTube Video URL
+                </label>
+                <input
+                  type="url"
+                  value={youtubeUrl}
+                  onChange={e => handleYoutubeChange(e.target.value)}
+                  placeholder="https://youtube.com/..."
+                  className={`w-full bg-neutral-950 border ${
+                    youtubeError ? 'border-red-500 focus:border-red-400' : 'border-neutral-800 focus:border-emerald-500'
+                  } rounded-xl px-3 py-2 text-xs text-white focus:outline-none transition-colors`}
+                />
+                {youtubeError && (
+                  <p className="text-[10px] text-red-400 font-semibold mt-1">
+                    {youtubeError}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-neutral-400 mb-1">
+                  Instagram Reel/Post URL
+                </label>
+                <input
+                  type="url"
+                  value={instagramUrl}
+                  onChange={e => handleInstagramChange(e.target.value)}
+                  placeholder="https://instagram.com/..."
+                  className={`w-full bg-neutral-950 border ${
+                    instagramError ? 'border-red-500 focus:border-red-400' : 'border-neutral-800 focus:border-emerald-500'
+                  } rounded-xl px-3 py-2 text-xs text-white focus:outline-none transition-colors`}
+                />
+                {instagramError && (
+                  <p className="text-[10px] text-red-400 font-semibold mt-1">
+                    {instagramError}
+                  </p>
+                )}
               </div>
             </div>
           </div>

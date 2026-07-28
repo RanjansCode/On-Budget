@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ArrowLeft, Heart, Share2, ShieldAlert, CheckCircle, Star, Sparkles,
-  ExternalLink, Play, HelpCircle, Cpu, AlertCircle,
+  ExternalLink, Play, HelpCircle, Cpu, AlertCircle, Film,
   Check, Copy, RefreshCw, ShoppingBag, Plus, Sparkle, ArrowRight
 } from 'lucide-react';
 import { Product, Reel } from '../types';
+import SocialLinksModal from './SocialLinksModal';
 
 interface ProductDetailProps {
   product: Product;
@@ -33,6 +34,7 @@ export default function ProductDetail({
   const [reportState, setReportState] = useState<'idle' | 'success'>('idle');
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedCoupon, setCopiedCoupon] = useState(false);
+  const [isSocialModalOpen, setIsSocialModalOpen] = useState(false);
 
   // AI Summary State
   const [aiSummary, setAiSummary] = useState('');
@@ -184,25 +186,12 @@ export default function ProductDetail({
             {/* Media Overlay Toggles */}
             <div className="absolute bottom-4 left-4 z-10 flex gap-2">
               <button
-                onClick={() => setActiveMedia('image')}
-                className={`text-[10px] font-bold px-3.5 py-2 rounded-lg border transition-all cursor-pointer ${
-                  activeMedia === 'image'
-                    ? 'bg-[#FF5A00] text-white border-[#FF5A00]'
-                    : 'bg-white/80 dark:bg-black/60 backdrop-blur-md text-slate-800 dark:text-white border-slate-200/50 dark:border-slate-850 hover:bg-white dark:hover:bg-black/85'
-                }`}
+                onClick={() => setIsSocialModalOpen(true)}
+                type="button"
+                className="text-[10px] font-bold px-3.5 py-2 rounded-lg border transition-all cursor-pointer flex items-center gap-1.5 bg-white/90 dark:bg-black/70 backdrop-blur-md text-slate-800 dark:text-white border-slate-200/50 dark:border-slate-800 hover:bg-[#FF5A00] hover:text-white hover:border-[#FF5A00] shadow-sm group font-display"
               >
-                Photo Gallery
-              </button>
-              <button
-                onClick={() => setActiveMedia('video')}
-                className={`text-[10px] font-bold px-3.5 py-2 rounded-lg border transition-all cursor-pointer flex items-center gap-1.5 ${
-                  activeMedia === 'video'
-                    ? 'bg-[#FF5A00] text-white border-[#FF5A00]'
-                    : 'bg-white/80 dark:bg-black/60 backdrop-blur-md text-slate-800 dark:text-white border-slate-200/50 dark:border-slate-850 hover:bg-white dark:hover:bg-black/85'
-                }`}
-              >
-                <Play className="w-3 h-3 fill-current" />
-                Unboxing Clip
+                <Film className="w-3.5 h-3.5 text-[#FF5A00] group-hover:text-white" />
+                <span>Photo/Video</span>
               </button>
             </div>
           </div>
@@ -649,6 +638,13 @@ export default function ProductDetail({
           </div>
         </div>
       )}
+
+      {/* Social Links Modal Popup */}
+      <SocialLinksModal
+        isOpen={isSocialModalOpen}
+        onClose={() => setIsSocialModalOpen(false)}
+        product={product}
+      />
     </div>
   );
 }

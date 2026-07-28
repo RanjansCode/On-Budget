@@ -9,6 +9,7 @@ interface ProductCardProps {
   onOpenProduct: (productId: string) => void;
   isWishlisted: boolean;
   onToggleWishlist: (productId: string) => void;
+  onOpenSocialLinks?: (product: Product) => void;
 }
 
 export default function ProductCard({
@@ -16,6 +17,7 @@ export default function ProductCard({
   onOpenProduct,
   isWishlisted,
   onToggleWishlist,
+  onOpenSocialLinks,
 }: ProductCardProps) {
   const { title, price, originalPrice, discount, brand, images, badges } = product;
 
@@ -81,6 +83,21 @@ export default function ProductCard({
             </span>
           )}
         </div>
+
+        {/* Photo/Video Overlay Button */}
+        {onOpenSocialLinks && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenSocialLinks(product);
+            }}
+            className="absolute top-3 left-16 z-20 bg-slate-950/80 hover:bg-[#FF5A00] text-white text-[9px] font-bold px-2 py-0.5 rounded-md backdrop-blur-md transition-all flex items-center gap-1 shadow-sm cursor-pointer border border-white/10 hover:border-[#FF5A00]"
+            title="Watch YouTube or Instagram social links"
+          >
+            <Film className="w-2.5 h-2.5 text-[#FF5A00]" />
+            <span>Photo/Video</span>
+          </button>
+        )}
       </div>
 
       {/* Product Information Body */}

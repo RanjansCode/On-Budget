@@ -58,6 +58,8 @@ export interface Product {
   frequentlyBoughtTogether: string[]; // Product IDs
   faqs: FAQItem[];
   reelId?: string; // ID of the Reel featuring this product
+  youtubeUrl?: string; // Optional YouTube video link
+  instagramUrl?: string; // Optional Instagram reel/post link
   status: 'Published' | 'Draft';
   createdAt: string;
 }
