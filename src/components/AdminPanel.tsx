@@ -715,7 +715,8 @@ function ProductFormModal({ product, categories, onClose, onSave, imagePresets }
   const [trending, setTrending] = useState(product?.badges.trending || false);
 
   // Review
-  const [reviewRating, setReviewRating] = useState(product?.creatorReview.rating || 5);
+  const [reviewRating, setReviewRating] = useState<number | string>(product?.creatorReview?.rating ?? product?.rating ?? 5);
+  const [reviewRatingError, setReviewRatingError] = useState<string | null>(null);
   const [reviewText, setReviewText] = useState(product?.creatorReview.reviewText || '');
   const [unboxingText, setUnboxingText] = useState(product?.creatorReview.unboxingText || '');
   const [setupGuideText, setSetupGuideText] = useState(product?.creatorReview.setupGuideText || '');
@@ -744,6 +745,14 @@ function ProductFormModal({ product, categories, onClose, onSave, imagePresets }
       return;
     }
 
+    let parsedRating = parseFloat(String(reviewRating));
+    if (isNaN(parsedRating) || parsedRating < 1 || parsedRating > 5) {
+      setReviewRatingError('Rating must be between 1.0 and 5.0');
+      return;
+    }
+    parsedRating = Math.round(parsedRating * 10) / 10;
+    setReviewRatingError(null);
+
     const discountPercentage = originalPrice > 0 ? Math.round(((originalPrice - price) / originalPrice) * 100) : 0;
 
     const affiliateLinks: Product['affiliateLinks'] = [];
@@ -769,7 +778,7 @@ function ProductFormModal({ product, categories, onClose, onSave, imagePresets }
       whyIRecommend,
       brand,
       category,
-      rating: Number(rating),
+      rating: parsedRating,
       images: [imageUrl],
       videos: ['https://assets.mixkit.co/videos/preview/mixkit-working-with-various-tools-and-devices-on-desk-43301-large.mp4'],
       affiliateLinks,
@@ -782,7 +791,7 @@ function ProductFormModal({ product, categories, onClose, onSave, imagePresets }
         trending
       },
       creatorReview: {
-        rating: Number(reviewRating),
+        rating: parsedRating,
         reviewText,
         unboxingText,
         setupGuideText,
@@ -1058,12 +1067,43 @@ function ProductFormModal({ product, categories, onClose, onSave, imagePresets }
                 <label className="block text-[11px] font-bold text-neutral-400 mb-1">Creator Rating (1-5)</label>
                 <input
                   type="number"
-                  min={1}
-                  max={5}
+                  min="1"
+                  max="5"
+                  step="0.1"
                   value={reviewRating}
-                  onChange={e => setReviewRating(Number(e.target.value))}
-                  className="w-full bg-neutral-950 border border-neutral-800 focus:border-emerald-500 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+                  onChange={e => {
+                    const valStr = e.target.value;
+                    setReviewRating(valStr);
+                    const val = parseFloat(valStr);
+                    if (valStr !== '' && (isNaN(val) || val < 1 || val > 5)) {
+                      setReviewRatingError('Rating must be between 1.0 and 5.0');
+                    } else {
+                      setReviewRatingError(null);
+                    }
+                  }}
+                  onBlur={() => {
+                    const val = parseFloat(String(reviewRating));
+                    if (isNaN(val) || val < 1) {
+                      setReviewRating(1);
+                      setReviewRatingError(null);
+                    } else if (val > 5) {
+                      setReviewRating(5);
+                      setReviewRatingError(null);
+                    } else {
+                      const rounded = Math.round(val * 10) / 10;
+                      setReviewRating(rounded);
+                      setReviewRatingError(null);
+                    }
+                  }}
+                  className={`w-full bg-neutral-950 border ${
+                    reviewRatingError ? 'border-red-500 focus:border-red-400' : 'border-neutral-800 focus:border-emerald-500'
+                  } rounded-xl px-3 py-2 text-xs text-white focus:outline-none transition-colors`}
                 />
+                {reviewRatingError && (
+                  <p className="text-[10px] text-red-400 font-semibold mt-1">
+                    {reviewRatingError}
+                  </p>
+                )}
               </div>
 
               <div className="col-span-2">

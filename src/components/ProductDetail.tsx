@@ -448,7 +448,7 @@ export default function ProductDetail({
 
                   <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
                     {matchedProd 
-                      ? `We recommend this alternative for users seeking a more premium version. Rated ${matchedProd.rating}/5 stars.` 
+                      ? `We recommend this alternative for users seeking a more premium version. Rated ${Number(matchedProd.rating).toFixed(1)}/5 stars.` 
                       : "A premium tier alternative model evaluated personally. Best for advanced setups."
                     }
                   </p>
@@ -505,11 +505,30 @@ export default function ProductDetail({
               <div className="flex items-center gap-4">
                 <div>
                   <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase block tracking-wider font-display">Creator Rating Log</span>
-                  <div className="flex items-center gap-1 mt-1 text-amber-500">
-                    {Array.from({ length: Math.round(product.creatorReview.rating) }).map((_, i) => (
-                      <Star key={i} className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
-                    ))}
-                    <span className="text-xs font-bold text-slate-900 dark:text-white font-mono ml-1.5">{product.creatorReview.rating} / 5</span>
+                  <div className="flex items-center gap-2 mt-1">
+                    <div className="flex items-center gap-1" title={`${product.creatorReview.rating} out of 5 stars`}>
+                      {[1, 2, 3, 4, 5].map((starIndex) => {
+                        const ratingVal = Number(product.creatorReview.rating) || 0;
+                        const starFillRatio = Math.max(0, Math.min(1, ratingVal - (starIndex - 1)));
+                        const fillPercent = Math.round(starFillRatio * 100);
+                        return (
+                          <div key={starIndex} className="relative inline-block shrink-0">
+                            <Star className="w-3.5 h-3.5 text-slate-300 dark:text-slate-700 stroke-1" />
+                            {fillPercent > 0 && (
+                              <div
+                                className="absolute top-0 left-0 overflow-hidden"
+                                style={{ width: `${fillPercent}%` }}
+                              >
+                                <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500 shrink-0" />
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <span className="text-xs font-bold text-slate-900 dark:text-white font-mono ml-0.5">
+                      {Number(product.creatorReview.rating).toFixed(1)} / 5
+                    </span>
                   </div>
                 </div>
               </div>
