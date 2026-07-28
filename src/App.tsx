@@ -52,10 +52,23 @@ import AdminPanel from './components/AdminPanel';
 import LaunchModeOverlay from './components/LaunchModeOverlay';
 import SocialLinksModal from './components/SocialLinksModal';
 import { useToast } from './components/Toast';
+import { LocationCurrencyBanner } from './components/CurrencySwitcher';
+import { detectUserCurrency, setUserCurrency } from './utils/currency';
+import {
+  ProductCardSkeleton,
+  ProductGridSkeleton,
+  ProductDetailsSkeleton,
+  AdminFormSkeleton,
+  WishlistSkeleton,
+  CategoryBarSkeleton
+} from './components/Skeletons';
 
 export default function App() {
   const [socialModalProduct, setSocialModalProduct] = useState<Product | null>(null);
   const toast = useToast();
+
+  // --- Currency State ---
+  const [currentCurrency, setCurrentCurrency] = useState<string>(() => detectUserCurrency().currency.code);
 
   // --- Firebase User Auth State ---
   const [currentUser, setCurrentUser] = useState<any>(() => {
@@ -132,6 +145,34 @@ export default function App() {
   const [selectedPriceRange, setSelectedPriceRange] = useState<number | null>(null);
   const [badgeFilter, setBadgeFilter] = useState<'all' | 'tested' | 'recommended' | 'trending'>('all');
   const [sortOption, setSortOption] = useState<'popular' | 'latest' | 'low-price' | 'discount' | 'rating'>('popular');
+
+  // --- Skeleton Loading States for Smooth Transitions ---
+  const [isFilterLoading, setIsFilterLoading] = useState(false);
+  const [isDetailLoading, setIsDetailLoading] = useState(false);
+  const [isTabLoading, setIsTabLoading] = useState(false);
+
+  // Transition skeleton on filter / category / search query change
+  useEffect(() => {
+    setIsFilterLoading(true);
+    const timer = setTimeout(() => setIsFilterLoading(false), 220);
+    return () => clearTimeout(timer);
+  }, [selectedCategory, searchQuery, selectedPriceRange, badgeFilter, sortOption]);
+
+  // Transition skeleton on product detail selection
+  useEffect(() => {
+    if (selectedProductId) {
+      setIsDetailLoading(true);
+      const timer = setTimeout(() => setIsDetailLoading(false), 200);
+      return () => clearTimeout(timer);
+    }
+  }, [selectedProductId]);
+
+  // Transition skeleton on tab navigation
+  useEffect(() => {
+    setIsTabLoading(true);
+    const timer = setTimeout(() => setIsTabLoading(false), 200);
+    return () => clearTimeout(timer);
+  }, [activeTab]);
 
   // --- Aesthetic Preference States (Light mode by default!) ---
   const [darkMode, setDarkMode] = useState<boolean>(() => {
@@ -707,6 +748,14 @@ export default function App() {
         )}
       </AnimatePresence>
 
+      {/* Location / Auto Currency Suggestion Banner for International Visitors */}
+      <LocationCurrencyBanner
+        currentCurrency={currentCurrency}
+        onCurrencyChange={(code) => {
+          setCurrentCurrency(code);
+        }}
+      />
+
       <div className="space-y-6">
         {/* Navigation Bar with authenticated user prop */}
         <Navbar
@@ -731,30 +780,41 @@ export default function App() {
           onBypassLogout={() => {
             setCurrentUser(null);
           }}
+          currentCurrency={currentCurrency}
+          onCurrencyChange={(code) => {
+            setCurrentCurrency(code);
+          }}
         />
 
-        {/* LOADING DATABASE OVERLAY */}
+        {/* MAIN BODY WRAPPER */}
         {dbLoading ? (
-          <div className="flex flex-col items-center justify-center py-24 gap-3 text-center">
-            <RefreshCw className="w-8 h-8 text-[#FF5A00] animate-spin" />
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest font-display">Synchronizing Budget Catalog...</p>
-          </div>
+          <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8 py-6">
+            <div className="space-y-6">
+              <CategoryBarSkeleton />
+              <ProductGridSkeleton count={8} />
+            </div>
+          </main>
         ) : (
-          /* MAIN BODY WRAPPER */
           <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
             
             {/* DETAIL VIEW ROUTING */}
             {selectedProductId ? (
-              <ProductDetail
-                product={products.find(p => p.id === selectedProductId)!}
-                reels={reels}
-                onBack={() => setSelectedProductId(null)}
-                isWishlisted={wishlist.includes(selectedProductId)}
-                onToggleWishlist={handleToggleWishlist}
-                onOpenProduct={handleOpenProduct}
-                allProducts={products}
-                onTrackAffiliateClick={handleTrackAffiliateClick}
-              />
+              isDetailLoading || !products.find(p => p.id === selectedProductId) ? (
+                <ProductDetailsSkeleton />
+              ) : (
+                <ProductDetail
+                  product={products.find(p => p.id === selectedProductId)!}
+                  reels={reels}
+                  onBack={() => setSelectedProductId(null)}
+                  isWishlisted={wishlist.includes(selectedProductId)}
+                  onToggleWishlist={handleToggleWishlist}
+                  onOpenProduct={handleOpenProduct}
+                  allProducts={products}
+                  onTrackAffiliateClick={handleTrackAffiliateClick}
+                  wishlist={wishlist}
+                  recentlyViewedIds={recentlyViewed}
+                />
+              )
             ) : (
               // STANDARD TAB RENDERING
               <div className="space-y-12">
@@ -770,9 +830,8 @@ export default function App() {
                       selectedPriceRange={selectedPriceRange}
                       setSelectedPriceRange={setSelectedPriceRange}
                       totalProducts={products.length}
+                      currentCurrency={currentCurrency}
                     />
-
-
 
                     {/* TODAY'S TOP PICKS SECTION */}
                     {searchQuery === '' && selectedCategory === '' && selectedPriceRange === null && (
@@ -796,6 +855,7 @@ export default function App() {
                               isWishlisted={wishlist.includes(p.id)}
                               onToggleWishlist={handleToggleWishlist}
                               onOpenSocialLinks={setSocialModalProduct}
+                              currentCurrency={currentCurrency}
                             />
                           ))}
                         </div>
@@ -855,7 +915,9 @@ export default function App() {
                       </div>
 
                       {/* Catalog Grid */}
-                      {filteredProducts.length === 0 ? (
+                      {isFilterLoading ? (
+                        <ProductGridSkeleton count={8} />
+                      ) : filteredProducts.length === 0 ? (
                         <div className="text-center py-16 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-3xl max-w-md mx-auto shadow-sm">
                           <AlertCircle className="w-10 h-10 text-slate-300 mx-auto mb-3" />
                           <p className="text-xs text-slate-600 dark:text-slate-300 font-semibold">{t.emptyCatalog}</p>
@@ -870,6 +932,7 @@ export default function App() {
                               isWishlisted={wishlist.includes(p.id)}
                               onToggleWishlist={handleToggleWishlist}
                               onOpenSocialLinks={setSocialModalProduct}
+                              currentCurrency={currentCurrency}
                             />
                           ))}
                         </div>
@@ -886,7 +949,9 @@ export default function App() {
                       <p className="text-xs text-slate-400">Fast access to products you are planning to purchase.</p>
                     </div>
 
-                    {wishlist.length === 0 ? (
+                    {isTabLoading ? (
+                      <WishlistSkeleton count={4} />
+                    ) : wishlist.length === 0 ? (
                       <div className="text-center py-16 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-3xl max-w-sm mx-auto shadow-sm">
                         <Heart className="w-10 h-10 text-slate-300 mx-auto mb-3" />
                         <p className="text-xs text-slate-600 dark:text-slate-300 font-semibold">Your Wishlist is empty.</p>
@@ -909,6 +974,7 @@ export default function App() {
                               isWishlisted={true}
                               onToggleWishlist={handleToggleWishlist}
                               onOpenSocialLinks={setSocialModalProduct}
+                              currentCurrency={currentCurrency}
                             />
                           ))}
                       </div>
@@ -1026,6 +1092,7 @@ export default function App() {
                     categories={categories}
                     reels={reels}
                     analytics={analytics}
+                    isLoading={isTabLoading}
                     onAddProduct={handleAddProduct}
                     onUpdateProduct={handleUpdateProduct}
                     onDeleteProduct={handleDeleteProduct}

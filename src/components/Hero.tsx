@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Category } from '../types';
+import { formatCurrencyPrice, detectUserCurrency } from '../utils/currency';
 
 interface HeroProps {
   categories: Category[];
@@ -8,6 +9,7 @@ interface HeroProps {
   selectedPriceRange: number | null;
   setSelectedPriceRange: (price: number | null) => void;
   totalProducts: number;
+  currentCurrency?: string;
 }
 
 export default function Hero({
@@ -17,13 +19,30 @@ export default function Hero({
   selectedPriceRange,
   setSelectedPriceRange,
   totalProducts,
+  currentCurrency: propCurrency,
 }: HeroProps) {
+  const [activeCurrencyCode, setActiveCurrencyCode] = useState(propCurrency || 'INR');
+
+  useEffect(() => {
+    if (propCurrency) {
+      setActiveCurrencyCode(propCurrency);
+    } else {
+      setActiveCurrencyCode(detectUserCurrency().currency.code);
+    }
+
+    const handleCurrencyChange = (e: any) => {
+      setActiveCurrencyCode(e.detail);
+    };
+    window.addEventListener('onbudget_currency_changed', handleCurrencyChange);
+    return () => window.removeEventListener('onbudget_currency_changed', handleCurrencyChange);
+  }, [propCurrency]);
+
   const priceBuckets = [
-    { label: 'Best Under ₹99', val: 99 },
-    { label: 'Best Under ₹199', val: 199 },
-    { label: 'Best Under ₹299', val: 299 },
-    { label: 'Best Under ₹499', val: 499 },
-    { label: 'Best Under ₹999', val: 999 },
+    { val: 99 },
+    { val: 199 },
+    { val: 299 },
+    { val: 499 },
+    { val: 999 },
   ];
 
   return (
@@ -42,20 +61,25 @@ export default function Hero({
           )}
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-          {priceBuckets.map(b => (
-            <button
-              key={b.val}
-              onClick={() => setSelectedPriceRange(selectedPriceRange === b.val ? null : b.val)}
-              className={`p-4 border rounded-2xl flex flex-col items-center justify-center transition-all cursor-pointer shadow-3xs ${
-                selectedPriceRange === b.val
-                  ? 'bg-[#FF5A00]/10 border-[#FF5A00] text-[#FF5A00] scale-98 font-black'
-                  : 'bg-white dark:bg-slate-900 border-slate-200/60 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-700'
-              }`}
-            >
-              <span className="text-xs font-black font-display">Under ₹{b.val}</span>
-              <span className="text-[9px] text-slate-400 dark:text-slate-500 font-semibold mt-1">Direct curations</span>
-            </button>
-          ))}
+          {priceBuckets.map(b => {
+            const formatted = formatCurrencyPrice(b.val, activeCurrencyCode);
+            return (
+              <button
+                key={b.val}
+                onClick={() => setSelectedPriceRange(selectedPriceRange === b.val ? null : b.val)}
+                className={`p-4 border rounded-2xl flex flex-col items-center justify-center transition-all cursor-pointer shadow-3xs ${
+                  selectedPriceRange === b.val
+                    ? 'bg-[#FF5A00]/10 border-[#FF5A00] text-[#FF5A00] scale-98 font-black'
+                    : 'bg-white dark:bg-slate-900 border-slate-200/60 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-700'
+                }`}
+              >
+                <span className="text-xs font-black font-display">Under {formatted.formatted}</span>
+                <span className="text-[9px] text-slate-400 dark:text-slate-500 font-semibold mt-1">
+                  {activeCurrencyCode === 'INR' ? 'Direct curations' : `Base: ₹${b.val}`}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
 

@@ -19,12 +19,14 @@ import { validateSocialUrl, validatePurchaseUrl, formatUrl } from '../utils/vali
 import { getPurchaseLinks } from '../utils/purchaseLinks';
 import AdminLaunchMode from './AdminLaunchMode';
 import { LaunchSettings } from '../firebase/firestore';
+import { AdminFormSkeleton } from './Skeletons';
 
 interface AdminPanelProps {
   products: Product[];
   categories: Category[];
   reels: Reel[];
   analytics: AnalyticsData;
+  isLoading?: boolean;
   onAddProduct: (product: Product) => void;
   onUpdateProduct: (product: Product) => void;
   onDeleteProduct: (productId: string) => void;
@@ -56,6 +58,7 @@ export default function AdminPanel({
   onDeleteReel,
   launchSettings,
   onSaveLaunchSettings,
+  isLoading = false,
 }: AdminPanelProps) {
   const [isAuthenticated, setIsAuthenticated] = useState(true);
   const [pinInput, setPinInput] = useState('');
@@ -155,6 +158,20 @@ export default function AdminPanel({
             Use PIN <code className="bg-neutral-950 px-1.5 py-0.5 rounded text-emerald-400 font-mono font-bold">0013</code> to log in and unlock full dashboard features.
           </p>
         </div>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between bg-neutral-900 border border-neutral-800 p-4 rounded-2xl">
+          <div className="space-y-2">
+            <div className="w-36 h-5 rounded skeleton-shimmer" />
+            <div className="w-64 h-3 rounded skeleton-shimmer" />
+          </div>
+        </div>
+        <AdminFormSkeleton />
       </div>
     );
   }

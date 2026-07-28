@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ArrowLeft, Heart, Share2, ShieldAlert, CheckCircle, Star, Sparkles,
@@ -8,8 +8,12 @@ import {
 import { Product, Reel } from '../types';
 import SocialLinksModal from './SocialLinksModal';
 import PlatformLogo from './PlatformLogo';
+import ImageLightboxModal from './ImageLightboxModal';
 import { getPurchaseLinks } from '../utils/purchaseLinks';
 import { formatUrl } from '../utils/validation';
+import { formatCurrencyPrice, detectUserCurrency } from '../utils/currency';
+import ImageSkeleton from './ImageSkeleton';
+import ProductRecommendations from './ProductRecommendations';
 
 interface ProductDetailProps {
   product: Product;
@@ -20,6 +24,8 @@ interface ProductDetailProps {
   onOpenProduct: (productId: string) => void;
   allProducts: Product[];
   onTrackAffiliateClick: (productId: string, platform: string) => void;
+  wishlist?: string[];
+  recentlyViewedIds?: string[];
 }
 
 export default function ProductDetail({
@@ -31,6 +37,8 @@ export default function ProductDetail({
   onOpenProduct,
   allProducts,
   onTrackAffiliateClick,
+  wishlist = [],
+  recentlyViewedIds = [],
 }: ProductDetailProps) {
   const [activeMedia, setActiveMedia] = useState<'image' | 'video'>('image');
   const [activeCreatorTab, setActiveCreatorTab] = useState<'review' | 'setup' | 'unboxing' | 'photos'>('review');
@@ -38,13 +46,24 @@ export default function ProductDetail({
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedCoupon, setCopiedCoupon] = useState(false);
   const [isSocialModalOpen, setIsSocialModalOpen] = useState(false);
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  const [activeCurrencyCode, setActiveCurrencyCode] = useState(() => detectUserCurrency().currency.code);
+
+  useEffect(() => {
+    const handleCurrencyChange = (e: any) => {
+      setActiveCurrencyCode(e.detail);
+    };
+    window.addEventListener('onbudget_currency_changed', handleCurrencyChange);
+    return () => window.removeEventListener('onbudget_currency_changed', handleCurrencyChange);
+  }, []);
 
   // AI Summary State
   const [aiSummary, setAiSummary] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState('');
 
-  // Frequently Bought Together items
+  // Check if product has any video/social links
+  const hasSocialLinks = Boolean(product.youtubeUrl?.trim() || product.instagramUrl?.trim());
   const frequentlyBought = allProducts.filter(p => product.frequentlyBoughtTogether?.includes(p.id));
 
   // Better alternatives
@@ -169,12 +188,19 @@ export default function ProductDetail({
         <div className="space-y-6">
           <div className="relative aspect-video rounded-3xl overflow-hidden bg-slate-100 dark:bg-slate-950 border border-slate-200/60 dark:border-slate-800 shadow-md">
             {activeMedia === 'image' ? (
-              <img
-                src={product.images[0]}
-                alt={product.title}
-                className="w-full h-full object-cover"
-                referrerPolicy="no-referrer"
-              />
+              <div 
+                onClick={() => setIsLightboxOpen(true)}
+                className="w-full h-full flex items-center justify-center p-4 bg-slate-100/90 dark:bg-slate-950/90 cursor-pointer group/detailimg"
+                title="Click to open full-screen image preview"
+              >
+                <ImageSkeleton
+                  src={product.images[0]}
+                  alt={product.title}
+                  containerClassName="w-full h-full"
+                  className="max-w-full max-h-full w-auto h-auto object-contain object-center group-hover/detailimg:scale-105 transition-transform duration-300 select-none"
+                  referrerPolicy="no-referrer"
+                />
+              </div>
             ) : (
               <video
                 src={product.videos[0]}
@@ -186,17 +212,19 @@ export default function ProductDetail({
               />
             )}
 
-            {/* Media Overlay Toggles */}
-            <div className="absolute bottom-4 left-4 z-10 flex gap-2">
-              <button
-                onClick={() => setIsSocialModalOpen(true)}
-                type="button"
-                className="text-[10px] font-bold px-3.5 py-2 rounded-lg border transition-all cursor-pointer flex items-center gap-1.5 bg-white/90 dark:bg-black/70 backdrop-blur-md text-slate-800 dark:text-white border-slate-200/50 dark:border-slate-800 hover:bg-[#FF5A00] hover:text-white hover:border-[#FF5A00] shadow-sm group font-display"
-              >
-                <Film className="w-3.5 h-3.5 text-[#FF5A00] group-hover:text-white" />
-                <span>Photo/Video</span>
-              </button>
-            </div>
+            {/* Media Overlay Toggles - Render Photo/Video button ONLY if social links exist */}
+            {hasSocialLinks && (
+              <div className="absolute bottom-4 left-4 z-10 flex gap-2">
+                <button
+                  onClick={() => setIsSocialModalOpen(true)}
+                  type="button"
+                  className="text-[10px] font-bold px-3.5 py-2 rounded-lg border transition-all cursor-pointer flex items-center gap-1.5 bg-white/90 dark:bg-black/70 backdrop-blur-md text-slate-800 dark:text-white border-slate-200/50 dark:border-slate-800 hover:bg-[#FF5A00] hover:text-white hover:border-[#FF5A00] shadow-sm group font-display"
+                >
+                  <Film className="w-3.5 h-3.5 text-[#FF5A00] group-hover:text-white" />
+                  <span>Photo/Video</span>
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Instagram / YouTube Shorts Vertical Simulator Mockup Frame */}
@@ -236,15 +264,22 @@ export default function ProductDetail({
               <div>
                 <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase block tracking-wider font-display">Personally Curated Savings Price</span>
                 <div className="flex items-baseline gap-2.5 mt-1">
-                  <span className="text-2xl font-black text-slate-950 dark:text-white">₹{product.price}</span>
-                  <span className="text-xs text-slate-400 dark:text-slate-500 line-through">₹{product.originalPrice}</span>
+                  <span className="text-2xl font-black text-slate-950 dark:text-white">
+                    {formatCurrencyPrice(product.price, activeCurrencyCode).formatted}
+                  </span>
+                  <span className="text-xs text-slate-400 dark:text-slate-500 line-through">
+                    {formatCurrencyPrice(product.originalPrice, activeCurrencyCode).formatted}
+                  </span>
                   <span className="text-[10px] bg-[#FF5A00]/10 text-[#FF5A00] border border-[#FF5A00]/20 font-bold px-1.5 py-0.5 rounded font-mono">
                     {product.discount}% OFF
                   </span>
+                  {activeCurrencyCode !== 'INR' && (
+                    <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
+                      (Base Price: ₹{product.price})
+                    </span>
+                  )}
                 </div>
               </div>
-
-
             </div>
 
             {/* Multiple Purchase Platform Links */}
@@ -390,7 +425,9 @@ export default function ProductDetail({
                 />
                 <div className="min-w-0">
                   <h4 className="text-[11px] font-bold text-slate-900 dark:text-white truncate">{product.title}</h4>
-                  <span className="text-[11px] font-black text-[#FF5A00]">₹{product.price}</span>
+                  <span className="text-[11px] font-black text-[#FF5A00]">
+                    {formatCurrencyPrice(product.price, activeCurrencyCode).formatted}
+                  </span>
                 </div>
               </div>
 
@@ -410,7 +447,9 @@ export default function ProductDetail({
                     />
                     <div className="min-w-0">
                       <h4 className="text-[11px] font-bold text-slate-900 dark:text-white group-hover:text-[#FF5A00] truncate transition-colors">{p.title}</h4>
-                      <span className="text-[11px] font-black text-[#FF5A00]">₹{p.price}</span>
+                      <span className="text-[11px] font-black text-[#FF5A00]">
+                        {formatCurrencyPrice(p.price, activeCurrencyCode).formatted}
+                      </span>
                     </div>
                   </div>
                 </React.Fragment>
@@ -422,7 +461,7 @@ export default function ProductDetail({
               <div>
                 <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block font-display">Combo Package Total</span>
                 <div className="text-xl font-black text-slate-950 dark:text-white mt-1">
-                  ₹{product.price + frequentlyBought.reduce((acc, cur) => acc + cur.price, 0)}
+                  {formatCurrencyPrice(product.price + frequentlyBought.reduce((acc, cur) => acc + cur.price, 0), activeCurrencyCode).formatted}
                 </div>
                 <p className="text-[9px] text-emerald-500 font-bold uppercase mt-0.5">Bundle deals verified</p>
               </div>
@@ -466,7 +505,9 @@ export default function ProductDetail({
                       <h4 className="text-xs font-bold text-slate-900 dark:text-white mt-1.5">{matchedProd ? matchedProd.title : altText}</h4>
                     </div>
                     {matchedProd && (
-                      <span className="text-xs font-black text-slate-900 dark:text-white">₹{matchedProd.price}</span>
+                      <span className="text-xs font-black text-slate-900 dark:text-white">
+                        {formatCurrencyPrice(matchedProd.price, activeCurrencyCode).formatted}
+                      </span>
                     )}
                   </div>
 
@@ -650,43 +691,32 @@ export default function ProductDetail({
         </div>
       </div>
 
-      {/* Better alternatives / Similar Products list */}
-      {similarProducts.length > 0 && (
-        <div className="space-y-4">
-          <h3 className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest font-display text-left">Similar Tested Gadgets</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {similarProducts.map(p => (
-              <div
-                key={p.id}
-                onClick={() => onOpenProduct(p.id)}
-                className="p-3.5 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 hover:border-[#FF5A00]/40 dark:hover:border-[#FF5A00]/40 rounded-2xl cursor-pointer flex gap-3 group transition-all shadow-2xs text-left"
-              >
-                <img
-                  src={p.images[0]}
-                  alt={p.title}
-                  className="w-12 h-12 object-cover rounded-xl"
-                  referrerPolicy="no-referrer"
-                />
-                <div className="min-w-0 flex-1 flex flex-col justify-between">
-                  <h4 className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-[#FF5A00] transition-colors truncate font-display">
-                    {p.title}
-                  </h4>
-                  <div className="flex items-baseline gap-1.5 mt-1.5">
-                    <span className="text-xs font-black text-[#FF5A00]">₹{p.price}</span>
-                    <span className="text-[10px] text-slate-400 dark:text-slate-500 line-through">₹{p.originalPrice}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Complete Product Recommendation Engine (10 Amazon/Flipkart style sections) */}
+      <ProductRecommendations
+        currentProduct={product}
+        allProducts={allProducts}
+        wishlist={wishlist}
+        onToggleWishlist={onToggleWishlist}
+        onOpenProduct={onOpenProduct}
+        onOpenSocialLinks={() => setIsSocialModalOpen(true)}
+        currentCurrency={activeCurrencyCode}
+        recentlyViewedIds={recentlyViewedIds}
+        onTrackAffiliateClick={onTrackAffiliateClick}
+      />
 
       {/* Social Links Modal Popup */}
       <SocialLinksModal
         isOpen={isSocialModalOpen}
         onClose={() => setIsSocialModalOpen(false)}
         product={product}
+      />
+
+      {/* Full-Screen Lightbox Modal */}
+      <ImageLightboxModal
+        isOpen={isLightboxOpen}
+        onClose={() => setIsLightboxOpen(false)}
+        images={product.images}
+        productTitle={product.title}
       />
     </div>
   );

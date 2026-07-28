@@ -17,6 +17,7 @@ import { syncUserProfile } from '../firebase/firestore';
 import { updateProfile, User as FirebaseUser } from 'firebase/auth';
 import { useToast } from './Toast';
 import inOurBudgetLogo from '../assets/images/in_our_budget_logo_1784107312483.jpg';
+import CurrencySwitcher from './CurrencySwitcher';
 
 interface NavbarProps {
   activeTab: 'home' | 'wishlist' | 'profile' | 'admin';
@@ -32,6 +33,8 @@ interface NavbarProps {
   user: any;
   onBypassLogin?: (user: any) => void;
   onBypassLogout?: () => void;
+  currentCurrency?: string;
+  onCurrencyChange?: (code: string) => void;
 }
 
 export default function Navbar({
@@ -48,6 +51,8 @@ export default function Navbar({
   user,
   onBypassLogin,
   onBypassLogout,
+  currentCurrency = 'INR',
+  onCurrencyChange = () => {},
 }: NavbarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -279,6 +284,12 @@ export default function Navbar({
 
             {/* HEADER ICONS */}
             <div className="flex items-center gap-2 shrink-0" id="navbar-actions">
+              {/* Currency Switcher */}
+              <CurrencySwitcher
+                currentCurrency={currentCurrency}
+                onCurrencyChange={onCurrencyChange}
+              />
+
               {/* Theme Toggle */}
               <button
                 onClick={() => setDarkMode(!darkMode)}
@@ -434,6 +445,16 @@ export default function Navbar({
                     className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:border-[#FF5A00] focus:ring-1 focus:ring-[#FF5A00] rounded-full px-4 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none"
                   />
                   <Search className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2" />
+                </div>
+
+                {/* Currency Switcher Mobile */}
+                <div className="flex items-center justify-between p-2.5 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200/60 dark:border-slate-800">
+                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Display Currency:</span>
+                  <CurrencySwitcher
+                    currentCurrency={currentCurrency}
+                    onCurrencyChange={onCurrencyChange}
+                    compact
+                  />
                 </div>
 
                 {/* Items */}
