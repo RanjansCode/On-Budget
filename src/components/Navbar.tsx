@@ -35,6 +35,8 @@ interface NavbarProps {
   onSelectCategory?: (categoryName: string) => void;
   products?: Product[];
   onSelectProduct?: (productId: string) => void;
+  authModalOpenRequested?: boolean;
+  onAuthModalClosed?: () => void;
 }
 
 export default function Navbar({
@@ -53,6 +55,8 @@ export default function Navbar({
   onSelectCategory = () => {},
   products = [],
   onSelectProduct,
+  authModalOpenRequested = false,
+  onAuthModalClosed,
 }: NavbarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -66,6 +70,12 @@ export default function Navbar({
   const [showPassword, setShowPassword] = useState(false);
   const [isAuthUnconfigured, setIsAuthUnconfigured] = useState(false);
   const [wishlistCount, setWishlistCount] = useState(0);
+
+  useEffect(() => {
+    if (authModalOpenRequested) {
+      setAuthModalOpen(true);
+    }
+  }, [authModalOpenRequested]);
 
   // Search suggestion state
   const [debouncedQuery, setDebouncedQuery] = useState(searchQuery);
@@ -182,6 +192,13 @@ export default function Navbar({
   const closeAuthModal = () => {
     setAuthModalOpen(false);
     setAuthError(null);
+    setAuthEmail('');
+    setAuthPassword('');
+    setAuthName('');
+    setShowPassword(false);
+    if (onAuthModalClosed) {
+      onAuthModalClosed();
+    }
   };
 
   const toast = useToast();

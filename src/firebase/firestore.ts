@@ -140,13 +140,13 @@ export async function seedDatabaseIfEmpty() {
 }
 
 // --- PRODUCTS API ---
-export async function fetchProductsFromFirestore(isAdminOverride?: boolean): Promise<Product[]> {
+export async function fetchProductsFromFirestore(): Promise<Product[]> {
   try {
-    const isUserAdmin = isAdminOverride !== undefined 
-      ? isAdminOverride 
-      : !!(auth.currentUser && (
-          (auth.currentUser.email && ADMIN_EMAILS.includes(auth.currentUser.email))
-        ));
+    const isUserAdmin = !!(
+      auth.currentUser &&
+      auth.currentUser.email &&
+      ADMIN_EMAILS.includes(auth.currentUser.email)
+    );
     
     const q = isUserAdmin 
       ? collection(db, 'products') 

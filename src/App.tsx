@@ -142,6 +142,7 @@ export default function App() {
     return null;
   });
   const [showAccessDenied, setShowAccessDenied] = useState(false);
+  const [authModalOpenRequested, setAuthModalOpenRequested] = useState(false);
 
   // --- Launch Mode States ---
   const [launchSettings, setLaunchSettings] = useState<LaunchSettings>({
@@ -298,7 +299,7 @@ export default function App() {
         );
         if (isUserAdmin) {
           try {
-            const adminProducts = await fetchProductsFromFirestore(true);
+            const adminProducts = await fetchProductsFromFirestore();
             if (adminProducts && adminProducts.length > 0) {
               setProducts(adminProducts);
             }
@@ -313,7 +314,7 @@ export default function App() {
 
         // Re-fetch products with public filter (only published)
         try {
-          const publicProducts = await fetchProductsFromFirestore(false);
+          const publicProducts = await fetchProductsFromFirestore();
           if (publicProducts && publicProducts.length > 0) {
             setProducts(publicProducts);
           }
@@ -343,13 +344,20 @@ export default function App() {
 
   // Centralized Navigation Handler
   const handleNavigate = (tab: 'home' | 'wishlist' | 'profile' | 'admin', pushHistory = true) => {
-    const isUserAdmin = !!(currentUser && (
-      (currentUser.email && ADMIN_EMAILS.includes(currentUser.email))
-    ));
-
-    if (tab === 'admin' && !isUserAdmin) {
-      setShowAccessDenied(true);
-      return;
+    if (tab === 'admin') {
+      if (!currentUser) {
+        if (pushHistory) window.history.pushState({}, '', '/');
+        setActiveTab('home');
+        setAuthModalOpenRequested(true);
+        return;
+      }
+      const isUserAdmin = !!(currentUser.email && ADMIN_EMAILS.includes(currentUser.email));
+      if (!isUserAdmin) {
+        if (pushHistory) window.history.pushState({}, '', '/');
+        setActiveTab('home');
+        setShowAccessDenied(true);
+        return;
+      }
     }
 
     setActiveTab(tab);
@@ -387,7 +395,11 @@ export default function App() {
         setActiveTab('home');
       }
     } else if (pathname.startsWith('/admin')) {
-      if (!isUserAdmin) {
+      if (!currentUser) {
+        window.history.replaceState({}, '', '/');
+        setActiveTab('home');
+        setAuthModalOpenRequested(true);
+      } else if (!isUserAdmin) {
         window.history.replaceState({}, '', '/');
         setActiveTab('home');
         setShowAccessDenied(true);
@@ -419,12 +431,16 @@ export default function App() {
           setSelectedProductId(null);
         }
       } else if (pathname.startsWith('/admin')) {
-        if (isUserAdmin) {
-          setActiveTab('admin');
-        } else {
+        if (!currentUser) {
+          window.history.replaceState({}, '', '/');
+          setActiveTab('home');
+          setAuthModalOpenRequested(true);
+        } else if (!isUserAdmin) {
           window.history.replaceState({}, '', '/');
           setActiveTab('home');
           setShowAccessDenied(true);
+        } else {
+          setActiveTab('admin');
         }
         setSelectedProductId(null);
       } else if (pathname === '/wishlist') {
@@ -823,6 +839,8 @@ export default function App() {
             setSelectedProductId(productId);
             handleNavigate('home');
           }}
+          authModalOpenRequested={authModalOpenRequested}
+          onAuthModalClosed={() => setAuthModalOpenRequested(false)}
         />
 
         {/* MAIN BODY WRAPPER */}

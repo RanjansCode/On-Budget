@@ -41,8 +41,6 @@ interface AdminPanelProps {
   onSaveLaunchSettings: (settings: LaunchSettings) => Promise<void>;
 }
 
-const DEFAULT_PIN = '0013';
-
 export default function AdminPanel({
   products,
   categories,
@@ -61,9 +59,6 @@ export default function AdminPanel({
   onSaveLaunchSettings,
   isLoading = false,
 }: AdminPanelProps) {
-  const [isAuthenticated, setIsAuthenticated] = useState(true);
-  const [pinInput, setPinInput] = useState('');
-  const [pinError, setPinError] = useState('');
   const [activeTab, setActiveTab] = useState<'dashboard' | 'products' | 'categories' | 'reels' | 'launch'>('dashboard');
 
   // Modal / Form States
@@ -75,18 +70,6 @@ export default function AdminPanel({
 
   const [reelFormOpen, setReelFormOpen] = useState(false);
   const [editingReel, setEditingReel] = useState<Reel | null>(null);
-
-  // Authentication handler
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (pinInput === DEFAULT_PIN) {
-      setIsAuthenticated(true);
-      setPinError('');
-    } else {
-      setPinError('Invalid security PIN. Please try again.');
-      setPinInput('');
-    }
-  };
 
   // Image Presets for premium catalog creation
   const imagePresets = [
@@ -114,54 +97,6 @@ export default function AdminPanel({
   const topPlatformPercentage = topPlatformItem && totalAffiliateClicks > 0
     ? Math.round((topPlatformItem.clicks / totalAffiliateClicks) * 100)
     : 0;
-
-  // Render Lock Screen if not authorized
-  if (!isAuthenticated) {
-    return (
-      <div className="max-w-md mx-auto my-12 p-8 bg-neutral-900 border border-neutral-800 rounded-3xl shadow-xl text-center">
-        <div className="w-14 h-14 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-6">
-          <ShieldAlert className="w-7 h-7" />
-        </div>
-        <h2 className="text-xl font-extrabold text-white tracking-tight">In Our Budget Admin Panel</h2>
-        <p className="text-xs text-neutral-400 mt-2 mb-6">
-          Authorized personnel only. Please input the master security credentials.
-        </p>
-
-        <form onSubmit={handleLogin} className="space-y-4">
-          <div>
-            <label className="block text-left text-[11px] font-bold text-neutral-400 uppercase tracking-wider mb-1.5">
-              Enter Admin Security PIN
-            </label>
-            <input
-              type="password"
-              maxLength={4}
-              value={pinInput}
-              onChange={e => setPinInput(e.target.value)}
-              placeholder="••••"
-              className="w-full text-center tracking-widest text-lg font-bold bg-neutral-950 border border-neutral-800 focus:border-emerald-500 rounded-xl py-3 text-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
-            />
-            {pinError && <p className="text-red-400 text-[11px] mt-2 font-medium">{pinError}</p>}
-          </div>
-
-          <button
-            type="submit"
-            className="w-full bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold py-3 rounded-xl cursor-pointer transition-colors"
-          >
-            Authenticate Core
-          </button>
-        </form>
-
-        <div className="mt-8 pt-4 border-t border-neutral-850 text-left">
-          <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-wide flex items-center gap-1.5">
-            <Info className="w-3.5 h-3.5 text-neutral-500" /> Quick testing guideline:
-          </span>
-          <p className="text-[11px] text-neutral-400 mt-1">
-            Use PIN <code className="bg-neutral-950 px-1.5 py-0.5 rounded text-emerald-400 font-mono font-bold">0013</code> to log in and unlock full dashboard features.
-          </p>
-        </div>
-      </div>
-    );
-  }
 
   if (isLoading) {
     return (
@@ -191,13 +126,10 @@ export default function AdminPanel({
           <p className="text-xs text-neutral-400 mt-0.5">Manage curated links, vertical video reels, and track affiliate metrics.</p>
         </div>
 
-        <div className="flex gap-2">
-          <button
-            onClick={() => setIsAuthenticated(false)}
-            className="bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-medium px-4 py-2.5 rounded-xl cursor-pointer transition-colors"
-          >
-            Lock Terminal
-          </button>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-neutral-400 font-medium bg-neutral-800/80 border border-neutral-700/50 px-3 py-1.5 rounded-xl">
+            Verified Admin Session
+          </span>
         </div>
       </div>
 
