@@ -9,6 +9,8 @@ interface Message {
   products?: Product[];
 }
 
+import { calculateDiscount } from '../utils/discount';
+
 interface OnBudgetAIProps {
   products: Product[];
   onOpenProduct: (productId: string) => void;
@@ -231,10 +233,18 @@ export default function OnBudgetAI({ products, onOpenProduct }: OnBudgetAIProps)
                                 </h4>
                                 <div className="flex items-center gap-1.5 mt-0.5">
                                   <span className="text-[11px] font-black text-[#FF5A00]">₹{p.price}</span>
-                                  <span className="text-[10px] text-slate-400 dark:text-slate-500 line-through">₹{p.originalPrice}</span>
-                                  <span className="text-[9px] bg-red-100 dark:bg-red-950 text-red-600 dark:text-red-400 px-1.5 py-0.2 rounded font-bold border border-red-200 dark:border-red-900/40 font-mono">
-                                    {p.discount}% OFF
-                                  </span>
+                                  {p.originalPrice > p.price && (
+                                    <span className="text-[10px] text-slate-400 dark:text-slate-500 line-through">₹{p.originalPrice}</span>
+                                  )}
+                                  {(() => {
+                                    const disc = calculateDiscount(p.originalPrice, p.price);
+                                    if (!disc.hasDiscount) return null;
+                                    return (
+                                      <span className="text-[9px] bg-[#FF5A00]/10 text-[#FF5A00] px-1.5 py-0.2 rounded font-bold border border-[#FF5A00]/20 font-mono">
+                                        {disc.percentage}% OFF
+                                      </span>
+                                    );
+                                  })()}
                                 </div>
                               </div>
                               <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#FF5A00] transition-colors shrink-0 mr-1" />

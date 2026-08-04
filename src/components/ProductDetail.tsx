@@ -12,6 +12,7 @@ import ImageLightboxModal from './ImageLightboxModal';
 import { getPurchaseLinks } from '../utils/purchaseLinks';
 import { formatUrl } from '../utils/validation';
 import { formatCurrencyPrice, detectUserCurrency } from '../utils/currency';
+import { calculateDiscount } from '../utils/discount';
 import ImageSkeleton from './ImageSkeleton';
 import ProductRecommendations from './ProductRecommendations';
 
@@ -57,6 +58,56 @@ export default function ProductDetail({
     return () => window.removeEventListener('onbudget_currency_changed', handleCurrencyChange);
   }, []);
 
+  // Dynamic SEO & Open Graph Meta Tags
+  useEffect(() => {
+    const previousTitle = document.title;
+    
+    // 1. Title
+    const pageTitle = product.seoTitle?.trim() 
+      ? product.seoTitle 
+      : `${product.title} | On Budget`;
+    document.title = pageTitle;
+
+    // 2. Meta Description
+    const metaDescText = product.seoDescription?.trim()
+      ? product.seoDescription
+      : (product.description || `Buy ${product.title} by ${product.brand} on On Budget. Curated budget deals & honest reviews.`);
+
+    let metaDesc = document.querySelector('meta[name="description"]');
+    if (!metaDesc) {
+      metaDesc = document.createElement('meta');
+      metaDesc.setAttribute('name', 'description');
+      document.head.appendChild(metaDesc);
+    }
+    const prevMetaDesc = metaDesc.getAttribute('content');
+    metaDesc.setAttribute('content', metaDescText);
+
+    // 3. Open Graph Tags
+    const setOgTag = (property: string, content: string) => {
+      let tag = document.querySelector(`meta[property="${property}"]`);
+      if (!tag) {
+        tag = document.createElement('meta');
+        tag.setAttribute('property', property);
+        document.head.appendChild(tag);
+      }
+      tag.setAttribute('content', content);
+    };
+
+    setOgTag('og:title', pageTitle);
+    setOgTag('og:description', metaDescText);
+    if (product.images?.[0]) {
+      setOgTag('og:image', product.images[0]);
+    }
+    setOgTag('og:url', window.location.href);
+
+    return () => {
+      document.title = previousTitle;
+      if (metaDesc && prevMetaDesc !== null) {
+        metaDesc.setAttribute('content', prevMetaDesc);
+      }
+    };
+  }, [product]);
+
   // AI Summary State
   const [aiSummary, setAiSummary] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
@@ -64,6 +115,7 @@ export default function ProductDetail({
 
   // Check if product has any video/social links
   const hasSocialLinks = Boolean(product.youtubeUrl?.trim() || product.instagramUrl?.trim());
+  const discountInfo = calculateDiscount(product.originalPrice, product.price);
   const frequentlyBought = allProducts.filter(p => product.frequentlyBoughtTogether?.includes(p.id));
 
   // Better alternatives
@@ -233,18 +285,30 @@ export default function ProductDetail({
         {/* Curation Details Panel */}
         <div className="space-y-6">
           <div className="space-y-2.5">
-            <div className="flex items-center gap-2">
-              <span className="text-[9px] bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200/60 dark:border-slate-700 font-bold px-2.5 py-1 rounded-full uppercase tracking-wider font-display">
-                {product.brand}
-              </span>
-              <span className="text-[10px] text-[#FF5A00] font-black uppercase tracking-widest font-display">
-                Curated Product
-              </span>
+            <div className="flex items-start gap-3">
+              {/* Circular Discount Badge near Product Title */}
+              {discountInfo.hasDiscount && (
+                <div className="w-12 h-12 sm:w-14 sm:h-14 bg-[#FF5A00] text-white rounded-full flex flex-col items-center justify-center text-center shadow-md border border-white/20 select-none font-display shrink-0 my-0.5">
+                  <span className="text-xs sm:text-sm font-black leading-none">{discountInfo.percentage}%</span>
+                  <span className="text-[8px] sm:text-[9px] font-extrabold uppercase tracking-tight leading-none mt-0.5">OFF</span>
+                </div>
+              )}
+
+              <div className="space-y-1 min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-[9px] bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200/60 dark:border-slate-700 font-bold px-2.5 py-1 rounded-full uppercase tracking-wider font-display">
+                    {product.brand}
+                  </span>
+                  <span className="text-[10px] text-[#FF5A00] font-black uppercase tracking-widest font-display">
+                    Curated Product
+                  </span>
+                </div>
+                
+                <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight leading-tight font-display">
+                  {product.title}
+                </h1>
+              </div>
             </div>
-            
-            <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight leading-tight font-display">
-              {product.title}
-            </h1>
 
             {/* Badges */}
             <div className="flex flex-wrap gap-1.5 pt-1">
@@ -267,18 +331,24 @@ export default function ProductDetail({
                   <span className="text-2xl font-black text-slate-950 dark:text-white">
                     {formatCurrencyPrice(product.price, activeCurrencyCode).formatted}
                   </span>
-                  <span className="text-xs text-slate-400 dark:text-slate-500 line-through">
-                    {formatCurrencyPrice(product.originalPrice, activeCurrencyCode).formatted}
-                  </span>
-                  <span className="text-[10px] bg-[#FF5A00]/10 text-[#FF5A00] border border-[#FF5A00]/20 font-bold px-1.5 py-0.5 rounded font-mono">
-                    {product.discount}% OFF
-                  </span>
+                  {product.originalPrice > product.price && (
+                    <span className="text-xs text-slate-400 dark:text-slate-500 line-through">
+                      {formatCurrencyPrice(product.originalPrice, activeCurrencyCode).formatted}
+                    </span>
+                  )}
                   {activeCurrencyCode !== 'INR' && (
                     <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
                       (Base Price: ₹{product.price})
                     </span>
                   )}
                 </div>
+
+                {/* You Save ₹X (Only rupee saving displayed here, no duplicate %) */}
+                {discountInfo.hasDiscount && (
+                  <div className="mt-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 font-display">
+                    <span>You Save {formatCurrencyPrice(discountInfo.amountSaved, activeCurrencyCode).formatted}</span>
+                  </div>
+                )}
               </div>
             </div>
 

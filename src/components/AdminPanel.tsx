@@ -12,11 +12,12 @@ import {
 import {
   ShieldAlert, LayoutDashboard, ShoppingBag, FolderOpen, Film, Plus, Edit2, Trash2,
   TrendingUp, MousePointer, Share2, DollarSign, Upload, Info, Check, Eye, HelpCircle, Save, X,
-  SlidersHorizontal
+  SlidersHorizontal, Search, Sparkles
 } from 'lucide-react';
 import { Product, Category, Reel, AnalyticsData, PurchaseLink } from '../types';
 import { validateSocialUrl, validatePurchaseUrl, formatUrl } from '../utils/validation';
 import { getPurchaseLinks } from '../utils/purchaseLinks';
+import { calculateDiscount } from '../utils/discount';
 import AdminLaunchMode from './AdminLaunchMode';
 import { LaunchSettings } from '../firebase/firestore';
 import { AdminFormSkeleton } from './Skeletons';
@@ -780,6 +781,86 @@ function ProductFormModal({ product, categories, onClose, onSave, imagePresets }
   const [consText, setConsText] = useState(product?.cons.join('\n') || '');
   const [specText, setSpecText] = useState(product?.specifications.map(s => `${s.name}: ${s.value}`).join('\n') || 'Material: Plastic');
 
+  // Search & SEO State
+  const [searchTags, setSearchTags] = useState<string[]>(product?.searchTags || []);
+  const [tagInput, setTagInput] = useState('');
+  const [seoTitle, setSeoTitle] = useState(product?.seoTitle || '');
+  const [seoDescription, setSeoDescription] = useState(product?.seoDescription || '');
+  const [showOverwriteWarning, setShowOverwriteWarning] = useState(false);
+
+  const handleAddTag = (str?: string) => {
+    const raw = str !== undefined ? str : tagInput;
+    if (!raw) return;
+    const parts = raw.split(',').map(s => s.trim()).filter(Boolean);
+    
+    setSearchTags(prev => {
+      const updated = [...prev];
+      for (const part of parts) {
+        if (!updated.some(t => t.toLowerCase() === part.toLowerCase())) {
+          updated.push(part);
+        }
+      }
+      return updated;
+    });
+    setTagInput('');
+  };
+
+  const handleRemoveTag = (index: number) => {
+    setSearchTags(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const executeAutoGenerateSEO = () => {
+    // 1. Generate Search Tags from product details
+    const extractedWords: string[] = [];
+    if (title) extractedWords.push(...title.split(/[\s,-]+/));
+    if (brand) extractedWords.push(brand);
+    if (category) extractedWords.push(category.replace('-', ' '));
+
+    const cleanTags: string[] = [];
+    if (title && title.trim()) {
+      cleanTags.push(title.trim().toLowerCase());
+    }
+    for (const w of extractedWords) {
+      const cleaned = w.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (cleaned.length > 2 && !['and', 'the', 'for', 'with', 'this', 'item', 'from'].includes(cleaned)) {
+        if (!cleanTags.some(t => t.toLowerCase() === cleaned)) {
+          cleanTags.push(cleaned);
+        }
+      }
+    }
+    setSearchTags(cleanTags.slice(0, 10));
+
+    // 2. Generate SEO Title
+    let generatedTitle = `${title.trim()}${brand ? ` by ${brand}` : ''} | On Budget`;
+    if (generatedTitle.length > 60) {
+      generatedTitle = `${title.trim()} | On Budget`;
+      if (generatedTitle.length > 60) {
+        generatedTitle = generatedTitle.substring(0, 57) + '...';
+      }
+    }
+    setSeoTitle(generatedTitle);
+
+    // 3. Generate SEO Description
+    let sourceDesc = description.trim() || whyIRecommend.trim() || reviewText.trim() || `Buy ${title} at an affordable price on On Budget.`;
+    if (sourceDesc.length > 160) {
+      sourceDesc = sourceDesc.substring(0, 157) + '...';
+    } else if (sourceDesc.length < 110 && whyIRecommend.trim()) {
+      sourceDesc = `${sourceDesc} ${whyIRecommend.trim()}`;
+      if (sourceDesc.length > 160) {
+        sourceDesc = sourceDesc.substring(0, 157) + '...';
+      }
+    }
+    setSeoDescription(sourceDesc);
+  };
+
+  const handleAutoGenerateSEO = () => {
+    if (searchTags.length > 0 || seoTitle.trim() !== '' || seoDescription.trim() !== '') {
+      setShowOverwriteWarning(true);
+    } else {
+      executeAutoGenerateSEO();
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title || !description || !imageUrl) return;
@@ -838,7 +919,7 @@ function ProductFormModal({ product, categories, onClose, onSave, imagePresets }
     }
     setPurchaseLinkErrors({});
 
-    const discountPercentage = originalPrice > 0 ? Math.round(((originalPrice - price) / originalPrice) * 100) : 0;
+    const discountPercentage = calculateDiscount(Number(originalPrice), Number(price)).percentage;
 
     // Backward compatibility: build affiliateLinks array from purchaseLinks
     const affiliateLinks: Product['affiliateLinks'] = validPurchaseLinks.map(l => ({
@@ -897,6 +978,9 @@ function ProductFormModal({ product, categories, onClose, onSave, imagePresets }
       faqs: [
         { question: 'Is this high quality?', answer: 'Yes, it is personally curated and reviewed by the team.' }
       ],
+      searchTags: searchTags.map(t => t.trim()).filter(Boolean),
+      seoTitle: seoTitle.trim(),
+      seoDescription: seoDescription.trim(),
       status: 'Published',
       createdAt: product?.createdAt || new Date().toISOString()
     };
@@ -1351,6 +1435,182 @@ function ProductFormModal({ product, categories, onClose, onSave, imagePresets }
                   placeholder="Material: Liquid Silicone&#10;Dimensions: 15cm x 5cm&#10;Battery life: 10 hours"
                   className="w-full bg-neutral-950 border border-neutral-800 focus:border-emerald-500 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
                 />
+              </div>
+            </div>
+          </div>
+
+          {/* Section 6: SEARCH & SEO */}
+          <div className="space-y-4 pt-2 border-t border-neutral-800">
+            <div className="flex items-center justify-between border-b border-neutral-800 pb-1">
+              <h4 className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest flex items-center gap-1.5">
+                <Search className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Search & SEO</span>
+              </h4>
+              <button
+                type="button"
+                onClick={handleAutoGenerateSEO}
+                className="text-[10px] font-bold bg-neutral-800 hover:bg-emerald-600 text-emerald-300 hover:text-white px-2.5 py-1 rounded-lg border border-neutral-700 transition-colors flex items-center gap-1 cursor-pointer"
+                title="Auto-generate SEO title, description, and tags from product details"
+              >
+                <Sparkles className="w-3 h-3 text-amber-400" />
+                <span>Generate SEO</span>
+              </button>
+            </div>
+
+            {/* Overwrite Confirmation banner */}
+            {showOverwriteWarning && (
+              <div className="p-2.5 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-300 text-[11px] flex items-center justify-between">
+                <span>Auto-generating will overwrite current SEO fields. Proceed?</span>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      executeAutoGenerateSEO();
+                      setShowOverwriteWarning(false);
+                    }}
+                    className="bg-amber-500 text-black font-bold px-2.5 py-0.5 rounded text-[10px] hover:bg-amber-400 cursor-pointer"
+                  >
+                    Confirm
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowOverwriteWarning(false)}
+                    className="text-neutral-400 hover:text-white text-[10px] cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* A. SEARCH TAGS */}
+            <div>
+              <label className="block text-[11px] font-bold text-neutral-300 mb-1">
+                Search Tags
+              </label>
+              <div className="bg-neutral-950 border border-neutral-800 focus-within:border-emerald-500 rounded-xl p-2 transition-colors">
+                <div className="flex flex-wrap gap-1.5 mb-1.5">
+                  {searchTags.map((tag, idx) => (
+                    <span
+                      key={idx}
+                      className="inline-flex items-center gap-1 bg-emerald-950/80 text-emerald-300 border border-emerald-800/60 text-[10px] font-bold px-2.5 py-0.5 rounded-lg font-display"
+                    >
+                      <span>{tag}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveTag(idx)}
+                        className="text-emerald-400 hover:text-red-400 p-0.5 cursor-pointer"
+                      >
+                        <X className="w-2.5 h-2.5" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={tagInput}
+                    onChange={(e) => setTagInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ',') {
+                        e.preventDefault();
+                        handleAddTag();
+                      }
+                    }}
+                    placeholder="e.g. study lamp, LED lamp, desk lamp, rechargeable"
+                    className="flex-1 bg-transparent text-xs text-white placeholder-neutral-500 focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleAddTag()}
+                    className="text-[10px] font-bold bg-neutral-800 hover:bg-neutral-700 text-neutral-200 px-2.5 py-1 rounded-lg border border-neutral-700 shrink-0 cursor-pointer"
+                  >
+                    + Add
+                  </button>
+                </div>
+              </div>
+              <p className="text-[10px] text-neutral-500 mt-1">
+                Press Enter or comma to create tags. Multiple tags power search keyword matches.
+              </p>
+            </div>
+
+            {/* B. SEO TITLE */}
+            <div>
+              <div className="flex justify-between items-center mb-1">
+                <label className="block text-[11px] font-bold text-neutral-300">
+                  SEO Title
+                </label>
+                <span className={`text-[10px] font-mono ${seoTitle.length > 60 ? 'text-amber-400 font-bold' : 'text-neutral-500'}`}>
+                  {seoTitle.length} / 60
+                </span>
+              </div>
+              <input
+                type="text"
+                value={seoTitle}
+                onChange={(e) => setSeoTitle(e.target.value)}
+                placeholder="Enter SEO-friendly title"
+                className={`w-full bg-neutral-950 border ${seoTitle.length > 60 ? 'border-amber-500/60 focus:border-amber-400' : 'border-neutral-800 focus:border-emerald-500'} rounded-xl px-3 py-2 text-xs text-white focus:outline-none`}
+              />
+              <div className="flex justify-between items-center mt-1">
+                <p className="text-[10px] text-neutral-500">
+                  Recommended: keep under 60 characters for search engines.
+                </p>
+                {seoTitle.length > 60 && (
+                  <span className="text-[10px] text-amber-400 font-medium">
+                    ⚠️ Exceeds 60 characters recommendation
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* C. SEO DESCRIPTION */}
+            <div>
+              <div className="flex justify-between items-center mb-1">
+                <label className="block text-[11px] font-bold text-neutral-300">
+                  SEO Description
+                </label>
+                <span className={`text-[10px] font-mono ${seoDescription.length > 160 ? 'text-amber-400 font-bold' : 'text-neutral-500'}`}>
+                  {seoDescription.length} / 160
+                </span>
+              </div>
+              <textarea
+                rows={3}
+                value={seoDescription}
+                onChange={(e) => setSeoDescription(e.target.value)}
+                placeholder="Write a short description for search engines..."
+                className={`w-full bg-neutral-950 border ${seoDescription.length > 160 ? 'border-amber-500/60 focus:border-amber-400' : 'border-neutral-800 focus:border-emerald-500'} rounded-xl px-3 py-2 text-xs text-white focus:outline-none`}
+              />
+              <div className="flex justify-between items-center mt-1">
+                <p className="text-[10px] text-neutral-500">
+                  Recommended: around 150–160 characters.
+                </p>
+                {seoDescription.length > 160 && (
+                  <span className="text-[10px] text-amber-400 font-medium">
+                    ⚠️ Exceeds 160 characters recommendation
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* D. GOOGLE SEARCH PREVIEW */}
+            <div className="bg-neutral-950 border border-neutral-800 rounded-xl p-3 space-y-1.5">
+              <div className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider flex items-center gap-1 mb-2">
+                <Search className="w-3 h-3 text-sky-400" />
+                <span>Google Search Preview</span>
+              </div>
+              <div className="space-y-1 font-sans">
+                <div className="flex items-center gap-1.5 text-[11px] text-neutral-400 truncate">
+                  <div className="w-3.5 h-3.5 rounded-full bg-emerald-500 text-black text-[8px] font-bold flex items-center justify-center shrink-0 font-display">
+                    OB
+                  </div>
+                  <span className="truncate text-neutral-400">https://onbudget.app › product › {category || 'curated'}</span>
+                </div>
+                <div className="text-xs sm:text-sm font-medium text-[#8ab4f8] hover:underline cursor-pointer truncate">
+                  {seoTitle.trim() || (title.trim() ? `${title} | On Budget` : 'Product Title | On Budget')}
+                </div>
+                <p className="text-[11px] text-[#bdc1c6] line-clamp-2 leading-relaxed">
+                  {seoDescription.trim() || (description.trim() ? description : 'Discover top budget gadgets, personal tests, and curated deals on On Budget.')}
+                </p>
               </div>
             </div>
           </div>

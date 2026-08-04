@@ -43,6 +43,21 @@
 }
 
 /* Base custom resets */
+html, body, #root {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+*, ::before, ::after {
+  box-sizing: border-box;
+}
+
+img, video, iframe, canvas, svg {
+  max-width: 100%;
+}
+
 body {
   font-family: var(--font-sans);
   background-color: #F8FAFC;

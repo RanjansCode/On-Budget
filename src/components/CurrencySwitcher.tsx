@@ -35,15 +35,15 @@ export default function CurrencySwitcher({ currentCurrency, onCurrencyChange, co
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={`flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800 dark:hover:bg-slate-700/80 text-slate-800 dark:text-slate-200 rounded-xl transition-all cursor-pointer border border-slate-200/60 dark:border-slate-700/60 shadow-2xs font-semibold ${
-          compact ? 'px-2 py-1 text-[11px]' : 'px-2.5 py-1.5 text-xs'
+        className={`flex items-center gap-1 sm:gap-1.5 bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800 dark:hover:bg-slate-700/80 text-slate-800 dark:text-slate-200 rounded-xl transition-all cursor-pointer border border-slate-200/60 dark:border-slate-700/60 shadow-2xs font-semibold ${
+          compact ? 'px-1.5 sm:px-2 py-1 text-[10px] sm:text-[11px]' : 'px-2 sm:px-2.5 py-1.5 text-xs'
         }`}
         title="Change Currency"
       >
-        <span className="text-sm leading-none">{activeCurrency.flag}</span>
+        <span className="text-xs sm:text-sm leading-none shrink-0">{activeCurrency.flag}</span>
         <span className="font-bold">{activeCurrency.code}</span>
-        <span className="text-slate-400 dark:text-slate-400 font-mono text-[10px]">({activeCurrency.symbol})</span>
-        <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        <span className="text-slate-400 dark:text-slate-400 font-mono text-[10px] hidden sm:inline">({activeCurrency.symbol})</span>
+        <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform shrink-0 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
       {isOpen && (

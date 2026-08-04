@@ -53,6 +53,7 @@ import LaunchModeOverlay from './components/LaunchModeOverlay';
 import SocialLinksModal from './components/SocialLinksModal';
 import { useToast } from './components/Toast';
 import { LocationCurrencyBanner } from './components/CurrencySwitcher';
+import { calculateDiscount } from './utils/discount';
 import { detectUserCurrency, setUserCurrency } from './utils/currency';
 import {
   ProductCardSkeleton,
@@ -651,11 +652,14 @@ export default function App() {
 
   // --- Filter and Sort Core Logic ---
   const filteredProducts = products.filter(p => {
-    const matchesSearch = searchQuery === '' ||
-      p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (p.brand && p.brand.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      p.category.toLowerCase().includes(searchQuery.toLowerCase());
+    const query = searchQuery.trim().toLowerCase();
+    const matchesSearch = query === '' ||
+      p.title.toLowerCase().includes(query) ||
+      (p.brand && p.brand.toLowerCase().includes(query)) ||
+      p.category.toLowerCase().includes(query) ||
+      p.description.toLowerCase().includes(query) ||
+      (p.whyIRecommend && p.whyIRecommend.toLowerCase().includes(query)) ||
+      (p.searchTags && Array.isArray(p.searchTags) && p.searchTags.some(tag => tag.toLowerCase().includes(query)));
 
     const matchesCategory = selectedCategory === '' || p.category === selectedCategory;
     const matchesPrice = selectedPriceRange === null || p.price <= selectedPriceRange;
@@ -670,7 +674,7 @@ export default function App() {
     if (sortOption === 'popular') return b.rating - a.rating;
     if (sortOption === 'latest') return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     if (sortOption === 'low-price') return a.price - b.price;
-    if (sortOption === 'discount') return b.discount - a.discount;
+    if (sortOption === 'discount') return calculateDiscount(b.originalPrice, b.price).percentage - calculateDiscount(a.originalPrice, a.price).percentage;
     if (sortOption === 'rating') return b.rating - a.rating;
     return 0;
   });
@@ -784,6 +788,8 @@ export default function App() {
           onCurrencyChange={(code) => {
             setCurrentCurrency(code);
           }}
+          selectedCategory={selectedCategory}
+          onSelectCategory={(cat) => setSelectedCategory(cat)}
         />
 
         {/* MAIN BODY WRAPPER */}

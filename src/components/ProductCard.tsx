@@ -4,6 +4,7 @@ import { Heart, Sparkles, Star, Film, CheckCircle, Maximize2 } from 'lucide-reac
 import { Product } from '../types';
 import ImageLightboxModal from './ImageLightboxModal';
 import { formatCurrencyPrice, detectUserCurrency } from '../utils/currency';
+import { calculateDiscount } from '../utils/discount';
 import ImageSkeleton from './ImageSkeleton';
 
 interface ProductCardProps {
@@ -24,7 +25,7 @@ export default function ProductCard({
   onOpenSocialLinks,
   currentCurrency: propCurrency,
 }: ProductCardProps) {
-  const { title, price, originalPrice, discount, brand, images, badges } = product;
+  const { title, price, originalPrice, brand, images, badges } = product;
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [activeCurrencyCode, setActiveCurrencyCode] = useState(propCurrency || 'INR');
 
@@ -44,6 +45,7 @@ export default function ProductCard({
     return () => window.removeEventListener('onbudget_currency_changed', handleCurrencyChange);
   }, [propCurrency]);
 
+  const { percentage, hasDiscount } = calculateDiscount(originalPrice, price);
   const formattedMainPrice = formatCurrencyPrice(price, activeCurrencyCode);
   const formattedOrigPrice = formatCurrencyPrice(originalPrice, activeCurrencyCode);
 
@@ -68,11 +70,11 @@ export default function ProductCard({
           <Heart className={`w-3.5 h-3.5 transition-all ${isWishlisted ? 'fill-red-500 text-red-500 scale-110' : ''}`} />
         </button>
 
-        {/* Main Image Area - Uncropped, Centered, Neutral background, Lightbox on click */}
+        {/* Main Image Area - Entirely Clickable for Navigation to Product Detail Page */}
         <div
-          onClick={() => setIsLightboxOpen(true)}
-          className="relative w-full h-[220px] sm:h-[240px] md:h-[260px] overflow-hidden bg-slate-100/90 dark:bg-slate-950/90 flex items-center justify-center p-4 cursor-pointer shrink-0 border-b border-slate-200/40 dark:border-slate-800/60 group/img"
-          title="Click to open full-screen image preview"
+          onClick={() => onOpenProduct(product.id)}
+          className="relative w-full h-[220px] sm:h-[240px] md:h-[260px] overflow-hidden bg-slate-100/90 dark:bg-slate-950/90 flex items-center justify-center p-4 cursor-pointer shrink-0 border-b border-slate-200/40 dark:border-slate-800/60 group/img transition-all duration-300"
+          title="Click to view product details"
         >
           <ImageSkeleton
             src={images[0]}
@@ -82,24 +84,29 @@ export default function ProductCard({
             referrerPolicy="no-referrer"
           />
 
-          {/* Full Preview Hover Indicator */}
-          <div className="absolute inset-0 bg-black/10 dark:bg-black/20 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center pointer-events-none z-10">
-            <span className="bg-slate-900/80 text-white text-[10px] font-bold px-2.5 py-1.5 rounded-xl backdrop-blur-xs flex items-center gap-1.5 shadow-md border border-white/10">
-              <Maximize2 className="w-3 h-3 text-[#FF5A00]" />
-              <span>Full Preview</span>
-            </span>
-          </div>
+          {/* Full Preview Lightbox Button */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsLightboxOpen(true);
+            }}
+            className="absolute bottom-3 right-3 z-20 p-1.5 bg-slate-900/70 hover:bg-[#FF5A00] text-white rounded-lg opacity-0 group-hover/img:opacity-100 transition-opacity backdrop-blur-xs border border-white/10 cursor-pointer shadow-sm"
+            title="Expand Full Screen Image"
+          >
+            <Maximize2 className="w-3.5 h-3.5" />
+          </button>
 
           {/* Perfect Circular Discount Badge */}
-          {discount > 0 && (
-            <div className="absolute top-2.5 left-2.5 z-20 w-11 h-11 sm:w-12 sm:h-12 bg-[#FF5A00] text-white rounded-full flex flex-col items-center justify-center text-center shadow-md border border-white/20 select-none font-display pointer-events-none">
-              <span className="text-[10px] sm:text-xs font-black leading-none">{discount}%</span>
+          {hasDiscount && (
+            <div className="absolute top-2.5 left-2.5 z-20 w-11 h-11 sm:w-13 sm:h-13 bg-[#FF5A00] text-white rounded-full flex flex-col items-center justify-center text-center shadow-md border border-white/20 select-none font-display pointer-events-none shrink-0">
+              <span className="text-[11px] sm:text-xs font-black leading-none">{percentage}%</span>
               <span className="text-[7px] sm:text-[8px] font-extrabold uppercase tracking-tight leading-none mt-0.5">OFF</span>
             </div>
           )}
 
           {/* Badges Overlay */}
-          <div className="absolute bottom-2 left-2 right-2 flex flex-wrap gap-1 pointer-events-none z-10">
+          <div className="absolute bottom-2 left-2 right-12 flex flex-wrap gap-1 pointer-events-none z-10">
             {badges.seenInReel && (
               <span className="inline-flex items-center gap-1 bg-sky-500/90 dark:bg-sky-950/90 text-white dark:text-sky-400 text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md shadow-xs">
                 <Film className="w-2.5 h-2.5" /> Reel

@@ -66,6 +66,9 @@ export interface Product {
   reelId?: string; // ID of the Reel featuring this product
   youtubeUrl?: string; // Optional YouTube video link
   instagramUrl?: string; // Optional Instagram reel/post link
+  searchTags?: string[]; // Custom search keywords/tags
+  seoTitle?: string; // Dedicated SEO Title
+  seoDescription?: string; // Dedicated SEO Description
   status: 'Published' | 'Draft';
   createdAt: string;
 }

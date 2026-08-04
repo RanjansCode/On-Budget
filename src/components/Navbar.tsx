@@ -35,6 +35,8 @@ interface NavbarProps {
   onBypassLogout?: () => void;
   currentCurrency?: string;
   onCurrencyChange?: (code: string) => void;
+  selectedCategory?: string;
+  onSelectCategory?: (categoryName: string) => void;
 }
 
 export default function Navbar({
@@ -53,6 +55,8 @@ export default function Navbar({
   onBypassLogout,
   currentCurrency = 'INR',
   onCurrencyChange = () => {},
+  selectedCategory = '',
+  onSelectCategory = () => {},
 }: NavbarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -65,6 +69,32 @@ export default function Navbar({
   const [authLoading, setAuthLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isAuthUnconfigured, setIsAuthUnconfigured] = useState(false);
+  const [wishlistCount, setWishlistCount] = useState(0);
+
+  // Listen for Wishlist updates to show live badge in bottom nav bar
+  useEffect(() => {
+    const updateWishlistCount = () => {
+      try {
+        const saved = localStorage.getItem('onbudget_wishlist');
+        if (saved) {
+          const list = JSON.parse(saved);
+          setWishlistCount(Array.isArray(list) ? list.length : 0);
+        } else {
+          setWishlistCount(0);
+        }
+      } catch {
+        setWishlistCount(0);
+      }
+    };
+
+    updateWishlistCount();
+    window.addEventListener('storage', updateWishlistCount);
+    window.addEventListener('onbudget_wishlist_updated', updateWishlistCount);
+    return () => {
+      window.removeEventListener('storage', updateWishlistCount);
+      window.removeEventListener('onbudget_wishlist_updated', updateWishlistCount);
+    };
+  }, []);
 
   const closeAuthModal = () => {
     setAuthModalOpen(false);
@@ -217,8 +247,8 @@ export default function Navbar({
   return (
     <>
       <nav className="sticky top-0 z-40 bg-white/90 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800/80 transition-colors">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16 gap-4">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-14 sm:h-16 gap-1.5 sm:gap-4 w-full max-w-full overflow-hidden">
             
             {/* LOGO */}
             <div
@@ -226,14 +256,14 @@ export default function Navbar({
                 setActiveTab('home');
                 setMobileMenuOpen(false);
               }}
-              className="flex items-center cursor-pointer shrink-0"
+              className="flex items-center cursor-pointer shrink shrink-0 min-w-0 max-w-[110px] xs:max-w-[140px] sm:max-w-[180px] md:max-w-none"
               id="navbar-logo"
             >
-              <div className="bg-white p-1 rounded-xl flex items-center justify-center border border-slate-100 dark:border-slate-800 shadow-xs">
+              <div className="bg-white p-0.5 sm:p-1 rounded-xl flex items-center justify-center border border-slate-100 dark:border-slate-800 shadow-2xs">
                 <img
                   src={inOurBudgetLogo}
                   alt="In Our Budget Logo"
-                  className="h-10 w-auto object-contain hover:scale-102 transition-transform duration-200"
+                  className="h-7 sm:h-9 md:h-10 w-auto object-contain max-w-full hover:scale-102 transition-transform duration-200"
                   referrerPolicy="no-referrer"
                 />
               </div>
@@ -283,32 +313,33 @@ export default function Navbar({
             </div>
 
             {/* HEADER ICONS */}
-            <div className="flex items-center gap-2 shrink-0" id="navbar-actions">
+            <div className="flex items-center gap-1 sm:gap-2 shrink-0" id="navbar-actions">
               {/* Currency Switcher */}
               <CurrencySwitcher
                 currentCurrency={currentCurrency}
                 onCurrencyChange={onCurrencyChange}
+                compact
               />
 
               {/* Theme Toggle */}
               <button
                 onClick={() => setDarkMode(!darkMode)}
-                className="p-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:border-slate-300 dark:hover:border-slate-700 rounded-xl transition-all cursor-pointer"
+                className="p-1.5 sm:p-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:border-slate-300 dark:hover:border-slate-700 rounded-xl transition-all cursor-pointer shrink-0"
                 title="Toggle Theme"
               >
-                {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                {darkMode ? <Sun className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : <Moon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
               </button>
 
               {/* Notifications Popover */}
-              <div className="relative">
+              <div className="relative shrink-0">
                 <button
                   onClick={handleNotifClick}
-                  className="p-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:border-slate-300 dark:hover:border-slate-700 rounded-xl transition-all relative cursor-pointer"
+                  className="p-1.5 sm:p-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:border-slate-300 dark:hover:border-slate-700 rounded-xl transition-all relative cursor-pointer"
                   title="Notifications"
                 >
-                  <Bell className="w-4 h-4" />
+                  <Bell className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   {unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-[#FF5A00] text-[9px] text-white font-black flex items-center justify-center rounded-full border-2 border-white dark:border-slate-900 animate-bounce">
+                    <span className="absolute -top-1 -right-1 w-3.5 h-3.5 sm:w-4 sm:h-4 bg-[#FF5A00] text-[8px] sm:text-[9px] text-white font-black flex items-center justify-center rounded-full border-2 border-white dark:border-slate-900 animate-bounce">
                       {unreadCount}
                     </span>
                   )}
@@ -322,9 +353,9 @@ export default function Navbar({
                         initial={{ opacity: 0, y: 10, scale: 0.95 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                        className="absolute right-0 mt-2.5 w-80 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl z-50 overflow-hidden"
+                        className="absolute right-0 mt-2.5 w-72 sm:w-80 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl z-50 overflow-hidden"
                       >
-                        <div className="p-4 bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-850 flex justify-between items-center">
+                        <div className="p-3.5 sm:p-4 bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-850 flex justify-between items-center">
                           <span className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider font-display">Alerts & Price Drops</span>
                           <span className="text-[10px] bg-[#FF5A00]/10 text-[#FF5A00] font-bold px-2 py-0.5 rounded-full uppercase">
                             New
@@ -357,17 +388,17 @@ export default function Navbar({
 
               {/* User Account Controls */}
               {user ? (
-                <div className="relative group">
-                  <button className="flex items-center gap-1.5 p-1 bg-slate-50 dark:bg-slate-950 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-full transition-all cursor-pointer">
+                <div className="relative group shrink-0">
+                  <button className="flex items-center p-0.5 sm:p-1 bg-slate-50 dark:bg-slate-950 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-full transition-all cursor-pointer">
                     {user.photoURL ? (
                       <img
                         src={user.photoURL}
                         alt="User"
-                        className="w-7 h-7 rounded-full object-cover"
+                        className="w-6 h-6 sm:w-7 sm:h-7 rounded-full object-cover"
                         referrerPolicy="no-referrer"
                       />
                     ) : (
-                      <div className="w-7 h-7 bg-[#FF5A00]/10 text-[#FF5A00] rounded-full flex items-center justify-center font-bold text-xs uppercase">
+                      <div className="w-6 h-6 sm:w-7 sm:h-7 bg-[#FF5A00]/10 text-[#FF5A00] rounded-full flex items-center justify-center font-bold text-[10px] sm:text-xs uppercase">
                         {user.displayName ? user.displayName.slice(0, 1) : user.email?.slice(0, 1) || 'U'}
                       </div>
                     )}
@@ -407,9 +438,9 @@ export default function Navbar({
                     setAuthError(null);
                     setAuthModalOpen(true);
                   }}
-                  className="flex items-center gap-1.5 px-4 py-2 bg-[#FF5A00] hover:bg-[#E04F00] text-white text-xs font-bold rounded-xl shadow-md shadow-[#FF5A00]/15 transition-all cursor-pointer scale-100 active:scale-95"
+                  className="flex items-center gap-1 p-1.5 sm:px-3.5 sm:py-2 bg-[#FF5A00] hover:bg-[#E04F00] text-white text-xs font-bold rounded-xl shadow-md shadow-[#FF5A00]/15 transition-all cursor-pointer shrink-0"
                 >
-                  <LogIn className="w-3.5 h-3.5" />
+                  <LogIn className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   <span className="hidden sm:inline">Sign In</span>
                 </button>
               )}
@@ -417,13 +448,61 @@ export default function Navbar({
               {/* Mobile Menu Button */}
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="p-2 md:hidden bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-xl transition-all cursor-pointer"
+                className="p-1.5 sm:p-2 md:hidden bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-xl transition-all cursor-pointer shrink-0"
+                aria-label="Toggle Mobile Menu"
               >
                 {mobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
               </button>
             </div>
           </div>
         </div>
+
+        {/* MOBILE SUB-SEARCH BAR */}
+        <div className="md:hidden px-3 sm:px-4 pb-2.5 pt-1 border-t border-slate-100 dark:border-slate-800/60 bg-white dark:bg-slate-900 w-full max-w-full overflow-hidden">
+          <div className="relative flex items-center">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Search gadgets, desk setups, under ₹200..."
+              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800 focus:border-[#FF5A00] dark:focus:border-[#FF5A00] focus:ring-1 focus:ring-[#FF5A00] rounded-full pl-9 pr-16 py-2 text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none transition-all"
+            />
+            <div className="absolute right-2.5 flex items-center gap-1">
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                  title="Clear search"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={onVoiceSearch}
+                className="p-1 text-slate-400 hover:text-[#FF5A00] transition-colors cursor-pointer"
+                title="Voice Search"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-[#FF5A00]" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* BACKDROP FOR MOBILE MENU */}
+        <AnimatePresence>
+          {mobileMenuOpen && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 top-[100px] sm:top-[120px] bg-slate-950/40 backdrop-blur-2xs z-30 md:hidden"
+              onClick={() => setMobileMenuOpen(false)}
+            />
+          )}
+        </AnimatePresence>
 
         {/* MOBILE NAV DRAWER */}
         <AnimatePresence>
@@ -432,54 +511,197 @@ export default function Navbar({
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="md:hidden bg-white dark:bg-slate-950 border-t border-slate-100 dark:border-slate-800 overflow-hidden"
+              className="md:hidden bg-white dark:bg-slate-950 border-t border-slate-100 dark:border-slate-800 overflow-hidden shadow-2xl relative z-40"
             >
               <div className="p-4 space-y-4">
-                {/* Search */}
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={e => setSearchQuery(e.target.value)}
-                    placeholder="Search gadgets, budgets..."
-                    className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:border-[#FF5A00] focus:ring-1 focus:ring-[#FF5A00] rounded-full px-4 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none"
-                  />
-                  <Search className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2" />
+                {/* User Profile Card or Guest Banner */}
+                {user ? (
+                  <div className="p-3.5 bg-slate-50 dark:bg-slate-900/80 rounded-2xl border border-slate-200/80 dark:border-slate-800 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      {user.photoURL ? (
+                        <img
+                          src={user.photoURL}
+                          alt="User"
+                          className="w-10 h-10 rounded-full object-cover border border-slate-200 dark:border-slate-700 shrink-0"
+                          referrerPolicy="no-referrer"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 bg-[#FF5A00]/15 text-[#FF5A00] rounded-full flex items-center justify-center font-black text-sm uppercase shrink-0 border border-[#FF5A00]/20">
+                          {user.displayName ? user.displayName.slice(0, 1) : user.email?.slice(0, 1) || 'U'}
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-xs font-bold text-slate-900 dark:text-white truncate font-display">
+                            {user.displayName || 'Budget Explorer'}
+                          </p>
+                          {isAdmin && (
+                            <span className="text-[9px] bg-[#FF5A00]/10 text-[#FF5A00] border border-[#FF5A00]/20 font-bold px-1.5 py-0.2 rounded uppercase font-mono shrink-0">
+                              Admin
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                          {user.email}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setActiveTab('profile');
+                        setMobileMenuOpen(false);
+                      }}
+                      className="text-[10px] text-[#FF5A00] font-bold hover:underline shrink-0 font-display"
+                    >
+                      View Profile
+                    </button>
+                  </div>
+                ) : (
+                  <div className="p-4 bg-gradient-to-r from-[#FF5A00]/10 to-amber-500/10 dark:from-[#FF5A00]/15 dark:to-amber-500/15 rounded-2xl border border-[#FF5A00]/20 flex items-center justify-between gap-3">
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-900 dark:text-white font-display">Sign In to On Budget</h4>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Save wishlist items & submit reviews</p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setAuthMode('signin');
+                        setAuthError(null);
+                        setAuthModalOpen(true);
+                        setMobileMenuOpen(false);
+                      }}
+                      className="px-3.5 py-2 bg-[#FF5A00] hover:bg-[#E04F00] text-white text-xs font-bold rounded-xl shadow-md shadow-[#FF5A00]/15 shrink-0 transition-all cursor-pointer"
+                    >
+                      Sign In
+                    </button>
+                  </div>
+                )}
+
+                {/* Primary Navigation Tabs */}
+                <div className="space-y-1">
+                  <span className="text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-widest px-1 font-display">
+                    Navigation
+                  </span>
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    {navItems.map(item => {
+                      const Icon = item.icon;
+                      const isActive = activeTab === item.id;
+                      return (
+                        <button
+                          key={item.id}
+                          onClick={() => {
+                            setActiveTab(item.id as any);
+                            setMobileMenuOpen(false);
+                          }}
+                          className={`flex items-center gap-2.5 p-3 rounded-xl text-xs font-bold tracking-wide transition-all cursor-pointer ${
+                            isActive
+                              ? 'bg-[#FF5A00] text-white shadow-md shadow-[#FF5A00]/20'
+                              : 'bg-slate-50 dark:bg-slate-900/90 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/60 dark:border-slate-800'
+                          }`}
+                        >
+                          <Icon className="w-4 h-4 shrink-0" />
+                          <span className="truncate">{item.name}</span>
+                          {item.id === 'wishlist' && wishlistCount > 0 && (
+                            <span className={`ml-auto text-[9px] px-1.5 py-0.2 rounded-full font-black ${
+                              isActive ? 'bg-white text-[#FF5A00]' : 'bg-[#FF5A00] text-white'
+                            }`}>
+                              {wishlistCount}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
-                {/* Currency Switcher Mobile */}
-                <div className="flex items-center justify-between p-2.5 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200/60 dark:border-slate-800">
-                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Display Currency:</span>
-                  <CurrencySwitcher
-                    currentCurrency={currentCurrency}
-                    onCurrencyChange={onCurrencyChange}
-                    compact
-                  />
-                </div>
-
-                {/* Items */}
-                <div className="flex flex-col gap-1">
-                  {navItems.map(item => {
-                    const Icon = item.icon;
-                    return (
+                {/* Categories Quick Chips */}
+                {categories && categories.length > 0 && (
+                  <div className="space-y-1.5 pt-1">
+                    <span className="text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-widest px-1 font-display">
+                      Explore Categories
+                    </span>
+                    <div className="flex flex-wrap gap-1.5 pt-0.5">
                       <button
-                        key={item.id}
                         onClick={() => {
-                          setActiveTab(item.id as any);
+                          onSelectCategory('');
+                          setActiveTab('home');
                           setMobileMenuOpen(false);
                         }}
-                        className={`flex items-center gap-3 w-full px-4 py-3 rounded-xl text-xs font-bold tracking-wide text-left transition-all cursor-pointer ${
-                          activeTab === item.id
-                            ? 'bg-[#FF5A00]/10 text-[#FF5A00] border border-[#FF5A00]/15'
-                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-transparent'
+                        className={`text-[11px] font-bold px-3 py-1.5 rounded-xl border transition-all cursor-pointer font-display ${
+                          selectedCategory === ''
+                            ? 'bg-[#FF5A00]/10 text-[#FF5A00] border-[#FF5A00]/30 font-black'
+                            : 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800'
                         }`}
                       >
-                        <Icon className="w-4.5 h-4.5" />
-                        {item.name}
+                        All Categories
                       </button>
-                    );
-                  })}
+                      {categories.map(c => (
+                        <button
+                          key={c.id}
+                          onClick={() => {
+                            onSelectCategory(c.name);
+                            setActiveTab('home');
+                            setMobileMenuOpen(false);
+                          }}
+                          className={`text-[11px] font-bold px-3 py-1.5 rounded-xl border transition-all cursor-pointer font-display flex items-center gap-1.5 ${
+                            selectedCategory === c.name
+                              ? 'bg-[#FF5A00]/10 text-[#FF5A00] border-[#FF5A00]/30 font-black'
+                              : 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800'
+                          }`}
+                        >
+                          <span>{c.icon}</span>
+                          <span>{c.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Display Preferences */}
+                <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-2">
+                  <span className="text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-widest px-1 font-display">
+                    Preferences
+                  </span>
+                  <div className="grid grid-cols-2 gap-2">
+                    {/* Currency Switcher Mobile */}
+                    <div className="flex items-center justify-between p-2.5 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200/60 dark:border-slate-800">
+                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Currency</span>
+                      <CurrencySwitcher
+                        currentCurrency={currentCurrency}
+                        onCurrencyChange={onCurrencyChange}
+                        compact
+                      />
+                    </div>
+
+                    {/* Theme Toggle Mobile */}
+                    <button
+                      type="button"
+                      onClick={() => setDarkMode(!darkMode)}
+                      className="flex items-center justify-between p-2.5 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200/60 dark:border-slate-800 text-slate-700 dark:text-slate-300 cursor-pointer"
+                    >
+                      <span className="text-[11px] font-bold">Theme</span>
+                      <div className="flex items-center gap-1 text-[10px] font-bold text-[#FF5A00]">
+                        {darkMode ? <Moon className="w-3.5 h-3.5" /> : <Sun className="w-3.5 h-3.5" />}
+                        <span>{darkMode ? 'Dark' : 'Light'}</span>
+                      </div>
+                    </button>
+                  </div>
                 </div>
+
+                {/* Logout Button if Logged In */}
+                {user && (
+                  <div className="pt-2">
+                    <button
+                      onClick={() => {
+                        handleLogout();
+                        setMobileMenuOpen(false);
+                      }}
+                      className="w-full flex items-center justify-center gap-2 p-2.5 bg-red-50 dark:bg-red-950/30 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 font-bold text-xs rounded-xl border border-red-200 dark:border-red-900/30 transition-colors cursor-pointer font-display"
+                    >
+                      <LogOut className="w-3.5 h-3.5" />
+                      <span>Log Out Account</span>
+                    </button>
+                  </div>
+                )}
               </div>
             </motion.div>
           )}
