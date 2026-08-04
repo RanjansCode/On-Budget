@@ -3,9 +3,9 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   Sparkles, Search, Bell, Heart, User, Layout, Menu, X,
   Shield, Check, ArrowRight, LogIn, LogOut, Mail, Lock, Info, Eye, EyeOff, ShieldAlert,
-  Phone, Smartphone, ArrowLeft, ChevronDown, KeyRound
+  Phone, Smartphone, ArrowLeft, ChevronDown, KeyRound, Tag, Package
 } from 'lucide-react';
-import { NotificationItem, Category, ADMIN_EMAILS } from '../types';
+import { NotificationItem, Category, Product, ADMIN_EMAILS } from '../types';
 import { 
   auth, 
   signInWithGoogle, 
@@ -33,6 +33,8 @@ interface NavbarProps {
   onCurrencyChange?: (code: string) => void;
   selectedCategory?: string;
   onSelectCategory?: (categoryName: string) => void;
+  products?: Product[];
+  onSelectProduct?: (productId: string) => void;
 }
 
 export default function Navbar({
@@ -49,6 +51,8 @@ export default function Navbar({
   onCurrencyChange = () => {},
   selectedCategory = '',
   onSelectCategory = () => {},
+  products = [],
+  onSelectProduct,
 }: NavbarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -62,6 +66,93 @@ export default function Navbar({
   const [showPassword, setShowPassword] = useState(false);
   const [isAuthUnconfigured, setIsAuthUnconfigured] = useState(false);
   const [wishlistCount, setWishlistCount] = useState(0);
+
+  // Search suggestion state
+  const [debouncedQuery, setDebouncedQuery] = useState(searchQuery);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+  const mobileSearchContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedQuery(searchQuery);
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        searchContainerRef.current &&
+        !searchContainerRef.current.contains(e.target as Node) &&
+        mobileSearchContainerRef.current &&
+        !mobileSearchContainerRef.current.contains(e.target as Node)
+      ) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const suggestions = React.useMemo(() => {
+    const query = debouncedQuery.trim().toLowerCase();
+    if (!query) return [];
+
+    const results: Array<
+      | { type: 'product'; id: string; title: string; category: string; price: number; image?: string }
+      | { type: 'category'; id: string; name: string }
+    > = [];
+
+    // Match categories
+    categories.forEach(cat => {
+      if (cat.name.toLowerCase().includes(query)) {
+        results.push({
+          type: 'category',
+          id: cat.id,
+          name: cat.name
+        });
+      }
+    });
+
+    // Match products
+    (products || []).forEach(prod => {
+      if (prod.status === 'Published' || !prod.status) {
+        const matchTitle = prod.title.toLowerCase().includes(query);
+        const matchBrand = prod.brand.toLowerCase().includes(query);
+        const matchCategory = prod.category.toLowerCase().includes(query);
+        const matchTag = prod.searchTags?.some(t => t.toLowerCase().includes(query));
+
+        if (matchTitle || matchBrand || matchCategory || matchTag) {
+          results.push({
+            type: 'product',
+            id: prod.id,
+            title: prod.title,
+            category: prod.category,
+            price: prod.price,
+            image: prod.images?.[0]
+          });
+        }
+      }
+    });
+
+    return results.slice(0, 5);
+  }, [debouncedQuery, categories, products]);
+
+  const handleSelectProductSuggestion = (productId: string, title: string) => {
+    setSearchQuery(title);
+    setShowSuggestions(false);
+    if (onSelectProduct) {
+      onSelectProduct(productId);
+    }
+  };
+
+  const handleSelectCategorySuggestion = (categoryName: string) => {
+    setSearchQuery('');
+    setShowSuggestions(false);
+    onSelectCategory(categoryName);
+    setActiveTab('home');
+  };
 
   // Listen for Wishlist updates to show live badge in bottom nav bar
   useEffect(() => {
@@ -240,16 +331,36 @@ export default function Navbar({
             </div>
 
             {/* DESKTOP SEARCH */}
-            <div className="hidden md:flex flex-1 max-w-md relative" id="navbar-search">
+            <div ref={searchContainerRef} className="hidden md:flex flex-1 max-w-md relative" id="navbar-search">
               <input
                 type="text"
                 value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
+                onChange={e => {
+                  setSearchQuery(e.target.value);
+                  setShowSuggestions(true);
+                }}
+                onFocus={() => {
+                  if (searchQuery.trim().length > 0) setShowSuggestions(true);
+                }}
                 placeholder="Search gadgets, desk setups, under ₹200..."
                 className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus:border-[#FF5A00] dark:focus:border-[#FF5A00] focus:ring-1 focus:ring-[#FF5A00] rounded-full px-5 py-2 text-xs text-slate-800 dark:text-slate-100 focus:outline-none placeholder-slate-400 dark:placeholder-slate-500 transition-all"
               />
               <div className="absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchQuery('');
+                      setShowSuggestions(false);
+                    }}
+                    className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                    title="Clear search"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
                 <button
+                  type="button"
                   onClick={onVoiceSearch}
                   className="p-1 text-slate-400 hover:text-[#FF5A00] transition-colors"
                   title="Voice Search"
@@ -258,6 +369,88 @@ export default function Navbar({
                 </button>
                 <Search className="w-4 h-4 text-slate-400 shrink-0" />
               </div>
+
+              {/* DESKTOP SEARCH SUGGESTIONS DROPDOWN */}
+              <AnimatePresence>
+                {showSuggestions && debouncedQuery.trim().length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 6 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-50 overflow-hidden text-left"
+                  >
+                    {suggestions.length > 0 ? (
+                      <div className="py-2 divide-y divide-slate-100 dark:divide-slate-800/80">
+                        <div className="px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 font-display flex items-center justify-between">
+                          <span>Search Suggestions</span>
+                          <span className="text-[#FF5A00] font-normal">{suggestions.length} found</span>
+                        </div>
+                        <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                          {suggestions.map((item) => (
+                            <button
+                              key={item.type === 'product' ? `prod-${item.id}` : `cat-${item.id}`}
+                              type="button"
+                              onClick={() => {
+                                if (item.type === 'product') {
+                                  handleSelectProductSuggestion(item.id, item.title);
+                                } else {
+                                  handleSelectCategorySuggestion(item.name);
+                                }
+                              }}
+                              className="w-full px-3.5 py-2.5 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors cursor-pointer group text-left"
+                            >
+                              <div className="flex items-center gap-3 min-w-0 pr-2">
+                                {item.type === 'product' ? (
+                                  item.image ? (
+                                    <img
+                                      src={item.image}
+                                      alt={item.title}
+                                      className="w-8 h-8 rounded-lg object-cover shrink-0 bg-slate-100 border border-slate-200/60 dark:border-slate-800"
+                                      referrerPolicy="no-referrer"
+                                    />
+                                  ) : (
+                                    <div className="w-8 h-8 rounded-lg bg-[#FF5A00]/10 text-[#FF5A00] flex items-center justify-center shrink-0">
+                                      <Package className="w-4 h-4" />
+                                    </div>
+                                  )
+                                ) : (
+                                  <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 flex items-center justify-center shrink-0">
+                                    <Tag className="w-4 h-4" />
+                                  </div>
+                                )}
+
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-xs font-semibold text-slate-800 dark:text-slate-100 group-hover:text-[#FF5A00] transition-colors truncate">
+                                    {item.type === 'product' ? item.title : item.name}
+                                  </p>
+                                  <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate">
+                                    {item.type === 'product' ? `In ${item.category}` : 'Category'}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="shrink-0 text-right">
+                                {item.type === 'product' ? (
+                                  <span className="text-xs font-bold text-[#FF5A00]">₹{item.price}</span>
+                                ) : (
+                                  <span className="text-[9px] font-bold uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded-md">
+                                    Category
+                                  </span>
+                                )}
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="p-4 text-center text-xs text-slate-400">
+                        No suggestions found for "{debouncedQuery}"
+                      </div>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
             {/* DESKTOP NAV TABS */}
@@ -419,13 +612,19 @@ export default function Navbar({
         </div>
 
         {/* MOBILE SUB-SEARCH BAR */}
-        <div className="md:hidden px-3 sm:px-4 pb-2.5 pt-1 border-t border-slate-100 dark:border-slate-800/60 bg-white dark:bg-slate-900 w-full max-w-full overflow-hidden">
+        <div ref={mobileSearchContainerRef} className="md:hidden px-3 sm:px-4 pb-2.5 pt-1 border-t border-slate-100 dark:border-slate-800/60 bg-white dark:bg-slate-900 w-full max-w-full overflow-visible relative">
           <div className="relative flex items-center">
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 pointer-events-none" />
             <input
               type="text"
               value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
+              onChange={e => {
+                setSearchQuery(e.target.value);
+                setShowSuggestions(true);
+              }}
+              onFocus={() => {
+                if (searchQuery.trim().length > 0) setShowSuggestions(true);
+              }}
               placeholder="Search gadgets, desk setups, under ₹200..."
               className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800 focus:border-[#FF5A00] dark:focus:border-[#FF5A00] focus:ring-1 focus:ring-[#FF5A00] rounded-full pl-9 pr-16 py-2 text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none transition-all"
             />
@@ -433,7 +632,10 @@ export default function Navbar({
               {searchQuery && (
                 <button
                   type="button"
-                  onClick={() => setSearchQuery('')}
+                  onClick={() => {
+                    setSearchQuery('');
+                    setShowSuggestions(false);
+                  }}
                   className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
                   title="Clear search"
                 >
@@ -450,6 +652,88 @@ export default function Navbar({
               </button>
             </div>
           </div>
+
+          {/* MOBILE SEARCH SUGGESTIONS DROPDOWN */}
+          <AnimatePresence>
+            {showSuggestions && debouncedQuery.trim().length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 6 }}
+                transition={{ duration: 0.15 }}
+                className="absolute top-full left-3 right-3 mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-50 overflow-hidden text-left"
+              >
+                {suggestions.length > 0 ? (
+                  <div className="py-2 divide-y divide-slate-100 dark:divide-slate-800/80">
+                    <div className="px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 font-display flex items-center justify-between">
+                      <span>Search Suggestions</span>
+                      <span className="text-[#FF5A00] font-normal">{suggestions.length} found</span>
+                    </div>
+                    <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                      {suggestions.map((item) => (
+                        <button
+                          key={item.type === 'product' ? `m-prod-${item.id}` : `m-cat-${item.id}`}
+                          type="button"
+                          onClick={() => {
+                            if (item.type === 'product') {
+                              handleSelectProductSuggestion(item.id, item.title);
+                            } else {
+                              handleSelectCategorySuggestion(item.name);
+                            }
+                          }}
+                          className="w-full px-3.5 py-2.5 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors cursor-pointer group text-left"
+                        >
+                          <div className="flex items-center gap-3 min-w-0 pr-2">
+                            {item.type === 'product' ? (
+                              item.image ? (
+                                <img
+                                  src={item.image}
+                                  alt={item.title}
+                                  className="w-8 h-8 rounded-lg object-cover shrink-0 bg-slate-100 border border-slate-200/60 dark:border-slate-800"
+                                  referrerPolicy="no-referrer"
+                                />
+                              ) : (
+                                <div className="w-8 h-8 rounded-lg bg-[#FF5A00]/10 text-[#FF5A00] flex items-center justify-center shrink-0">
+                                  <Package className="w-4 h-4" />
+                                </div>
+                              )
+                            ) : (
+                              <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 flex items-center justify-center shrink-0">
+                                <Tag className="w-4 h-4" />
+                              </div>
+                            )}
+
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs font-semibold text-slate-800 dark:text-slate-100 group-hover:text-[#FF5A00] transition-colors truncate">
+                                {item.type === 'product' ? item.title : item.name}
+                              </p>
+                              <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate">
+                                {item.type === 'product' ? `In ${item.category}` : 'Category'}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="shrink-0 text-right">
+                            {item.type === 'product' ? (
+                              <span className="text-xs font-bold text-[#FF5A00]">₹{item.price}</span>
+                            ) : (
+                              <span className="text-[9px] font-bold uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded-md">
+                                Category
+                              </span>
+                            )}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-4 text-center text-xs text-slate-400">
+                    No suggestions found for "{debouncedQuery}"
+                  </div>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* BACKDROP FOR MOBILE MENU */}

@@ -1603,7 +1603,7 @@ function ProductFormModal({ product, categories, onClose, onSave, imagePresets }
                   <div className="w-3.5 h-3.5 rounded-full bg-emerald-500 text-black text-[8px] font-bold flex items-center justify-center shrink-0 font-display">
                     OB
                   </div>
-                  <span className="truncate text-neutral-400">https://onbudget.app › product › {category || 'curated'}</span>
+                  <span className="truncate text-neutral-400">https://inourbudget.vercel.app › product › {category || 'curated'}</span>
                 </div>
                 <div className="text-xs sm:text-sm font-medium text-[#8ab4f8] hover:underline cursor-pointer truncate">
                   {seoTitle.trim() || (title.trim() ? `${title} | On Budget` : 'Product Title | On Budget')}

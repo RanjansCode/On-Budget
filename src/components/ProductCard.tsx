@@ -6,6 +6,7 @@ import ImageLightboxModal from './ImageLightboxModal';
 import { formatCurrencyPrice, detectUserCurrency } from '../utils/currency';
 import { calculateDiscount } from '../utils/discount';
 import ImageSkeleton from './ImageSkeleton';
+import ProductShareButton from './ProductShareButton';
 
 interface ProductCardProps {
   key?: string;
@@ -58,17 +59,24 @@ export default function ProductCard({
         transition={{ duration: 0.25 }}
         className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-2xl overflow-hidden flex flex-col justify-between shadow-xs hover:shadow-lg dark:hover:shadow-slate-950/40 relative group h-full"
       >
-        {/* Wishlist Button */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleWishlist(product.id);
-          }}
-          className="absolute top-3 right-3 z-20 p-2 bg-white/80 dark:bg-slate-950/70 backdrop-blur-xs text-slate-500 hover:text-red-500 dark:text-slate-400 dark:hover:text-red-400 border border-slate-200/60 dark:border-slate-800 rounded-xl transition-all cursor-pointer shadow-xs"
-          title={isWishlisted ? "Remove from Wishlist" : "Add to Wishlist"}
-        >
-          <Heart className={`w-3.5 h-3.5 transition-all ${isWishlisted ? 'fill-red-500 text-red-500 scale-110' : ''}`} />
-        </button>
+        {/* Top Overlay Actions (Wishlist + Share) */}
+        <div className="absolute top-3 right-3 z-20 flex items-center gap-1.5">
+          <ProductShareButton
+            product={product}
+            showText={false}
+            className="p-2 bg-white/80 dark:bg-slate-950/70 backdrop-blur-xs text-slate-500 hover:text-[#FF5A00] dark:text-slate-400 dark:hover:text-[#FF5A00] border border-slate-200/60 dark:border-slate-800 rounded-xl transition-all cursor-pointer shadow-xs"
+          />
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleWishlist(product.id);
+            }}
+            className="p-2 bg-white/80 dark:bg-slate-950/70 backdrop-blur-xs text-slate-500 hover:text-red-500 dark:text-slate-400 dark:hover:text-red-400 border border-slate-200/60 dark:border-slate-800 rounded-xl transition-all cursor-pointer shadow-xs"
+            title={isWishlisted ? "Remove from Wishlist" : "Add to Wishlist"}
+          >
+            <Heart className={`w-3.5 h-3.5 transition-all ${isWishlisted ? 'fill-red-500 text-red-500 scale-110' : ''}`} />
+          </button>
+        </div>
 
         {/* Main Image Area - Entirely Clickable for Navigation to Product Detail Page */}
         <div

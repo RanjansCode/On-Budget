@@ -15,6 +15,7 @@ import { formatCurrencyPrice, detectUserCurrency } from '../utils/currency';
 import { calculateDiscount } from '../utils/discount';
 import ImageSkeleton from './ImageSkeleton';
 import ProductRecommendations from './ProductRecommendations';
+import ProductShareButton from './ProductShareButton';
 
 interface ProductDetailProps {
   product: Product;
@@ -204,18 +205,11 @@ export default function ProductDetail({
           </button>
 
           {/* Share */}
-          <button
-            onClick={handleCopyLink}
-            className="p-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white rounded-xl transition-all cursor-pointer relative"
-            title="Share Product"
-          >
-            {copiedLink ? <Check className="w-4 h-4 text-emerald-500" /> : <Share2 className="w-4 h-4" />}
-            {copiedLink && (
-              <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-md whitespace-nowrap z-30">
-                Link copied!
-              </span>
-            )}
-          </button>
+          <ProductShareButton
+            product={product}
+            showText={true}
+            onShareTrack={(m) => onTrackAffiliateClick(product.id, `share_${m}`)}
+          />
 
           {/* Report Stock Issue */}
           <button

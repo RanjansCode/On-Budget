@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  Sparkles, Search, MessageSquare, Heart, Bell, User, Layout, ArrowRight,
+  Sparkles, Search, MessageSquare, Heart, Bell, User, Layout, ArrowRight, ArrowLeft,
   Star, Laptop, Cpu, BookOpen, AlertCircle, Clock,
   Package, Check, Copy, Flame, ShieldAlert, Play, Send, ChevronRight,
   SlidersHorizontal, CheckCircle2, Award, Zap, RefreshCw
@@ -51,6 +51,7 @@ import ProductDetail from './components/ProductDetail';
 import AdminPanel from './components/AdminPanel';
 import LaunchModeOverlay from './components/LaunchModeOverlay';
 import SocialLinksModal from './components/SocialLinksModal';
+import ScrollToTop from './components/ScrollToTop';
 import { useToast } from './components/Toast';
 import { LocationCurrencyBanner } from './components/CurrencySwitcher';
 import { calculateDiscount } from './utils/discount';
@@ -129,7 +130,17 @@ export default function App() {
     if (path === '/profile') return 'profile';
     return 'home';
   });
-  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null;
+    const path = window.location.pathname;
+    if (path.startsWith('/product/')) {
+      return decodeURIComponent(path.replace('/product/', '').trim()) || null;
+    }
+    if (path.startsWith('/p/')) {
+      return decodeURIComponent(path.replace('/p/', '').trim()) || null;
+    }
+    return null;
+  });
   const [showAccessDenied, setShowAccessDenied] = useState(false);
 
   // --- Launch Mode States ---
@@ -259,17 +270,25 @@ export default function App() {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
       if (user) {
-        // Sync wishlist from firestore
-        const cloudWish = await fetchWishlistFromFirestore(user.uid);
-        if (cloudWish.length > 0) {
-          setWishlist(cloudWish);
-        } else {
-          // Sync any offline local items up to the cloud
+        // Sync wishlist from firestore with safe fallback
+        try {
+          const cloudWish = await fetchWishlistFromFirestore(user.uid);
+          if (cloudWish && cloudWish.length > 0) {
+            setWishlist(cloudWish);
+          } else {
+            // Sync any offline local items up to the cloud
+            const localWish = localStorage.getItem('onbudget_wishlist');
+            const parsed = localWish ? JSON.parse(localWish) : [];
+            if (parsed.length > 0) {
+              setWishlist(parsed);
+              await saveWishlistToFirestore(user.uid, parsed);
+            }
+          }
+        } catch (err) {
+          console.warn('Failed to fetch wishlist from Firestore, falling back to local storage:', err);
           const localWish = localStorage.getItem('onbudget_wishlist');
-          const parsed = localWish ? JSON.parse(localWish) : [];
-          if (parsed.length > 0) {
-            setWishlist(parsed);
-            await saveWishlistToFirestore(user.uid, parsed);
+          if (localWish) {
+            try { setWishlist(JSON.parse(localWish)); } catch (e) {}
           }
         }
 
@@ -359,7 +378,15 @@ export default function App() {
       (currentUser.email && ADMIN_EMAILS.includes(currentUser.email))
     ));
 
-    if (pathname.startsWith('/admin')) {
+    if (pathname.startsWith('/product/') || pathname.startsWith('/p/')) {
+      const prodId = pathname.startsWith('/product/')
+        ? decodeURIComponent(pathname.replace('/product/', '').trim())
+        : decodeURIComponent(pathname.replace('/p/', '').trim());
+      if (prodId) {
+        setSelectedProductId(prodId);
+        setActiveTab('home');
+      }
+    } else if (pathname.startsWith('/admin')) {
       if (!isUserAdmin) {
         window.history.replaceState({}, '', '/');
         setActiveTab('home');
@@ -381,7 +408,17 @@ export default function App() {
         (currentUser.email && ADMIN_EMAILS.includes(currentUser.email))
       ));
 
-      if (pathname.startsWith('/admin')) {
+      if (pathname.startsWith('/product/') || pathname.startsWith('/p/')) {
+        const prodId = pathname.startsWith('/product/')
+          ? decodeURIComponent(pathname.replace('/product/', '').trim())
+          : decodeURIComponent(pathname.replace('/p/', '').trim());
+        if (prodId) {
+          setSelectedProductId(prodId);
+          setActiveTab('home');
+        } else {
+          setSelectedProductId(null);
+        }
+      } else if (pathname.startsWith('/admin')) {
         if (isUserAdmin) {
           setActiveTab('admin');
         } else {
@@ -389,14 +426,17 @@ export default function App() {
           setActiveTab('home');
           setShowAccessDenied(true);
         }
+        setSelectedProductId(null);
       } else if (pathname === '/wishlist') {
         setActiveTab('wishlist');
+        setSelectedProductId(null);
       } else if (pathname === '/profile') {
         setActiveTab('profile');
+        setSelectedProductId(null);
       } else {
         setActiveTab('home');
+        setSelectedProductId(null);
       }
-      setSelectedProductId(null);
     };
 
     window.addEventListener('popstate', handlePopState);
@@ -500,6 +540,11 @@ export default function App() {
   const handleOpenProduct = async (productId: string) => {
     setSelectedProductId(productId);
     setActiveTab('home');
+
+    const targetPath = `/product/${productId}`;
+    if (window.location.pathname !== targetPath) {
+      window.history.pushState({}, '', targetPath);
+    }
 
     // Add to recently viewed list (max 5)
     setRecentlyViewed(prev => {
@@ -773,6 +818,11 @@ export default function App() {
           }}
           selectedCategory={selectedCategory}
           onSelectCategory={(cat) => setSelectedCategory(cat)}
+          products={products}
+          onSelectProduct={(productId) => {
+            setSelectedProductId(productId);
+            handleNavigate('home');
+          }}
         />
 
         {/* MAIN BODY WRAPPER */}
@@ -787,24 +837,67 @@ export default function App() {
           <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
             
             {/* DETAIL VIEW ROUTING */}
-            {selectedProductId ? (
-              isDetailLoading || !products.find(p => p.id === selectedProductId) ? (
-                <ProductDetailsSkeleton />
-              ) : (
-                <ProductDetail
-                  product={products.find(p => p.id === selectedProductId)!}
-                  reels={reels}
-                  onBack={() => setSelectedProductId(null)}
-                  isWishlisted={wishlist.includes(selectedProductId)}
-                  onToggleWishlist={handleToggleWishlist}
-                  onOpenProduct={handleOpenProduct}
-                  allProducts={products}
-                  onTrackAffiliateClick={handleTrackAffiliateClick}
-                  wishlist={wishlist}
-                  recentlyViewedIds={recentlyViewed}
-                />
-              )
-            ) : (
+            {selectedProductId ? (() => {
+              const matchedProduct = products.find(
+                p => p.id === selectedProductId ||
+                     p.id.toLowerCase() === selectedProductId.toLowerCase() ||
+                     p.title.toLowerCase().replace(/[^a-z0-9]+/g, '-') === selectedProductId.toLowerCase()
+              );
+
+              if (isDetailLoading) {
+                return <ProductDetailsSkeleton />;
+              }
+
+              if (matchedProduct) {
+                return (
+                  <ProductDetail
+                    product={matchedProduct}
+                    reels={reels}
+                    onBack={() => {
+                      setSelectedProductId(null);
+                      if (window.location.pathname.startsWith('/product/') || window.location.pathname.startsWith('/p/')) {
+                        window.history.pushState({}, '', '/');
+                      }
+                    }}
+                    isWishlisted={wishlist.includes(matchedProduct.id)}
+                    onToggleWishlist={handleToggleWishlist}
+                    onOpenProduct={handleOpenProduct}
+                    allProducts={products}
+                    onTrackAffiliateClick={handleTrackAffiliateClick}
+                    wishlist={wishlist}
+                    recentlyViewedIds={recentlyViewed}
+                  />
+                );
+              }
+
+              if (dbLoading) {
+                return <ProductDetailsSkeleton />;
+              }
+
+              return (
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 sm:p-12 text-center max-w-lg mx-auto my-12 space-y-4 shadow-sm">
+                  <div className="w-16 h-16 bg-[#FF5A00]/10 text-[#FF5A00] rounded-2xl flex items-center justify-center mx-auto">
+                    <Package className="w-8 h-8 stroke-[2.5]" />
+                  </div>
+                  <h2 className="text-xl font-black text-slate-900 dark:text-white font-display">
+                    Product Not Found
+                  </h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    This product may have been removed, unlisted, or the link is invalid. Explore our curated budget collection!
+                  </p>
+                  <button
+                    onClick={() => {
+                      setSelectedProductId(null);
+                      window.history.pushState({}, '', '/');
+                    }}
+                    className="px-6 py-2.5 bg-[#FF5A00] hover:bg-[#E04F00] text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer inline-flex items-center gap-2 font-display"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    Back to Products
+                  </button>
+                </div>
+              );
+            })() : (
               // STANDARD TAB RENDERING
               <div className="space-y-12">
                 
@@ -1247,6 +1340,9 @@ export default function App() {
         onClose={() => setSocialModalProduct(null)}
         product={socialModalProduct}
       />
+
+      {/* Floating Scroll to Top button */}
+      <ScrollToTop />
 
     </div>
   );

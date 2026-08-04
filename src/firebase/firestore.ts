@@ -275,7 +275,8 @@ export async function fetchWishlistFromFirestore(userId: string): Promise<string
     }
     return [];
   } catch (err) {
-    handleFirestoreError(err, OperationType.GET, `wishlists/${userId}`);
+    console.warn(`Firestore offline or unavailable for wishlist fetch (${userId}):`, err);
+    return [];
   }
 }
 
@@ -283,7 +284,7 @@ export async function saveWishlistToFirestore(userId: string, productIds: string
   try {
     await setDoc(doc(db, 'wishlists', userId), cleanData({ userId, productIds }));
   } catch (err) {
-    handleFirestoreError(err, OperationType.WRITE, `wishlists/${userId}`);
+    console.warn(`Firestore offline or unavailable for wishlist save (${userId}):`, err);
   }
 }
 
