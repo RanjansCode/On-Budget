@@ -72,10 +72,7 @@ export default function App() {
   const [currentCurrency, setCurrentCurrency] = useState<string>(() => detectUserCurrency().currency.code);
 
   // --- Firebase User Auth State ---
-  const [currentUser, setCurrentUser] = useState<any>(() => {
-    const cached = localStorage.getItem('onbudget_bypass_user');
-    return cached ? JSON.parse(cached) : null;
-  });
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [dbLoading, setDbLoading] = useState(true);
 
@@ -125,7 +122,13 @@ export default function App() {
   });
 
   // --- Active Session Navigation States ---
-  const [activeTab, setActiveTab] = useState<'home' | 'wishlist' | 'profile' | 'admin'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'wishlist' | 'profile' | 'admin'>(() => {
+    const path = window.location.pathname;
+    if (path.startsWith('/admin')) return 'admin';
+    if (path === '/wishlist') return 'wishlist';
+    if (path === '/profile') return 'profile';
+    return 'home';
+  });
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [showAccessDenied, setShowAccessDenied] = useState(false);
 
@@ -138,7 +141,6 @@ export default function App() {
     timezone: '+05:30',
     updatedAt: new Date().toISOString()
   });
-  const [adminBypassed, setAdminBypassed] = useState(false);
 
   // --- Filter / Sorting States ---
   const [searchQuery, setSearchQuery] = useState('');
@@ -175,14 +177,7 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [activeTab]);
 
-  // --- Aesthetic Preference States (Light mode by default!) ---
-  const [darkMode, setDarkMode] = useState<boolean>(() => {
-    const savedTheme = localStorage.getItem('onbudget_theme');
-    if (savedTheme) {
-      return savedTheme === 'dark';
-    }
-    return false; // Default to Light Mode
-  });
+  // --- Language State ---
   const [language, setLanguage] = useState<'en' | 'hi'>('en');
 
   // --- Voice Search status ---
@@ -321,87 +316,87 @@ export default function App() {
     localStorage.setItem('onbudget_analytics', JSON.stringify(analytics));
   }, [analytics]);
 
-  // Handle Dark Mode toggle
+  // Ensure permanent Light Mode
   useEffect(() => {
-    const root = window.document.documentElement;
-    if (darkMode) {
-      root.classList.add('dark');
-      localStorage.setItem('onbudget_theme', 'dark');
-    } else {
-      root.classList.remove('dark');
-      localStorage.setItem('onbudget_theme', 'light');
+    window.document.documentElement.classList.remove('dark');
+    localStorage.removeItem('onbudget_theme');
+  }, []);
+
+  // Centralized Navigation Handler
+  const handleNavigate = (tab: 'home' | 'wishlist' | 'profile' | 'admin', pushHistory = true) => {
+    const isUserAdmin = !!(currentUser && (
+      (currentUser.email && ADMIN_EMAILS.includes(currentUser.email))
+    ));
+
+    if (tab === 'admin' && !isUserAdmin) {
+      setShowAccessDenied(true);
+      return;
     }
-  }, [darkMode]);
+
+    setActiveTab(tab);
+    setSelectedProductId(null);
+
+    if (pushHistory) {
+      const pathMap: Record<string, string> = {
+        home: '/',
+        wishlist: '/wishlist',
+        profile: '/profile',
+        admin: '/admin',
+      };
+      const targetPath = pathMap[tab] || '/';
+      if (window.location.pathname !== targetPath) {
+        window.history.pushState({}, '', targetPath);
+      }
+    }
+  };
 
   // --- Client-Side Route Protection and Path Detection ---
   useEffect(() => {
     if (authLoading) return;
 
     const pathname = window.location.pathname;
-    const isTryingAdmin = pathname.startsWith('/admin');
-    const isAdmin = !!(currentUser && (
+    const isUserAdmin = !!(currentUser && (
       (currentUser.email && ADMIN_EMAILS.includes(currentUser.email))
     ));
 
-    if (isTryingAdmin) {
-      if (!isAdmin) {
-        // Not authorized! Redirect to home and trigger access denied screen
+    if (pathname.startsWith('/admin')) {
+      if (!isUserAdmin) {
         window.history.replaceState({}, '', '/');
         setActiveTab('home');
         setShowAccessDenied(true);
       } else {
-        // Authorized admin! Make sure the active tab is set to admin
         setActiveTab('admin');
       }
-    } else {
-      // If activeTab is admin but we are not admin, reset to home
-      if (activeTab === 'admin' && !isAdmin) {
-        setActiveTab('home');
-      }
+    } else if (activeTab === 'admin' && !isUserAdmin) {
+      window.history.replaceState({}, '', '/');
+      setActiveTab('home');
     }
-  }, [authLoading, currentUser, activeTab]);
-
-  // Sync window.location.pathname with state changes
-  useEffect(() => {
-    if (authLoading) return;
-    const pathname = window.location.pathname;
-    const isAdmin = !!(currentUser && (
-      (currentUser.email && ADMIN_EMAILS.includes(currentUser.email))
-    ));
-
-    if (activeTab === 'admin') {
-      if (isAdmin && pathname !== '/admin') {
-        window.history.pushState({}, '', '/admin');
-      } else if (!isAdmin) {
-        setActiveTab('home');
-        window.history.pushState({}, '', '/');
-      }
-    } else if (activeTab === 'home') {
-      if (pathname !== '/') {
-        window.history.pushState({}, '', '/');
-      }
-    }
-  }, [activeTab, currentUser, authLoading]);
+  }, [authLoading, currentUser]);
 
   // Handle browser back/forward buttons (Popstate events)
   useEffect(() => {
     const handlePopState = () => {
       const pathname = window.location.pathname;
-      const isAdmin = !!(currentUser && (
+      const isUserAdmin = !!(currentUser && (
         (currentUser.email && ADMIN_EMAILS.includes(currentUser.email))
       ));
 
       if (pathname.startsWith('/admin')) {
-        if (isAdmin) {
+        if (isUserAdmin) {
           setActiveTab('admin');
         } else {
           window.history.replaceState({}, '', '/');
           setActiveTab('home');
           setShowAccessDenied(true);
         }
-      } else if (pathname === '/') {
+      } else if (pathname === '/wishlist') {
+        setActiveTab('wishlist');
+      } else if (pathname === '/profile') {
+        setActiveTab('profile');
+      } else {
         setActiveTab('home');
       }
+      setSelectedProductId(null);
     };
 
     window.addEventListener('popstate', handlePopState);
@@ -764,26 +759,14 @@ export default function App() {
         {/* Navigation Bar with authenticated user prop */}
         <Navbar
           activeTab={activeTab}
-          setActiveTab={(tab) => {
-            setActiveTab(tab);
-            setSelectedProductId(null); // Reset detail screen on navigation
-          }}
+          setActiveTab={(tab) => handleNavigate(tab)}
           categories={categories}
           notifications={notifications}
           onMarkNotificationsRead={handleMarkNotificationsRead}
-          darkMode={darkMode}
-          setDarkMode={setDarkMode}
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
           onVoiceSearch={handleVoiceSearch}
           user={currentUser}
-          onBypassLogin={(bypassUser) => {
-            setCurrentUser(bypassUser);
-            setAuthLoading(false);
-          }}
-          onBypassLogout={() => {
-            setCurrentUser(null);
-          }}
           currentCurrency={currentCurrency}
           onCurrencyChange={(code) => {
             setCurrentCurrency(code);
@@ -962,7 +945,7 @@ export default function App() {
                         <Heart className="w-10 h-10 text-slate-300 mx-auto mb-3" />
                         <p className="text-xs text-slate-600 dark:text-slate-300 font-semibold">Your Wishlist is empty.</p>
                         <button
-                          onClick={() => setActiveTab('home')}
+                          onClick={() => handleNavigate('home')}
                           className="mt-4 bg-[#FF5A00] hover:bg-[#E04F00] text-white text-[11px] font-bold px-4 py-2.5 rounded-xl cursor-pointer shadow-xs"
                         >
                           Explore Curated Catalog
@@ -1040,20 +1023,6 @@ export default function App() {
                               हिन्दी
                             </button>
                           </div>
-                        </div>
-
-                        {/* Dark mode */}
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <p className="font-bold text-slate-950 dark:text-white">Interface Aesthetics</p>
-                            <p className="text-[10px] text-slate-400 dark:text-slate-500">Enable modern dark color tones</p>
-                          </div>
-                          <button
-                            onClick={() => setDarkMode(!darkMode)}
-                            className="bg-slate-50 dark:bg-slate-950 hover:bg-slate-100 dark:hover:bg-slate-900 text-slate-700 dark:text-slate-200 font-bold border border-slate-200 dark:border-slate-800 px-3.5 py-1.5 rounded-xl text-[10px] transition-colors cursor-pointer"
-                          >
-                            {darkMode ? 'Dark Slate' : 'Light Paper'}
-                          </button>
                         </div>
                       </div>
                     </div>
@@ -1195,12 +1164,12 @@ export default function App() {
             <div className="space-y-4">
               <h3 className="text-sm font-extrabold text-slate-950 dark:text-white uppercase tracking-wider font-display">Browse Quick Links</h3>
               <div className="grid grid-cols-2 gap-2 text-xs text-slate-500 dark:text-slate-400">
-                <button onClick={() => { setActiveTab('home'); setSelectedCategory('desk-setup'); }} className="text-left hover:text-[#FF5A00] transition-colors cursor-pointer">Desk Setups</button>
-                <button onClick={() => { setActiveTab('home'); setSelectedCategory('gaming'); }} className="text-left hover:text-[#FF5A00] transition-colors cursor-pointer">Gaming Gear</button>
-                <button onClick={() => { setActiveTab('home'); setSelectedCategory('tech'); }} className="text-left hover:text-[#FF5A00] transition-colors cursor-pointer">Tech & Gadgets</button>
-                <button onClick={() => { setActiveTab('home'); setSelectedPriceRange(99); }} className="text-left hover:text-[#FF5A00] transition-colors cursor-pointer">Best under ₹99</button>
-                <button onClick={() => { setActiveTab('home'); setSelectedPriceRange(199); }} className="text-left hover:text-[#FF5A00] transition-colors cursor-pointer">Best under ₹199</button>
-                <button onClick={() => { setActiveTab('home'); setSelectedPriceRange(499); }} className="text-left hover:text-[#FF5A00] transition-colors cursor-pointer">Best under ₹499</button>
+                <button onClick={() => { handleNavigate('home'); setSelectedCategory('desk-setup'); }} className="text-left hover:text-[#FF5A00] transition-colors cursor-pointer">Desk Setups</button>
+                <button onClick={() => { handleNavigate('home'); setSelectedCategory('gaming'); }} className="text-left hover:text-[#FF5A00] transition-colors cursor-pointer">Gaming Gear</button>
+                <button onClick={() => { handleNavigate('home'); setSelectedCategory('tech'); }} className="text-left hover:text-[#FF5A00] transition-colors cursor-pointer">Tech & Gadgets</button>
+                <button onClick={() => { handleNavigate('home'); setSelectedPriceRange(99); }} className="text-left hover:text-[#FF5A00] transition-colors cursor-pointer">Best under ₹99</button>
+                <button onClick={() => { handleNavigate('home'); setSelectedPriceRange(199); }} className="text-left hover:text-[#FF5A00] transition-colors cursor-pointer">Best under ₹199</button>
+                <button onClick={() => { handleNavigate('home'); setSelectedPriceRange(499); }} className="text-left hover:text-[#FF5A00] transition-colors cursor-pointer">Best under ₹499</button>
               </div>
             </div>
 
@@ -1225,8 +1194,7 @@ export default function App() {
               className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm"
               onClick={() => {
                 setShowAccessDenied(false);
-                setActiveTab('home');
-                window.history.pushState({}, '', '/');
+                handleNavigate('home');
               }}
             />
 
@@ -1251,8 +1219,7 @@ export default function App() {
               <button
                 onClick={() => {
                   setShowAccessDenied(false);
-                  setActiveTab('home');
-                  window.history.pushState({}, '', '/');
+                  handleNavigate('home');
                 }}
                 className="w-full bg-[#FF5A00] hover:bg-[#E04F00] text-white py-3 rounded-xl text-xs font-bold shadow-lg shadow-[#FF5A00]/10 cursor-pointer transition-colors"
               >
@@ -1265,16 +1232,11 @@ export default function App() {
 
       {/* Launch Mode Landing Overlay */}
       <AnimatePresence>
-        {launchSettings.enabled && !adminBypassed && (
+        {launchSettings.enabled && !isAdmin && (
           <LaunchModeOverlay
             settings={launchSettings}
             onCountdownComplete={handleCountdownComplete}
             isAdmin={isAdmin}
-            onAdminBypass={() => {
-              setAdminBypassed(true);
-              setActiveTab('admin');
-              toast.success('Admin authorization bypassed. Welcome back to HQ!');
-            }}
           />
         )}
       </AnimatePresence>

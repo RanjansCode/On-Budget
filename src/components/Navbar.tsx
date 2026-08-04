@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  Sparkles, Search, Bell, Heart, User, Layout, Menu, X, Sun, Moon,
+  Sparkles, Search, Bell, Heart, User, Layout, Menu, X,
   Shield, Check, ArrowRight, LogIn, LogOut, Mail, Lock, Info, Eye, EyeOff, ShieldAlert,
   Phone, Smartphone, ArrowLeft, ChevronDown, KeyRound
 } from 'lucide-react';
@@ -25,14 +25,10 @@ interface NavbarProps {
   categories: Category[];
   notifications: NotificationItem[];
   onMarkNotificationsRead: () => void;
-  darkMode: boolean;
-  setDarkMode: (dark: boolean) => void;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   onVoiceSearch: () => void;
   user: any;
-  onBypassLogin?: (user: any) => void;
-  onBypassLogout?: () => void;
   currentCurrency?: string;
   onCurrencyChange?: (code: string) => void;
   selectedCategory?: string;
@@ -45,14 +41,10 @@ export default function Navbar({
   categories,
   notifications,
   onMarkNotificationsRead,
-  darkMode,
-  setDarkMode,
   searchQuery,
   setSearchQuery,
   onVoiceSearch,
   user,
-  onBypassLogin,
-  onBypassLogout,
   currentCurrency = 'INR',
   onCurrencyChange = () => {},
   selectedCategory = '',
@@ -101,27 +93,6 @@ export default function Navbar({
     setAuthError(null);
   };
 
-  const handleBypassLogin = (role: 'admin' | 'user') => {
-    const mockUser = role === 'admin' ? {
-      uid: 'demo_admin_uid_999',
-      email: 'ranjan.edits.designs@gmail.com',
-      displayName: 'Ranjan Admin (Sandbox)',
-      photoURL: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80',
-    } : {
-      uid: 'demo_user_uid_111',
-      email: 'demo.shopper@gmail.com',
-      displayName: 'Demo Shopper',
-      photoURL: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&auto=format&fit=crop&q=80',
-    };
-
-    localStorage.setItem('onbudget_bypass_user', JSON.stringify(mockUser));
-    if (onBypassLogin) {
-      onBypassLogin(mockUser);
-    }
-    toast.success(`Signed in as ${mockUser.displayName} (Bypass Mode)`);
-    closeAuthModal();
-  };
-
   const toast = useToast();
 
   const unreadCount = notifications.filter(n => !n.read).length;
@@ -146,9 +117,11 @@ export default function Navbar({
       const isUnconfigured = msg.includes('Authentication is not configured') || msg.includes('operation-not-allowed');
       if (isUnconfigured) {
         setIsAuthUnconfigured(true);
+      } else {
+        const cleanMsg = 'Google sign-in failed. Please try again.';
+        setAuthError(cleanMsg);
+        toast.error(cleanMsg);
       }
-      setAuthError(msg);
-      toast.error(msg);
     } finally {
       setAuthLoading(false);
     }
@@ -206,9 +179,15 @@ export default function Navbar({
       const isUnconfigured = msg.includes('Authentication is not configured') || msg.includes('operation-not-allowed');
       if (isUnconfigured) {
         setIsAuthUnconfigured(true);
+      } else if (authMode === 'signin') {
+        const cleanMsg = 'Invalid email or password. Please verify your credentials and try again.';
+        setAuthError(cleanMsg);
+        toast.error(cleanMsg);
+      } else {
+        const cleanMsg = 'Unable to create account. Please check your credentials and try again.';
+        setAuthError(cleanMsg);
+        toast.error(cleanMsg);
       }
-      setAuthError(msg);
-      toast.error(msg);
     } finally {
       setAuthLoading(false);
     }
@@ -216,15 +195,6 @@ export default function Navbar({
 
   const handleLogout = async () => {
     try {
-      if (localStorage.getItem('onbudget_bypass_user')) {
-        localStorage.removeItem('onbudget_bypass_user');
-        if (onBypassLogout) {
-          onBypassLogout();
-        }
-        toast.success('Bypass session ended successfully.');
-        setActiveTab('home');
-        return;
-      }
       await signOutUser();
       toast.success('Logged out successfully.');
       setActiveTab('home');
@@ -320,15 +290,6 @@ export default function Navbar({
                 onCurrencyChange={onCurrencyChange}
                 compact
               />
-
-              {/* Theme Toggle */}
-              <button
-                onClick={() => setDarkMode(!darkMode)}
-                className="p-1.5 sm:p-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:border-slate-300 dark:hover:border-slate-700 rounded-xl transition-all cursor-pointer shrink-0"
-                title="Toggle Theme"
-              >
-                {darkMode ? <Sun className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : <Moon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
-              </button>
 
               {/* Notifications Popover */}
               <div className="relative shrink-0">
@@ -661,29 +622,13 @@ export default function Navbar({
                   <span className="text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-widest px-1 font-display">
                     Preferences
                   </span>
-                  <div className="grid grid-cols-2 gap-2">
-                    {/* Currency Switcher Mobile */}
-                    <div className="flex items-center justify-between p-2.5 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200/60 dark:border-slate-800">
-                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Currency</span>
-                      <CurrencySwitcher
-                        currentCurrency={currentCurrency}
-                        onCurrencyChange={onCurrencyChange}
-                        compact
-                      />
-                    </div>
-
-                    {/* Theme Toggle Mobile */}
-                    <button
-                      type="button"
-                      onClick={() => setDarkMode(!darkMode)}
-                      className="flex items-center justify-between p-2.5 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200/60 dark:border-slate-800 text-slate-700 dark:text-slate-300 cursor-pointer"
-                    >
-                      <span className="text-[11px] font-bold">Theme</span>
-                      <div className="flex items-center gap-1 text-[10px] font-bold text-[#FF5A00]">
-                        {darkMode ? <Moon className="w-3.5 h-3.5" /> : <Sun className="w-3.5 h-3.5" />}
-                        <span>{darkMode ? 'Dark' : 'Light'}</span>
-                      </div>
-                    </button>
+                  <div className="flex items-center justify-between p-2.5 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200/60 dark:border-slate-800">
+                    <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Currency</span>
+                    <CurrencySwitcher
+                      currentCurrency={currentCurrency}
+                      onCurrencyChange={onCurrencyChange}
+                      compact
+                    />
                   </div>
                 </div>
 
@@ -755,68 +700,26 @@ export default function Navbar({
 
                 {/* Error Panel or Setup Warning */}
                 {isAuthUnconfigured ? (
-                  <div className="p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 text-amber-800 dark:text-amber-300 text-xs rounded-2xl space-y-3">
-                    <div className="flex items-center gap-2 font-bold text-amber-900 dark:text-amber-200">
-                      <ShieldAlert className="w-5 h-5 shrink-0 text-amber-600 dark:text-amber-400" />
+                  <div className="p-4 bg-amber-50 border border-amber-200 text-amber-800 text-xs rounded-2xl space-y-3">
+                    <div className="flex items-center gap-2 font-bold text-amber-900">
+                      <ShieldAlert className="w-5 h-5 shrink-0 text-amber-600" />
                       <span>Setup Firebase Auth Providers</span>
                     </div>
-                    <p className="leading-relaxed text-slate-600 dark:text-slate-300">
+                    <p className="leading-relaxed text-slate-600">
                       Authentication is not configured. Please enable Email/Password and Google in Firebase Console:
                     </p>
-                    <ol className="list-decimal pl-4 space-y-1.5 text-slate-600 dark:text-slate-300 font-medium">
+                    <ol className="list-decimal pl-4 space-y-1.5 text-slate-600 font-medium">
                       <li>Open the <a href="https://console.firebase.google.com/" target="_blank" rel="noopener noreferrer" className="underline font-bold text-[#FF5A00] hover:text-[#E04F00]">Firebase Console</a>.</li>
                       <li>Select your project, then click <strong>Authentication</strong> in the sidebar.</li>
                       <li>Go to the <strong>Sign-in method</strong> tab.</li>
                       <li>Enable <strong>Email/Password</strong> and <strong>Google</strong> providers.</li>
                       <li>Click save, then reload this page and try again!</li>
                     </ol>
-                    <div className="pt-3 border-t border-amber-200/60 dark:border-amber-900/40">
-                      <p className="text-[10px] font-bold text-amber-950 dark:text-amber-200 mb-2 uppercase tracking-wider block">
-                        🚀 Sandbox Bypass (AI Studio Preview)
-                      </p>
-                      <div className="grid grid-cols-2 gap-2">
-                        <button
-                          type="button"
-                          onClick={() => handleBypassLogin('admin')}
-                          className="px-3 py-2 bg-[#FF5A00] hover:bg-[#E04F00] text-white font-bold rounded-xl text-[10px] text-center transition-all cursor-pointer shadow-sm"
-                        >
-                          Bypass as Admin
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleBypassLogin('user')}
-                          className="px-3 py-2 bg-slate-700 hover:bg-slate-800 text-white font-bold rounded-xl text-[10px] text-center transition-all cursor-pointer"
-                        >
-                          Bypass as User
-                        </button>
-                      </div>
-                    </div>
                   </div>
                 ) : authError ? (
-                  <div className="p-3.5 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/30 text-red-600 dark:text-red-400 text-xs rounded-2xl flex flex-col gap-2.5">
-                    <div className="flex items-start gap-2">
-                      <Info className="w-4 h-4 shrink-0 mt-0.5" />
-                      <span className="leading-normal">{authError}</span>
-                    </div>
-                    <div className="pt-2 border-t border-red-200/50 dark:border-red-900/30 flex flex-col gap-1.5">
-                      <span className="text-[10px] text-red-700 dark:text-red-300 font-semibold">Stuck? Use sandbox bypass for testing:</span>
-                      <div className="grid grid-cols-2 gap-2">
-                        <button
-                          type="button"
-                          onClick={() => handleBypassLogin('admin')}
-                          className="px-2 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-[9px] font-bold text-center cursor-pointer transition-colors"
-                        >
-                          Bypass as Admin
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleBypassLogin('user')}
-                          className="px-2 py-1.5 bg-slate-600 hover:bg-slate-700 text-white rounded-lg text-[9px] font-bold text-center cursor-pointer transition-colors"
-                        >
-                          Bypass as User
-                        </button>
-                      </div>
-                    </div>
+                  <div className="p-3.5 bg-red-50 border border-red-200 text-red-600 text-xs rounded-2xl flex items-center gap-2.5">
+                    <Info className="w-4 h-4 shrink-0 text-red-500" />
+                    <span className="leading-normal font-medium">{authError}</span>
                   </div>
                 ) : null}
 
@@ -952,15 +855,6 @@ export default function Navbar({
                       {authMode === 'signin' ? 'Create one now' : 'Sign in here'}
                     </button>
                   </p>
-                  <div>
-                    <button
-                      type="button"
-                      onClick={() => setIsAuthUnconfigured(true)}
-                      className="text-[10px] text-slate-400 dark:text-slate-500 hover:text-[#FF5A00] font-medium transition-colors cursor-pointer"
-                    >
-                      ⚠️ Trouble signing in? Use Sandbox Bypass
-                    </button>
-                  </div>
                 </div>
               </div>
             </motion.div>

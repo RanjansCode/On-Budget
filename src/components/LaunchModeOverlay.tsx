@@ -12,19 +12,14 @@ interface LaunchModeOverlayProps {
   settings: LaunchSettings;
   onCountdownComplete: () => void;
   isAdmin: boolean;
-  onAdminBypass: () => void;
 }
 
 export default function LaunchModeOverlay({
   settings,
   onCountdownComplete,
   isAdmin,
-  onAdminBypass,
 }: LaunchModeOverlayProps) {
   const [countdown, setCountdown] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0, totalMs: 1 });
-  const [showAdminLogin, setShowAdminLogin] = useState(false);
-  const [pinInput, setPinInput] = useState('');
-  const [pinError, setPinError] = useState('');
 
   const { launchDate, launchTime, timezone } = settings;
 
@@ -65,17 +60,6 @@ export default function LaunchModeOverlay({
     const interval = setInterval(updateTimer, 1000);
     return () => clearInterval(interval);
   }, [launchDate, launchTime, timezone, onCountdownComplete]);
-
-  const handleAdminAuth = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (pinInput === '0013') {
-      setPinError('');
-      onAdminBypass();
-    } else {
-      setPinError('Incorrect PIN. Admin authorization failed.');
-      setPinInput('');
-    }
-  };
 
   return (
     <div
@@ -175,79 +159,6 @@ export default function LaunchModeOverlay({
           </p>
         </div>
       </motion.div>
-
-      {/* Admin Quick Entry / Lock override button */}
-      <div className="absolute bottom-6 right-6 z-20">
-        {isAdmin ? (
-          <button
-            onClick={onAdminBypass}
-            className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest bg-neutral-900 border border-neutral-800 text-neutral-300 hover:text-white px-3.5 py-2 rounded-xl transition-all cursor-pointer hover:bg-neutral-850"
-          >
-            <ShieldAlert className="w-3.5 h-3.5 text-[#FF7A00]" /> Admin Terminal
-          </button>
-        ) : (
-          <button
-            onClick={() => setShowAdminLogin(!showAdminLogin)}
-            className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest bg-neutral-900/40 border border-white/5 text-neutral-400 hover:text-white px-3 py-1.5 rounded-lg transition-all cursor-pointer hover:bg-neutral-900"
-          >
-            <KeyRound className="w-3.5 h-3.5" /> Admin Access
-          </button>
-        )}
-      </div>
-
-      {/* Admin Authentication overlay drawer */}
-      <AnimatePresence>
-        {showAdminLogin && !isAdmin && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="fixed inset-0 z-30 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
-          >
-            <div className="w-full max-w-xs bg-neutral-900 border border-neutral-800 p-6 rounded-2xl shadow-2xl text-center space-y-4">
-              <div className="w-10 h-10 bg-[#FF7A00]/10 border border-[#FF7A00]/20 text-[#FF7A00] rounded-full flex items-center justify-center mx-auto">
-                <ShieldAlert className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="text-xs font-bold text-white uppercase tracking-wider">Admin Verification</h3>
-                <p className="text-[10px] text-neutral-400 mt-1">Please enter the admin PIN to bypass the launch blur.</p>
-              </div>
-
-              <form onSubmit={handleAdminAuth} className="space-y-3">
-                <input
-                  type="password"
-                  maxLength={4}
-                  value={pinInput}
-                  onChange={(e) => setPinInput(e.target.value)}
-                  placeholder="••••"
-                  className="w-full text-center tracking-widest text-base font-bold bg-neutral-950 border border-neutral-800 focus:border-[#FF7A00] rounded-xl py-2.5 text-white focus:outline-none"
-                />
-                {pinError && <p className="text-red-400 text-[10px] font-medium">{pinError}</p>}
-
-                <div className="flex gap-2 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowAdminLogin(false);
-                      setPinError('');
-                      setPinInput('');
-                    }}
-                    className="flex-1 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-white text-[10px] font-bold py-2 rounded-xl transition-all cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="flex-1 bg-[#FF7A00] hover:bg-[#E06C00] text-white text-[10px] font-bold py-2 rounded-xl transition-all cursor-pointer"
-                  >
-                    Authorize
-                  </button>
-                </div>
-              </form>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }
