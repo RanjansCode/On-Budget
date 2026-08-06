@@ -21,6 +21,8 @@ import { calculateDiscount } from '../utils/discount';
 import AdminLaunchMode from './AdminLaunchMode';
 import { LaunchSettings } from '../firebase/firestore';
 import { AdminFormSkeleton } from './Skeletons';
+import { slugify, generateUniqueSlug, getDomain, calculateProductSEOScore } from '../lib/seo';
+import { fetchSearchAnalyticsData } from '../lib/searchEngine';
 
 interface AdminPanelProps {
   products: Product[];
@@ -59,7 +61,18 @@ export default function AdminPanel({
   onSaveLaunchSettings,
   isLoading = false,
 }: AdminPanelProps) {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'products' | 'categories' | 'reels' | 'launch'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'products' | 'categories' | 'reels' | 'launch' | 'search'>('dashboard');
+  const [searchAnalyticsData, setSearchAnalyticsData] = useState<any>(null);
+  const [loadingSearchAnalytics, setLoadingSearchAnalytics] = useState(false);
+
+  React.useEffect(() => {
+    if (activeTab === 'search') {
+      setLoadingSearchAnalytics(true);
+      fetchSearchAnalyticsData()
+        .then(data => setSearchAnalyticsData(data))
+        .finally(() => setLoadingSearchAnalytics(false));
+    }
+  }, [activeTab]);
 
   // Modal / Form States
   const [productFormOpen, setProductFormOpen] = useState(false);
@@ -189,6 +202,17 @@ export default function AdminPanel({
         >
           <SlidersHorizontal className="w-4 h-4" />
           Launch Mode Settings
+        </button>
+        <button
+          onClick={() => setActiveTab('search')}
+          className={`flex items-center gap-2 text-xs font-bold pb-3 px-4 border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+            activeTab === 'search'
+              ? 'border-emerald-500 text-emerald-400'
+              : 'border-transparent text-neutral-400 hover:text-white'
+          }`}
+        >
+          <Search className="w-4 h-4" />
+          Search Analytics
         </button>
       </div>
 
@@ -552,6 +576,199 @@ export default function AdminPanel({
             onSaveLaunchSettings={onSaveLaunchSettings}
           />
         )}
+
+        {/* Search Engine Analytics Tab */}
+        {activeTab === 'search' && (
+          <div className="space-y-6">
+            <div className="bg-neutral-900 border border-neutral-800 p-5 rounded-2xl space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-[#FF5A00]/10 text-[#FF5A00] flex items-center justify-center font-bold">
+                    <Search className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-extrabold text-white uppercase tracking-wider font-display">
+                      Search Engine Analytics &amp; User Intent HQ
+                    </h3>
+                    <p className="text-xs text-neutral-400">
+                      Real-time analysis of user search queries, trending keywords, missing inventory zero-result searches, and click conversions.
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLoadingSearchAnalytics(true);
+                    fetchSearchAnalyticsData()
+                      .then(data => setSearchAnalyticsData(data))
+                      .finally(() => setLoadingSearchAnalytics(false));
+                  }}
+                  className="px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-xs font-bold text-white rounded-xl border border-neutral-700 transition-colors cursor-pointer"
+                >
+                  {loadingSearchAnalytics ? 'Refreshing...' : 'Refresh Logs'}
+                </button>
+              </div>
+            </div>
+
+            {/* KPI CARDS */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="p-5 border border-neutral-800 rounded-2xl bg-neutral-900 flex flex-col justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#FF5A00] flex items-center gap-1.5">
+                  <Search className="w-3.5 h-3.5" /> Total Searches Logged
+                </span>
+                <span className="text-2xl font-black text-white mt-2">
+                  {searchAnalyticsData?.totalSearchesCount || 0}
+                </span>
+                <span className="text-[10px] text-neutral-400 mt-1">Live query tracking</span>
+              </div>
+
+              <div className="p-5 border border-neutral-800 rounded-2xl bg-neutral-900 flex flex-col justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+                  <TrendingUp className="w-3.5 h-3.5" /> Search Conversion
+                </span>
+                <span className="text-2xl font-black text-emerald-400 mt-2">
+                  {searchAnalyticsData?.searchConversionRate || 0}%
+                </span>
+                <span className="text-[10px] text-neutral-400 mt-1">% of searches resulting in product clicks</span>
+              </div>
+
+              <div className="p-5 border border-neutral-800 rounded-2xl bg-neutral-900 flex flex-col justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-red-400 flex items-center gap-1.5">
+                  <ShieldAlert className="w-3.5 h-3.5" /> Zero-Result Rate
+                </span>
+                <span className="text-2xl font-black text-red-400 mt-2">
+                  {searchAnalyticsData?.zeroResultsRate || 0}%
+                </span>
+                <span className="text-[10px] text-neutral-400 mt-1">Searches yielding 0 catalog matches</span>
+              </div>
+
+              <div className="p-5 border border-neutral-800 rounded-2xl bg-neutral-900 flex flex-col justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5" /> Top Keyword
+                </span>
+                <span className="text-xl font-black text-amber-400 mt-2 capitalize truncate">
+                  {searchAnalyticsData?.topSearches?.[0]?.query || 'Microphone'}
+                </span>
+                <span className="text-[10px] text-neutral-400 mt-1">
+                  {searchAnalyticsData?.topSearches?.[0]?.count || 0} search events
+                </span>
+              </div>
+            </div>
+
+            {/* TWO COLUMN GRID FOR TABLES */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              
+              {/* TOP SEARCHED KEYWORDS */}
+              <div className="bg-neutral-900 border border-neutral-800 p-5 rounded-2xl space-y-3">
+                <div className="flex items-center justify-between pb-2 border-b border-neutral-800">
+                  <h4 className="text-xs font-black uppercase text-white tracking-wider flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-[#FF5A00]" />
+                    Most Searched Keywords
+                  </h4>
+                  <span className="text-[10px] bg-[#FF5A00]/10 text-[#FF5A00] font-bold px-2 py-0.5 rounded-full">
+                    Top Queries
+                  </span>
+                </div>
+
+                <div className="divide-y divide-neutral-800/80">
+                  {(searchAnalyticsData?.topSearches || []).map((item: any, idx: number) => (
+                    <div key={`ts-${idx}`} className="py-2.5 flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-[10px] font-mono text-neutral-500 w-4">{idx + 1}.</span>
+                        <span className="font-bold text-white capitalize truncate">{item.query}</span>
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md">
+                          {item.count} searches
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* ZERO RESULT SEARCHES (MISSING INVENTORY OPPORTUNITIES) */}
+              <div className="bg-neutral-900 border border-neutral-800 p-5 rounded-2xl space-y-3">
+                <div className="flex items-center justify-between pb-2 border-b border-neutral-800">
+                  <h4 className="text-xs font-black uppercase text-white tracking-wider flex items-center gap-2">
+                    <ShieldAlert className="w-4 h-4 text-red-400" />
+                    Zero Result Searches (Missing Inventory)
+                  </h4>
+                  <span className="text-[10px] bg-red-500/10 text-red-400 font-bold px-2 py-0.5 rounded-full">
+                    Stock Demands
+                  </span>
+                </div>
+
+                <div className="divide-y divide-neutral-800/80">
+                  {(searchAnalyticsData?.zeroResultSearches || []).length > 0 ? (
+                    (searchAnalyticsData?.zeroResultSearches || []).map((item: any, idx: number) => (
+                      <div key={`zr-${idx}`} className="py-2.5 flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-[10px] font-mono text-neutral-500 w-4">{idx + 1}.</span>
+                          <span className="font-bold text-red-300 capitalize truncate">{item.query}</span>
+                        </div>
+                        <span className="text-[10px] font-bold text-red-400 bg-red-500/10 border border-red-500/20 px-2 py-0.5 rounded-md shrink-0">
+                          {item.count} missed searches
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-xs text-neutral-500 py-4 text-center">No zero-result searches logged yet.</p>
+                  )}
+                </div>
+              </div>
+
+            </div>
+
+            {/* BRANDS & CATEGORIES BREAKDOWN */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              
+              {/* MOST SEARCHED BRANDS */}
+              <div className="bg-neutral-900 border border-neutral-800 p-5 rounded-2xl space-y-3">
+                <h4 className="text-xs font-black uppercase text-white tracking-wider pb-2 border-b border-neutral-800 flex items-center gap-2">
+                  <ShoppingBag className="w-4 h-4 text-sky-400" />
+                  Most Searched Brands
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  {(searchAnalyticsData?.mostSearchedBrands || []).map((item: any, idx: number) => (
+                    <div
+                      key={`b-${idx}`}
+                      className="px-3 py-2 bg-neutral-950 border border-neutral-800 rounded-xl flex items-center gap-2 text-xs"
+                    >
+                      <span className="font-bold text-white">{item.brand}</span>
+                      <span className="text-[10px] font-bold text-sky-400 bg-sky-500/10 px-1.5 py-0.5 rounded-md">
+                        {item.count}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* MOST SEARCHED CATEGORIES */}
+              <div className="bg-neutral-900 border border-neutral-800 p-5 rounded-2xl space-y-3">
+                <h4 className="text-xs font-black uppercase text-white tracking-wider pb-2 border-b border-neutral-800 flex items-center gap-2">
+                  <FolderOpen className="w-4 h-4 text-amber-400" />
+                  Most Searched Categories
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  {(searchAnalyticsData?.mostSearchedCategories || []).map((item: any, idx: number) => (
+                    <div
+                      key={`c-${idx}`}
+                      className="px-3 py-2 bg-neutral-950 border border-neutral-800 rounded-xl flex items-center gap-2 text-xs"
+                    >
+                      <span className="font-bold text-white">{item.category}</span>
+                      <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded-md">
+                        {item.count}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+            </div>
+          </div>
+        )}
       </div>
 
       {/* MODAL: PRODUCT FORM */}
@@ -560,6 +777,7 @@ export default function AdminPanel({
           <ProductFormModal
             product={editingProduct}
             categories={categories}
+            existingProducts={products}
             onClose={() => setProductFormOpen(false)}
             onSave={(p) => {
               if (editingProduct) {
@@ -622,12 +840,13 @@ export default function AdminPanel({
 interface ProductFormModalProps {
   product: Product | null;
   categories: Category[];
+  existingProducts?: Product[];
   onClose: () => void;
   onSave: (product: Product) => void;
   imagePresets: string[];
 }
 
-function ProductFormModal({ product, categories, onClose, onSave, imagePresets }: ProductFormModalProps) {
+function ProductFormModal({ product, categories, existingProducts = [], onClose, onSave, imagePresets }: ProductFormModalProps) {
   const [id, setId] = useState(product?.id || `prod-${Date.now()}`);
   const [title, setTitle] = useState(product?.title || '');
   const [price, setPrice] = useState(product?.price || 0);
@@ -718,7 +937,25 @@ function ProductFormModal({ product, categories, onClose, onSave, imagePresets }
   const [tagInput, setTagInput] = useState('');
   const [seoTitle, setSeoTitle] = useState(product?.seoTitle || '');
   const [seoDescription, setSeoDescription] = useState(product?.seoDescription || '');
+  const [seoSlug, setSeoSlug] = useState(product?.seoSlug || '');
   const [showOverwriteWarning, setShowOverwriteWarning] = useState(false);
+
+  // Compute live effective slug & SEO Score Audit
+  const effectiveSlug = generateUniqueSlug(title, id, existingProducts, seoSlug);
+  const currentDomain = getDomain();
+  const canonicalUrl = `${currentDomain}/product/${effectiveSlug}`;
+
+  const seoAudit = calculateProductSEOScore({
+    title,
+    description,
+    seoTitle,
+    seoDescription,
+    seoSlug: effectiveSlug,
+    searchTags,
+    images: imageUrl ? [imageUrl] : [],
+    brand,
+    category
+  });
 
   const handleAddTag = (str?: string) => {
     const raw = str !== undefined ? str : tagInput;
@@ -742,6 +979,10 @@ function ProductFormModal({ product, categories, onClose, onSave, imagePresets }
   };
 
   const executeAutoGenerateSEO = () => {
+    // 0. Generate SEO Slug
+    const autoSlug = generateUniqueSlug(title, id, existingProducts, '');
+    setSeoSlug(autoSlug);
+
     // 1. Generate Search Tags from product details
     const extractedWords: string[] = [];
     if (title) extractedWords.push(...title.split(/[\s,-]+/));
@@ -786,7 +1027,7 @@ function ProductFormModal({ product, categories, onClose, onSave, imagePresets }
   };
 
   const handleAutoGenerateSEO = () => {
-    if (searchTags.length > 0 || seoTitle.trim() !== '' || seoDescription.trim() !== '') {
+    if (searchTags.length > 0 || seoTitle.trim() !== '' || seoDescription.trim() !== '' || seoSlug.trim() !== '') {
       setShowOverwriteWarning(true);
     } else {
       executeAutoGenerateSEO();
@@ -913,6 +1154,7 @@ function ProductFormModal({ product, categories, onClose, onSave, imagePresets }
       searchTags: searchTags.map(t => t.trim()).filter(Boolean),
       seoTitle: seoTitle.trim(),
       seoDescription: seoDescription.trim(),
+      seoSlug: effectiveSlug,
       status: 'Published',
       createdAt: product?.createdAt || new Date().toISOString()
     };
@@ -1415,7 +1657,38 @@ function ProductFormModal({ product, categories, onClose, onSave, imagePresets }
               </div>
             )}
 
-            {/* A. SEARCH TAGS */}
+            {/* A. SEO URL SLUG */}
+            <div>
+              <div className="flex justify-between items-center mb-1">
+                <label className="block text-[11px] font-bold text-neutral-300">
+                  SEO URL Slug
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setSeoSlug(slugify(title))}
+                  className="text-[10px] text-emerald-400 hover:underline font-bold cursor-pointer"
+                >
+                  Auto-generate from Title
+                </button>
+              </div>
+              <input
+                type="text"
+                value={seoSlug}
+                onChange={(e) => setSeoSlug(e.target.value)}
+                onBlur={() => {
+                  if (seoSlug.trim()) {
+                    setSeoSlug(slugify(seoSlug));
+                  }
+                }}
+                placeholder="e.g. maono-au-400-lavalier-microphone"
+                className="w-full bg-neutral-950 border border-neutral-800 focus:border-emerald-500 rounded-xl px-3 py-2 text-xs text-white focus:outline-none font-mono"
+              />
+              <p className="text-[10px] text-neutral-500 mt-1">
+                Active slug: <span className="font-mono text-emerald-400 font-bold">{effectiveSlug}</span>
+              </p>
+            </div>
+
+            {/* B. SEARCH TAGS */}
             <div>
               <label className="block text-[11px] font-bold text-neutral-300 mb-1">
                 Search Tags
@@ -1524,18 +1797,30 @@ function ProductFormModal({ product, categories, onClose, onSave, imagePresets }
               </div>
             </div>
 
-            {/* D. GOOGLE SEARCH PREVIEW */}
-            <div className="bg-neutral-950 border border-neutral-800 rounded-xl p-3 space-y-1.5">
-              <div className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider flex items-center gap-1 mb-2">
-                <Search className="w-3 h-3 text-sky-400" />
-                <span>Google Search Preview</span>
+            {/* D. GOOGLE SEARCH PREVIEW & CANONICAL LINKS */}
+            <div className="bg-neutral-950 border border-neutral-800 rounded-xl p-3 space-y-3">
+              <div className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider flex items-center justify-between">
+                <div className="flex items-center gap-1">
+                  <Search className="w-3 h-3 text-sky-400" />
+                  <span>Google Search Preview</span>
+                </div>
+                <a
+                  href={`/product/${effectiveSlug}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[10px] text-emerald-400 hover:underline font-bold flex items-center gap-1"
+                >
+                  <Eye className="w-3 h-3" />
+                  <span>Preview Page</span>
+                </a>
               </div>
-              <div className="space-y-1 font-sans">
+              
+              <div className="space-y-1 font-sans bg-neutral-900/60 p-2.5 rounded-lg border border-neutral-850">
                 <div className="flex items-center gap-1.5 text-[11px] text-neutral-400 truncate">
                   <div className="w-3.5 h-3.5 rounded-full bg-emerald-500 text-black text-[8px] font-bold flex items-center justify-center shrink-0 font-display">
                     OB
                   </div>
-                  <span className="truncate text-neutral-400">https://inourbudget.vercel.app › product › {category || 'curated'}</span>
+                  <span className="truncate text-neutral-400">{canonicalUrl}</span>
                 </div>
                 <div className="text-xs sm:text-sm font-medium text-[#8ab4f8] hover:underline cursor-pointer truncate">
                   {seoTitle.trim() || (title.trim() ? `${title} | On Budget` : 'Product Title | On Budget')}
@@ -1544,6 +1829,97 @@ function ProductFormModal({ product, categories, onClose, onSave, imagePresets }
                   {seoDescription.trim() || (description.trim() ? description : 'Discover top budget gadgets, personal tests, and curated deals on On Budget.')}
                 </p>
               </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[10px]">
+                <div className="bg-neutral-900/80 p-2 rounded-lg border border-neutral-800">
+                  <span className="text-neutral-500 font-semibold block uppercase">Canonical URL (Auto)</span>
+                  <span className="text-emerald-400 font-mono truncate block mt-0.5">{canonicalUrl}</span>
+                </div>
+                <div className="bg-neutral-900/80 p-2 rounded-lg border border-neutral-800">
+                  <span className="text-neutral-500 font-semibold block uppercase">Preview Link</span>
+                  <span className="text-sky-400 font-mono truncate block mt-0.5">/product/{effectiveSlug}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* E. LIVE SEO SCORE & DIAGNOSTIC HEALTH */}
+            <div className="bg-neutral-950 border border-neutral-800 rounded-xl p-3 space-y-3">
+              <div className="flex items-center justify-between border-b border-neutral-850 pb-2">
+                <div className="flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                  <span className="text-xs font-bold text-white uppercase tracking-wider">SEO Score & Health Audit</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-neutral-400 font-semibold">Target: 100/100</span>
+                  <span className={`text-xs font-black px-2 py-0.5 rounded-full font-mono ${
+                    seoAudit.score >= 90
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                      : seoAudit.score >= 70
+                      ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                      : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                  }`}>
+                    {seoAudit.score} / 100
+                  </span>
+                </div>
+              </div>
+
+              {/* Status Counters */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[10px]">
+                <div className="bg-neutral-900 p-2 rounded-lg border border-neutral-850">
+                  <span className="text-neutral-500 font-medium block">Title Length</span>
+                  <span className={`font-mono font-bold ${
+                    seoAudit.titleStatus === 'good' ? 'text-emerald-400' : 'text-amber-400'
+                  }`}>
+                    {seoAudit.titleLength} chars ({seoAudit.titleStatus})
+                  </span>
+                </div>
+
+                <div className="bg-neutral-900 p-2 rounded-lg border border-neutral-850">
+                  <span className="text-neutral-500 font-medium block">Meta Desc Length</span>
+                  <span className={`font-mono font-bold ${
+                    seoAudit.descriptionStatus === 'good' ? 'text-emerald-400' : 'text-amber-400'
+                  }`}>
+                    {seoAudit.descriptionLength} chars ({seoAudit.descriptionStatus})
+                  </span>
+                </div>
+
+                <div className="bg-neutral-900 p-2 rounded-lg border border-neutral-850">
+                  <span className="text-neutral-500 font-medium block">Missing Fields</span>
+                  <span className={`font-mono font-bold ${
+                    seoAudit.missingFields.length === 0 ? 'text-emerald-400' : 'text-red-400'
+                  }`}>
+                    {seoAudit.missingFields.length} missing
+                  </span>
+                </div>
+
+                <div className="bg-neutral-900 p-2 rounded-lg border border-neutral-850">
+                  <span className="text-neutral-500 font-medium block">Warnings</span>
+                  <span className={`font-mono font-bold ${
+                    seoAudit.warnings.length === 0 ? 'text-emerald-400' : 'text-amber-400'
+                  }`}>
+                    {seoAudit.warnings.length} warnings
+                  </span>
+                </div>
+              </div>
+
+              {/* Missing Fields & Warnings Detail */}
+              {(seoAudit.missingFields.length > 0 || seoAudit.warnings.length > 0) && (
+                <div className="space-y-1.5 pt-1">
+                  {seoAudit.missingFields.length > 0 && (
+                    <div className="text-[10px] text-red-400 bg-red-950/30 border border-red-900/50 rounded-lg p-2">
+                      <span className="font-bold block mb-0.5">Missing SEO Fields:</span>
+                      <p className="font-mono text-red-300">{seoAudit.missingFields.join(', ')}</p>
+                    </div>
+                  )}
+
+                  {seoAudit.warnings.map((warn, i) => (
+                    <div key={i} className="text-[10px] text-amber-300 bg-amber-950/20 border border-amber-900/40 rounded-lg p-1.5 flex items-center gap-1.5">
+                      <ShieldAlert className="w-3 h-3 text-amber-400 shrink-0" />
+                      <span>{warn}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 

@@ -3,6 +3,8 @@ import React, { useState } from 'react';
 interface ImageSkeletonProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   src: string;
   alt: string;
+  title?: string;
+  loading?: 'lazy' | 'eager';
   className?: string;
   containerClassName?: string;
   aspectRatio?: string;
@@ -12,6 +14,8 @@ interface ImageSkeletonProps extends React.ImgHTMLAttributes<HTMLImageElement> {
 export default function ImageSkeleton({
   src,
   alt,
+  title,
+  loading = 'lazy',
   className = '',
   containerClassName = '',
   aspectRatio,
@@ -19,6 +23,8 @@ export default function ImageSkeleton({
 }: ImageSkeletonProps) {
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
+
+  const imgTitle = title || alt;
 
   return (
     <div
@@ -34,6 +40,9 @@ export default function ImageSkeleton({
       <img
         src={src}
         alt={alt}
+        title={imgTitle}
+        data-caption={imgTitle}
+        loading={loading}
         onLoad={() => setIsLoaded(true)}
         onError={() => {
           setIsLoaded(true);

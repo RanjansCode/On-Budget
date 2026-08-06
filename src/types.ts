@@ -69,6 +69,7 @@ export interface Product {
   searchTags?: string[]; // Custom search keywords/tags
   seoTitle?: string; // Dedicated SEO Title
   seoDescription?: string; // Dedicated SEO Description
+  seoSlug?: string; // Dedicated SEO URL Slug (e.g. maono-au-400-lavalier-microphone)
   status: 'Published' | 'Draft';
   createdAt: string;
 }

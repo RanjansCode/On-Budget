@@ -16,6 +16,16 @@ import { calculateDiscount } from '../utils/discount';
 import ImageSkeleton from './ImageSkeleton';
 import ProductRecommendations from './ProductRecommendations';
 import ProductShareButton from './ProductShareButton';
+import {
+  updateDocumentSEO,
+  generateProductSchema,
+  generateBreadcrumbSchema,
+  generateOrganizationSchema,
+  generateWebSiteSchema,
+  getCanonicalUrl,
+  getProductSlug,
+  getDomain
+} from '../lib/seo';
 
 interface ProductDetailProps {
   product: Product;
@@ -59,53 +69,42 @@ export default function ProductDetail({
     return () => window.removeEventListener('onbudget_currency_changed', handleCurrencyChange);
   }, []);
 
-  // Dynamic SEO & Open Graph Meta Tags
+  // Dynamic SEO, Canonical Link, Open Graph & JSON-LD Structured Data
   useEffect(() => {
     const previousTitle = document.title;
-    
-    // 1. Title
-    const pageTitle = product.seoTitle?.trim() 
-      ? product.seoTitle 
+    const domain = getDomain();
+    const slug = getProductSlug(product);
+    const canonicalUrl = getCanonicalUrl(`/product/${slug}`, domain);
+
+    const title = product.seoTitle?.trim()
+      ? product.seoTitle
       : `${product.title} | On Budget`;
-    document.title = pageTitle;
 
-    // 2. Meta Description
-    const metaDescText = product.seoDescription?.trim()
+    const description = product.seoDescription?.trim()
       ? product.seoDescription
-      : (product.description || `Buy ${product.title} by ${product.brand} on On Budget. Curated budget deals & honest reviews.`);
+      : (product.description || `Buy ${product.title} by ${product.brand || 'On Budget'} on On Budget. Curated budget deals & honest reviews.`);
 
-    let metaDesc = document.querySelector('meta[name="description"]');
-    if (!metaDesc) {
-      metaDesc = document.createElement('meta');
-      metaDesc.setAttribute('name', 'description');
-      document.head.appendChild(metaDesc);
-    }
-    const prevMetaDesc = metaDesc.getAttribute('content');
-    metaDesc.setAttribute('content', metaDescText);
+    const productSchema = generateProductSchema(product, domain);
+    const breadcrumbSchema = generateBreadcrumbSchema([
+      { name: 'Home', url: '/' },
+      { name: product.category, url: `/category/${product.category}` },
+      { name: product.title, url: `/product/${slug}` }
+    ], domain);
+    const orgSchema = generateOrganizationSchema(domain);
+    const websiteSchema = generateWebSiteSchema(domain);
 
-    // 3. Open Graph Tags
-    const setOgTag = (property: string, content: string) => {
-      let tag = document.querySelector(`meta[property="${property}"]`);
-      if (!tag) {
-        tag = document.createElement('meta');
-        tag.setAttribute('property', property);
-        document.head.appendChild(tag);
-      }
-      tag.setAttribute('content', content);
-    };
-
-    setOgTag('og:title', pageTitle);
-    setOgTag('og:description', metaDescText);
-    if (product.images?.[0]) {
-      setOgTag('og:image', product.images[0]);
-    }
-    setOgTag('og:url', window.location.href);
+    updateDocumentSEO({
+      title,
+      description,
+      keywords: product.searchTags || [product.title, product.brand, product.category],
+      canonicalUrl,
+      imageUrl: product.images?.[0],
+      ogType: 'product',
+      jsonLdSchemas: [productSchema, breadcrumbSchema, orgSchema, websiteSchema]
+    });
 
     return () => {
       document.title = previousTitle;
-      if (metaDesc && prevMetaDesc !== null) {
-        metaDesc.setAttribute('content', prevMetaDesc);
-      }
     };
   }, [product]);
 
@@ -226,6 +225,39 @@ export default function ProductDetail({
           </button>
         </div>
       </div>
+
+      {/* Breadcrumb Navigation for User & Search Crawlers */}
+      <nav aria-label="Breadcrumb" className="px-1 -mt-4 text-xs text-slate-500 dark:text-slate-400">
+        <ol className="flex items-center gap-1.5 flex-wrap">
+          <li>
+            <button onClick={onBack} className="hover:text-[#FF5A00] transition-colors cursor-pointer font-medium">
+              Home
+            </button>
+          </li>
+          <li>
+            <span className="text-slate-400 dark:text-slate-600">/</span>
+          </li>
+          <li>
+            <span className="text-slate-700 dark:text-slate-300 font-medium">{product.category}</span>
+          </li>
+          {product.brand && (
+            <>
+              <li>
+                <span className="text-slate-400 dark:text-slate-600">/</span>
+              </li>
+              <li>
+                <span className="text-slate-700 dark:text-slate-300 font-medium">{product.brand}</span>
+              </li>
+            </>
+          )}
+          <li>
+            <span className="text-slate-400 dark:text-slate-600">/</span>
+          </li>
+          <li className="text-[#FF5A00] font-bold truncate max-w-[200px] sm:max-w-[320px]">
+            {product.title}
+          </li>
+        </ol>
+      </nav>
 
       {/* Main Product Layout Block */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

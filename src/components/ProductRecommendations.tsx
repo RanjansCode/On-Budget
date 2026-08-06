@@ -1,12 +1,18 @@
 import React, { useRef, useState, useEffect, useMemo } from 'react';
 import {
   ChevronLeft, ChevronRight, Sparkles, TrendingUp, ThumbsUp,
-  Clock, ShoppingBag, Tag, Eye, Heart, Check, Plus, RefreshCw
+  Clock, ShoppingBag, Tag, Eye, Heart, RefreshCw, Layers,
+  Store, Zap, Trash2, Box
 } from 'lucide-react';
 import { Product } from '../types';
 import ProductCard from './ProductCard';
 import { ProductCardSkeleton } from './Skeletons';
 import { formatCurrencyPrice, detectUserCurrency } from '../utils/currency';
+import {
+  getProductDetailRecommendations,
+  clearRecentlyViewedIds,
+  trackRecommendationClick
+} from '../lib/recommendationEngine';
 
 interface ProductRecommendationsProps {
   currentProduct: Product;
@@ -18,6 +24,7 @@ interface ProductRecommendationsProps {
   currentCurrency?: string;
   recentlyViewedIds?: string[];
   onTrackAffiliateClick?: (productId: string, platform: string) => void;
+  onClearRecentlyViewed?: () => void;
 }
 
 interface RecommendationCarouselProps {
@@ -31,6 +38,7 @@ interface RecommendationCarouselProps {
   onOpenSocialLinks?: (product: Product) => void;
   currentCurrency?: string;
   isLoading?: boolean;
+  actionButton?: React.ReactNode;
 }
 
 /**
@@ -47,12 +55,12 @@ function RecommendationCarousel({
   onOpenSocialLinks,
   currentCurrency,
   isLoading = false,
+  actionButton,
 }: RecommendationCarouselProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
 
-  // If no products and not loading, hide section completely
   if (!isLoading && products.length === 0) {
     return null;
   }
@@ -75,14 +83,19 @@ function RecommendationCarousel({
     }
   };
 
+  const handleCardClick = (product: Product) => {
+    trackRecommendationClick(title, product.id, product.title);
+    onOpenProduct(product.id);
+  };
+
   return (
-    <div className="space-y-4 my-8 animate-in fade-in duration-300">
+    <div className="space-y-4 my-8 animate-in fade-in duration-300 text-left">
       {/* Section Header */}
       <div className="flex items-end justify-between border-b border-slate-200/60 dark:border-slate-800/80 pb-3">
-        <div className="space-y-1 text-left">
+        <div className="space-y-1">
           <div className="flex items-center gap-2">
-            {icon && <span className="text-[#FF5A00]">{icon}</span>}
-            <h3 className="text-base font-bold text-slate-950 dark:text-white font-display tracking-tight">
+            {icon && <span className="p-1.5 rounded-lg bg-[#FF5A00]/10 text-[#FF5A00]">{icon}</span>}
+            <h3 className="text-base sm:text-lg font-black text-slate-950 dark:text-white font-display tracking-tight">
               {title}
             </h3>
           </div>
@@ -93,42 +106,46 @@ function RecommendationCarousel({
           )}
         </div>
 
-        {/* Carousel Scroll Controls (Desktop & Mobile) */}
-        {!isLoading && products.length > 0 && (
-          <div className="flex items-center gap-1.5 shrink-0">
-            <button
-              onClick={() => handleScroll('left')}
-              disabled={!canScrollLeft}
-              className={`p-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 transition-all cursor-pointer ${
-                canScrollLeft
-                  ? 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-[#FF5A00]'
-                  : 'text-slate-300 dark:text-slate-700 opacity-40 cursor-not-allowed'
-              }`}
-              title="Scroll left"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => handleScroll('right')}
-              disabled={!canScrollRight}
-              className={`p-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 transition-all cursor-pointer ${
-                canScrollRight
-                  ? 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-[#FF5A00]'
-                  : 'text-slate-300 dark:text-slate-700 opacity-40 cursor-not-allowed'
-              }`}
-              title="Scroll right"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
-        )}
+        <div className="flex items-center gap-2 shrink-0">
+          {actionButton}
+
+          {/* Carousel Scroll Controls */}
+          {!isLoading && products.length > 0 && (
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => handleScroll('left')}
+                disabled={!canScrollLeft}
+                className={`p-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 transition-all cursor-pointer ${
+                  canScrollLeft
+                    ? 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-[#FF5A00]'
+                    : 'text-slate-300 dark:text-slate-700 opacity-40 cursor-not-allowed'
+                }`}
+                title="Scroll left"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => handleScroll('right')}
+                disabled={!canScrollRight}
+                className={`p-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 transition-all cursor-pointer ${
+                  canScrollRight
+                    ? 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-[#FF5A00]'
+                    : 'text-slate-300 dark:text-slate-700 opacity-40 cursor-not-allowed'
+                }`}
+                title="Scroll right"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Carousel Track */}
       {isLoading ? (
         <div className="flex gap-4 overflow-x-auto scrollbar-none py-2">
           {Array.from({ length: 4 }).map((_, idx) => (
-            <div key={idx} className="shrink-0 w-[240px] sm:w-[260px] md:w-[280px]">
+            <div key={idx} className="shrink-0 w-[210px] sm:w-[250px] md:w-[270px]">
               <ProductCardSkeleton />
             </div>
           ))}
@@ -142,11 +159,11 @@ function RecommendationCarousel({
           {products.map((product) => (
             <div
               key={product.id}
-              className="shrink-0 w-[230px] sm:w-[260px] md:w-[275px] snap-start flex flex-col"
+              className="shrink-0 w-[210px] sm:w-[250px] md:w-[270px] lg:w-[280px] snap-start flex flex-col"
             >
               <ProductCard
                 product={product}
-                onOpenProduct={onOpenProduct}
+                onOpenProduct={() => handleCardClick(product)}
                 isWishlisted={wishlist.includes(product.id)}
                 onToggleWishlist={onToggleWishlist}
                 onOpenSocialLinks={onOpenSocialLinks}
@@ -161,7 +178,7 @@ function RecommendationCarousel({
 }
 
 /**
- * Frequently Bought Together Section (Section 8)
+ * Frequently Viewed / Bought Together Section
  */
 function FrequentlyBoughtTogetherSection({
   currentProduct,
@@ -182,7 +199,6 @@ function FrequentlyBoughtTogetherSection({
 }) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
-  // Find 1-3 complimentary products
   const bundleItems = useMemo(() => {
     let matches: Product[] = [];
     if (currentProduct.frequentlyBoughtTogether && currentProduct.frequentlyBoughtTogether.length > 0) {
@@ -213,7 +229,7 @@ function FrequentlyBoughtTogetherSection({
     .reduce((sum, p) => sum + (p.originalPrice || p.price), 0);
 
   const toggleSelect = (id: string) => {
-    if (id === currentProduct.id) return; // cannot deselect main product
+    if (id === currentProduct.id) return;
     setSelectedIds(prev =>
       prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
     );
@@ -235,17 +251,15 @@ function FrequentlyBoughtTogetherSection({
         <ShoppingBag className="w-5 h-5 text-[#FF5A00]" />
         <div>
           <h3 className="text-base font-bold text-slate-950 dark:text-white font-display">
-            Frequently Bought Together
+            Frequently Viewed Together
           </h3>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Combine top gadgets to maximize budget value
+            Complimentary desk setups & budget accessories often paired together
           </p>
         </div>
       </div>
 
-      {/* Bundle Products Display */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
-        {/* Products Flex List */}
         <div className="lg:col-span-8 flex flex-wrap items-center gap-3">
           {allBundleProducts.map((p, index) => {
             const isSelected = selectedIds.includes(p.id);
@@ -298,7 +312,6 @@ function FrequentlyBoughtTogetherSection({
           })}
         </div>
 
-        {/* Bundle Summary & Action Box */}
         <div className="lg:col-span-4 p-4 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl space-y-3">
           <div>
             <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400 block font-display">
@@ -325,7 +338,7 @@ function FrequentlyBoughtTogetherSection({
             className="w-full bg-[#FF5A00] hover:bg-[#E04F00] text-white text-xs font-bold py-2.5 px-4 rounded-xl transition-all cursor-pointer shadow-xs flex items-center justify-center gap-2"
           >
             <ShoppingBag className="w-4 h-4" />
-            Buy Bundle Together
+            Wishlist All Selected Items
           </button>
         </div>
       </div>
@@ -334,7 +347,7 @@ function FrequentlyBoughtTogetherSection({
 }
 
 /**
- * Main Recommendation Engine Component
+ * Main Product Recommendations Component (Renders all 10 Product Detail Sections)
  */
 export default function ProductRecommendations({
   currentProduct,
@@ -345,120 +358,42 @@ export default function ProductRecommendations({
   onOpenSocialLinks,
   currentCurrency,
   recentlyViewedIds = [],
-  onTrackAffiliateClick
+  onTrackAffiliateClick,
+  onClearRecentlyViewed,
 }: ProductRecommendationsProps) {
   const [isReady, setIsReady] = useState(false);
+  const [localRecentlyViewed, setLocalRecentlyViewed] = useState<string[]>(recentlyViewedIds);
 
-  // Lazy load/defer recommendation computations slightly so main product renders instant
   useEffect(() => {
-    const timer = setTimeout(() => setIsReady(true), 150);
+    const timer = setTimeout(() => setIsReady(true), 100);
     return () => clearTimeout(timer);
   }, [currentProduct.id]);
 
-  // Section 1: Similar Products (Same Category)
-  const similarProducts = useMemo(() => {
-    return allProducts
-      .filter(p => p.id !== currentProduct.id && p.category === currentProduct.category)
-      .slice(0, 10);
-  }, [currentProduct, allProducts]);
+  useEffect(() => {
+    setLocalRecentlyViewed(recentlyViewedIds);
+  }, [recentlyViewedIds]);
 
-  // Section 2: More From Same Brand
-  const brandProducts = useMemo(() => {
-    if (!currentProduct.brand) return [];
-    const brandLower = currentProduct.brand.trim().toLowerCase();
-    return allProducts
-      .filter(p => p.id !== currentProduct.id && p.brand && p.brand.trim().toLowerCase() === brandLower)
-      .slice(0, 10);
-  }, [currentProduct, allProducts]);
+  const recs = useMemo(() => {
+    return getProductDetailRecommendations(currentProduct, allProducts, wishlist, localRecentlyViewed);
+  }, [currentProduct, allProducts, wishlist, localRecentlyViewed]);
 
-  // Section 3: More In This Budget (±20% price)
-  const budgetProducts = useMemo(() => {
-    const minPrice = currentProduct.price * 0.8;
-    const maxPrice = currentProduct.price * 1.2;
-    return allProducts
-      .filter(p => p.id !== currentProduct.id && p.price >= minPrice && p.price <= maxPrice)
-      .slice(0, 10);
-  }, [currentProduct, allProducts]);
-
-  // Section 4: Top Rated Products
-  const topRatedProducts = useMemo(() => {
-    return [...allProducts]
-      .filter(p => p.id !== currentProduct.id)
-      .sort((a, b) => {
-        const ratingA = a.creatorReview?.rating || a.rating || 0;
-        const ratingB = b.creatorReview?.rating || b.rating || 0;
-        return ratingB - ratingA;
-      })
-      .slice(0, 10);
-  }, [currentProduct, allProducts]);
-
-  // Section 5: Trending Products
-  const trendingProducts = useMemo(() => {
-    return allProducts
-      .filter(
-        p => p.id !== currentProduct.id && p.badges?.trending === true
-      )
-      .slice(0, 10);
-  }, [currentProduct, allProducts]);
-
-  // Section 6: Recently Added
-  const recentlyAddedProducts = useMemo(() => {
-    return [...allProducts]
-      .filter(p => p.id !== currentProduct.id)
-      .sort((a, b) => {
-        if (a.createdAt && b.createdAt) {
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-        }
-        return 0;
-      })
-      .slice(0, 10);
-  }, [currentProduct, allProducts]);
-
-  // Section 7: Customers Also Viewed
-  const customersAlsoViewed = useMemo(() => {
-    // Collect products in same or similar categories
-    const categoryMatches = allProducts.filter(
-      p => p.id !== currentProduct.id && p.category === currentProduct.category
-    );
-    if (categoryMatches.length >= 3) {
-      return categoryMatches.slice(0, 10);
+  const handleClearHistory = () => {
+    clearRecentlyViewedIds();
+    setLocalRecentlyViewed([]);
+    if (onClearRecentlyViewed) {
+      onClearRecentlyViewed();
     }
-    // Fallback to top rating/popular
-    return allProducts.filter(p => p.id !== currentProduct.id).slice(0, 10);
-  }, [currentProduct, allProducts]);
-
-  // Section 9: You May Also Like (Slightly randomized on product change)
-  const youMayAlsoLike = useMemo(() => {
-    const pool = allProducts.filter(p => p.id !== currentProduct.id);
-    // Deterministic seed-like shuffle based on product title length
-    return [...pool]
-      .sort(() => 0.5 - Math.random())
-      .slice(0, 10);
-  }, [currentProduct, allProducts]);
-
-  // Section 10: Continue Shopping / Recently Viewed
-  const recentlyViewedProducts = useMemo(() => {
-    // Read from prop or localStorage fallback
-    let ids = recentlyViewedIds;
-    if (ids.length === 0) {
-      const local = localStorage.getItem('onbudget_recently_viewed');
-      if (local) {
-        try { ids = JSON.parse(local); } catch (e) { ids = []; }
-      }
-    }
-    return allProducts
-      .filter(p => p.id !== currentProduct.id && ids.includes(p.id))
-      .slice(0, 10);
-  }, [currentProduct, allProducts, recentlyViewedIds]);
+  };
 
   return (
     <div className="pt-8 border-t border-slate-200/80 dark:border-slate-800/80 space-y-6">
-      {/* SECTION 1: Similar Products */}
+      
+      {/* 1. Similar Products */}
       <RecommendationCarousel
         title="Similar Products"
-        subtitle="Products you may also like in this category"
+        subtitle="Gadgets matching this item's category and features"
         icon={<Sparkles className="w-5 h-5" />}
-        products={similarProducts}
+        products={recs.similarProducts}
         wishlist={wishlist}
         onToggleWishlist={onToggleWishlist}
         onOpenProduct={onOpenProduct}
@@ -467,7 +402,93 @@ export default function ProductRecommendations({
         isLoading={!isReady}
       />
 
-      {/* SECTION 8: Frequently Bought Together (Bundle Box) */}
+      {/* 2. Customers Also Viewed */}
+      <RecommendationCarousel
+        title="Customers Also Viewed"
+        subtitle="Popular choices among shoppers looking at this product"
+        icon={<Eye className="w-5 h-5" />}
+        products={recs.customersAlsoViewed}
+        wishlist={wishlist}
+        onToggleWishlist={onToggleWishlist}
+        onOpenProduct={onOpenProduct}
+        onOpenSocialLinks={onOpenSocialLinks}
+        currentCurrency={currentCurrency}
+        isLoading={!isReady}
+      />
+
+      {/* 3. You May Also Like */}
+      <RecommendationCarousel
+        title="You May Also Like"
+        subtitle="Personalized recommendations curated for your budget"
+        icon={<Heart className="w-5 h-5" />}
+        products={recs.youMayAlsoLike}
+        wishlist={wishlist}
+        onToggleWishlist={onToggleWishlist}
+        onOpenProduct={onOpenProduct}
+        onOpenSocialLinks={onOpenSocialLinks}
+        currentCurrency={currentCurrency}
+        isLoading={!isReady}
+      />
+
+      {/* 4. Products From Same Brand */}
+      {currentProduct.brand && (
+        <RecommendationCarousel
+          title={`Products From ${currentProduct.brand}`}
+          subtitle={`Explore more curated budget products by ${currentProduct.brand}`}
+          icon={<Tag className="w-5 h-5" />}
+          products={recs.sameBrand}
+          wishlist={wishlist}
+          onToggleWishlist={onToggleWishlist}
+          onOpenProduct={onOpenProduct}
+          onOpenSocialLinks={onOpenSocialLinks}
+          currentCurrency={currentCurrency}
+          isLoading={!isReady}
+        />
+      )}
+
+      {/* 5. Products In Same Category */}
+      <RecommendationCarousel
+        title={`Products In ${currentProduct.category}`}
+        subtitle={`Top picks from the ${currentProduct.category} collection`}
+        icon={<Layers className="w-5 h-5" />}
+        products={recs.sameCategory}
+        wishlist={wishlist}
+        onToggleWishlist={onToggleWishlist}
+        onOpenProduct={onOpenProduct}
+        onOpenSocialLinks={onOpenSocialLinks}
+        currentCurrency={currentCurrency}
+        isLoading={!isReady}
+      />
+
+      {/* 6. Products With Similar Price */}
+      <RecommendationCarousel
+        title="Products With Similar Price"
+        subtitle={`Handpicked alternatives in the same ±25% budget tier`}
+        icon={<ShoppingBag className="w-5 h-5" />}
+        products={recs.similarPrice}
+        wishlist={wishlist}
+        onToggleWishlist={onToggleWishlist}
+        onOpenProduct={onOpenProduct}
+        onOpenSocialLinks={onOpenSocialLinks}
+        currentCurrency={currentCurrency}
+        isLoading={!isReady}
+      />
+
+      {/* 7. More Products From Same Marketplace */}
+      <RecommendationCarousel
+        title="More Products From Same Marketplace"
+        subtitle="Products available on the same purchase platforms"
+        icon={<Store className="w-5 h-5" />}
+        products={recs.sameMarketplace}
+        wishlist={wishlist}
+        onToggleWishlist={onToggleWishlist}
+        onOpenProduct={onOpenProduct}
+        onOpenSocialLinks={onOpenSocialLinks}
+        currentCurrency={currentCurrency}
+        isLoading={!isReady}
+      />
+
+      {/* 8. Frequently Viewed Together */}
       <FrequentlyBoughtTogetherSection
         currentProduct={currentProduct}
         allProducts={allProducts}
@@ -478,12 +499,12 @@ export default function ProductRecommendations({
         onTrackAffiliateClick={onTrackAffiliateClick}
       />
 
-      {/* SECTION 2: More From Same Brand */}
+      {/* 9. Recommended Accessories */}
       <RecommendationCarousel
-        title={currentProduct.brand ? `More From ${currentProduct.brand}` : 'More From This Brand'}
-        subtitle={`Explore other top-rated products from ${currentProduct.brand || 'this brand'}`}
-        icon={<Tag className="w-5 h-5" />}
-        products={brandProducts}
+        title="Recommended Accessories"
+        subtitle="Cases, stands, cables, and setup accessories for your setup"
+        icon={<Box className="w-5 h-5" />}
+        products={recs.recommendedAccessories}
         wishlist={wishlist}
         onToggleWishlist={onToggleWishlist}
         onOpenProduct={onOpenProduct}
@@ -492,103 +513,31 @@ export default function ProductRecommendations({
         isLoading={!isReady}
       />
 
-      {/* SECTION 3: More In This Budget */}
-      <RecommendationCarousel
-        title="More Products In This Budget"
-        subtitle={`Handpicked alternatives in the same ±20% price tier`}
-        icon={<ShoppingBag className="w-5 h-5" />}
-        products={budgetProducts}
-        wishlist={wishlist}
-        onToggleWishlist={onToggleWishlist}
-        onOpenProduct={onOpenProduct}
-        onOpenSocialLinks={onOpenSocialLinks}
-        currentCurrency={currentCurrency}
-        isLoading={!isReady}
-      />
-
-      {/* SECTION 4: Top Rated Products */}
-      <RecommendationCarousel
-        title="Top Rated Products"
-        subtitle="Gadgets with highest reviewer ratings"
-        icon={<ThumbsUp className="w-5 h-5" />}
-        products={topRatedProducts}
-        wishlist={wishlist}
-        onToggleWishlist={onToggleWishlist}
-        onOpenProduct={onOpenProduct}
-        onOpenSocialLinks={onOpenSocialLinks}
-        currentCurrency={currentCurrency}
-        isLoading={!isReady}
-      />
-
-      {/* SECTION 5: Trending Products */}
-      <RecommendationCarousel
-        title="Trending Products"
-        subtitle="Viral & popular tested gadgets this month"
-        icon={<TrendingUp className="w-5 h-5" />}
-        products={trendingProducts}
-        wishlist={wishlist}
-        onToggleWishlist={onToggleWishlist}
-        onOpenProduct={onOpenProduct}
-        onOpenSocialLinks={onOpenSocialLinks}
-        currentCurrency={currentCurrency}
-        isLoading={!isReady}
-      />
-
-      {/* SECTION 6: Recently Added */}
-      <RecommendationCarousel
-        title="Recently Added"
-        subtitle="Freshly reviewed catalog additions"
-        icon={<Clock className="w-5 h-5" />}
-        products={recentlyAddedProducts}
-        wishlist={wishlist}
-        onToggleWishlist={onToggleWishlist}
-        onOpenProduct={onOpenProduct}
-        onOpenSocialLinks={onOpenSocialLinks}
-        currentCurrency={currentCurrency}
-        isLoading={!isReady}
-      />
-
-      {/* SECTION 7: Customers Also Viewed */}
-      <RecommendationCarousel
-        title="Customers Also Viewed"
-        subtitle="Popular choices among shoppers who viewed this item"
-        icon={<Eye className="w-5 h-5" />}
-        products={customersAlsoViewed}
-        wishlist={wishlist}
-        onToggleWishlist={onToggleWishlist}
-        onOpenProduct={onOpenProduct}
-        onOpenSocialLinks={onOpenSocialLinks}
-        currentCurrency={currentCurrency}
-        isLoading={!isReady}
-      />
-
-      {/* SECTION 9: You May Also Like */}
-      <RecommendationCarousel
-        title="You May Also Like"
-        subtitle="Personalized suggestions based on your catalog exploration"
-        icon={<Heart className="w-5 h-5" />}
-        products={youMayAlsoLike}
-        wishlist={wishlist}
-        onToggleWishlist={onToggleWishlist}
-        onOpenProduct={onOpenProduct}
-        onOpenSocialLinks={onOpenSocialLinks}
-        currentCurrency={currentCurrency}
-        isLoading={!isReady}
-      />
-
-      {/* SECTION 10: Continue Shopping / Recently Viewed */}
-      <RecommendationCarousel
-        title="Continue Shopping"
-        subtitle="Products you inspected recently"
-        icon={<RefreshCw className="w-5 h-5" />}
-        products={recentlyViewedProducts}
-        wishlist={wishlist}
-        onToggleWishlist={onToggleWishlist}
-        onOpenProduct={onOpenProduct}
-        onOpenSocialLinks={onOpenSocialLinks}
-        currentCurrency={currentCurrency}
-        isLoading={!isReady}
-      />
+      {/* 10. Recently Viewed */}
+      {recs.recentlyViewed.length > 0 && (
+        <RecommendationCarousel
+          title="Recently Viewed"
+          subtitle="Products you looked at recently (stored locally)"
+          icon={<Clock className="w-5 h-5" />}
+          products={recs.recentlyViewed}
+          wishlist={wishlist}
+          onToggleWishlist={onToggleWishlist}
+          onOpenProduct={onOpenProduct}
+          onOpenSocialLinks={onOpenSocialLinks}
+          currentCurrency={currentCurrency}
+          isLoading={!isReady}
+          actionButton={
+            <button
+              onClick={handleClearHistory}
+              className="text-[10px] font-bold text-slate-400 hover:text-red-500 flex items-center gap-1 transition-colors cursor-pointer"
+              title="Clear Recently Viewed History"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Clear History
+            </button>
+          }
+        />
+      )}
     </div>
   );
 }

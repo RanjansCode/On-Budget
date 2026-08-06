@@ -15,13 +15,27 @@ import appletConfig from '../../firebase-applet-config.json';
 // 5. Select your App (Web) to see the SDK setup and configuration details.
 // -----------------------------------------------------------------------------
 
+const getEnvVar = (key: string): string | undefined => {
+  try {
+    if (typeof import.meta !== 'undefined' && import.meta && import.meta.env) {
+      return import.meta.env[key];
+    }
+  } catch (e) {
+    // Fallback to process.env
+  }
+  if (typeof process !== 'undefined' && process.env) {
+    return process.env[key];
+  }
+  return undefined;
+};
+
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || appletConfig.apiKey,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || appletConfig.authDomain,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || appletConfig.projectId,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || appletConfig.storageBucket,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || appletConfig.messagingSenderId,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || appletConfig.appId,
+  apiKey: getEnvVar('VITE_FIREBASE_API_KEY') || appletConfig.apiKey,
+  authDomain: getEnvVar('VITE_FIREBASE_AUTH_DOMAIN') || appletConfig.authDomain,
+  projectId: getEnvVar('VITE_FIREBASE_PROJECT_ID') || appletConfig.projectId,
+  storageBucket: getEnvVar('VITE_FIREBASE_STORAGE_BUCKET') || appletConfig.storageBucket,
+  messagingSenderId: getEnvVar('VITE_FIREBASE_MESSAGING_SENDER_ID') || appletConfig.messagingSenderId,
+  appId: getEnvVar('VITE_FIREBASE_APP_ID') || appletConfig.appId,
 };
 
 // Check if any required environment variable is missing or empty
@@ -36,7 +50,7 @@ export const isFirebaseConfigured = !!(
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
 // Support custom/named database ID from applet config
-const dbId = import.meta.env.VITE_FIREBASE_DATABASE_ID || appletConfig.firestoreDatabaseId;
+const dbId = getEnvVar('VITE_FIREBASE_DATABASE_ID') || appletConfig.firestoreDatabaseId;
 const db = dbId ? getFirestore(app, dbId) : getFirestore(app);
 
 const auth = getAuth(app);

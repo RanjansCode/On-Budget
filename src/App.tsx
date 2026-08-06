@@ -10,6 +10,7 @@ import {
 import {
   Product, Category, Reel, AnalyticsData, NotificationItem, ADMIN_EMAILS
 } from './types';
+import { slugify, getProductSlug } from './lib/seo';
 
 import {
   auth,
@@ -45,6 +46,9 @@ import {
 } from './lib/firebase';
 import { onSnapshot, doc } from 'firebase/firestore';
 
+import HomeRecommendationSections from './components/HomeRecommendationSections';
+import SmartSearchFilters, { SmartFilterState, SortOption } from './components/SmartSearchFilters';
+import { smartSearchProducts } from './lib/searchEngine';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
 import ProductCard from './components/ProductCard';
@@ -585,26 +589,35 @@ export default function App() {
     }
   };
 
-  const handleOpenProduct = async (productId: string) => {
-    setSelectedProductId(productId);
+  const handleOpenProduct = async (productIdOrSlug: string) => {
+    const targetProduct = products.find(p =>
+      p.id === productIdOrSlug ||
+      (p.seoSlug && p.seoSlug.toLowerCase() === productIdOrSlug.toLowerCase()) ||
+      p.id.toLowerCase() === productIdOrSlug.toLowerCase() ||
+      slugify(p.title) === productIdOrSlug.toLowerCase()
+    );
+
+    const actualId = targetProduct ? targetProduct.id : productIdOrSlug;
+    const actualSlug = targetProduct ? getProductSlug(targetProduct) : productIdOrSlug;
+
+    setSelectedProductId(actualId);
     setActiveTab('home');
 
-    const targetPath = `/product/${productId}`;
+    const targetPath = `/product/${actualSlug}`;
     if (window.location.pathname !== targetPath) {
       window.history.pushState({}, '', targetPath);
     }
 
     // Add to recently viewed list (max 5)
     setRecentlyViewed(prev => {
-      const filtered = prev.filter(id => id !== productId);
-      return [productId, ...filtered].slice(0, 5);
+      const filtered = prev.filter(id => id !== actualId);
+      return [actualId, ...filtered].slice(0, 5);
     });
 
     // Record click metrics in analytics
-    const targetProduct = products.find(p => p.id === productId);
     if (targetProduct && isFirebaseConfigured) {
       try {
-        await trackClickInFirestore('view', productId, undefined, targetProduct.category, targetProduct.title);
+        await trackClickInFirestore('view', actualId, undefined, targetProduct.category, targetProduct.title);
         const updatedAnalytics = await fetchAnalyticsFromFirestore();
         if (updatedAnalytics) {
           setAnalytics(updatedAnalytics);
@@ -738,34 +751,92 @@ export default function App() {
     setTimeout(() => setNewsletterSuccess(false), 5000);
   };
 
-  // --- Filter and Sort Core Logic ---
-  const filteredProducts = products.filter(p => {
-    const query = searchQuery.trim().toLowerCase();
-    const matchesSearch = query === '' ||
-      p.title.toLowerCase().includes(query) ||
-      (p.brand && p.brand.toLowerCase().includes(query)) ||
-      p.category.toLowerCase().includes(query) ||
-      p.description.toLowerCase().includes(query) ||
-      (p.whyIRecommend && p.whyIRecommend.toLowerCase().includes(query)) ||
-      (p.searchTags && Array.isArray(p.searchTags) && p.searchTags.some(tag => tag.toLowerCase().includes(query)));
-
-    const matchesCategory = selectedCategory === '' || p.category === selectedCategory;
-    const matchesPrice = selectedPriceRange === null || p.price <= selectedPriceRange;
-
-    let matchesBadge = true;
-    if (badgeFilter === 'tested') matchesBadge = p.badges.personallyTested;
-    if (badgeFilter === 'recommended') matchesBadge = p.badges.recommended;
-    if (badgeFilter === 'trending') matchesBadge = p.badges.trending;
-
-    return matchesSearch && matchesCategory && matchesPrice && matchesBadge;
-  }).sort((a, b) => {
-    if (sortOption === 'popular') return b.rating - a.rating;
-    if (sortOption === 'latest') return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-    if (sortOption === 'low-price') return a.price - b.price;
-    if (sortOption === 'discount') return calculateDiscount(b.originalPrice, b.price).percentage - calculateDiscount(a.originalPrice, a.price).percentage;
-    if (sortOption === 'rating') return b.rating - a.rating;
-    return 0;
+  // --- Smart Filter & Search Logic ---
+  const [filterState, setFilterState] = useState<SmartFilterState>({
+    category: '',
+    brand: '',
+    marketplace: '',
+    priceRange: null,
+    minDiscount: 0,
+    minRating: 0,
+    badge: 'all'
   });
+
+  // Keep filterState category and price in sync when changed from Hero or Navbar
+  useEffect(() => {
+    if (selectedCategory !== filterState.category) {
+      setFilterState(prev => ({ ...prev, category: selectedCategory }));
+    }
+  }, [selectedCategory]);
+
+  useEffect(() => {
+    if (selectedPriceRange !== filterState.priceRange) {
+      setFilterState(prev => ({ ...prev, priceRange: selectedPriceRange }));
+    }
+  }, [selectedPriceRange]);
+
+  const filteredProducts = React.useMemo(() => {
+    // Step 1: Smart Search Fuzzy Matching, Spell Correction, and Tag Matching
+    let matched = smartSearchProducts(products, searchQuery).results;
+
+    // Step 2: Category Filter
+    const cat = filterState.category || selectedCategory;
+    if (cat) {
+      matched = matched.filter(p => p.category.toLowerCase() === cat.toLowerCase());
+    }
+
+    // Step 3: Brand Filter
+    if (filterState.brand) {
+      matched = matched.filter(p => p.brand && p.brand.toLowerCase() === filterState.brand.toLowerCase());
+    }
+
+    // Step 4: Marketplace Filter
+    if (filterState.marketplace) {
+      const mp = filterState.marketplace.toLowerCase();
+      matched = matched.filter(p =>
+        (p.affiliateLinks && p.affiliateLinks.some(l => l.platform.toLowerCase().includes(mp))) ||
+        (p.purchaseLinks && p.purchaseLinks.some(l => l.name.toLowerCase().includes(mp)))
+      );
+    }
+
+    // Step 5: Price Range
+    const maxPrice = filterState.priceRange !== null ? filterState.priceRange : selectedPriceRange;
+    if (maxPrice !== null) {
+      matched = matched.filter(p => p.price <= maxPrice);
+    }
+
+    // Step 6: Min Discount
+    if (filterState.minDiscount > 0) {
+      matched = matched.filter(p => {
+        const disc = calculateDiscount(p.originalPrice, p.price).percentage;
+        return disc >= filterState.minDiscount;
+      });
+    }
+
+    // Step 7: Min Rating
+    if (filterState.minRating > 0) {
+      matched = matched.filter(p => p.rating >= filterState.minRating);
+    }
+
+    // Step 8: Badges
+    const badge = filterState.badge || badgeFilter;
+    if (badge === 'tested') matched = matched.filter(p => p.badges.personallyTested);
+    if (badge === 'recommended') matched = matched.filter(p => p.badges.recommended);
+    if (badge === 'trending') matched = matched.filter(p => p.badges.trending);
+    if (badge === 'reel') matched = matched.filter(p => p.badges.seenInReel);
+
+    // Step 9: Sorting
+    return matched.sort((a, b) => {
+      if (sortOption === 'popular') return b.rating - a.rating;
+      if (sortOption === 'latest' || sortOption === 'newest') return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      if (sortOption === 'low-price') return a.price - b.price;
+      if (sortOption === 'high-price') return b.price - a.price;
+      if (sortOption === 'discount') return calculateDiscount(b.originalPrice, b.price).percentage - calculateDiscount(a.originalPrice, a.price).percentage;
+      if (sortOption === 'rating') return b.rating - a.rating;
+      if (sortOption === 'trending') return (b.badges.trending ? 1 : 0) - (a.badges.trending ? 1 : 0);
+      return 0;
+    });
+  }, [products, searchQuery, filterState, selectedCategory, selectedPriceRange, badgeFilter, sortOption]);
 
   // Hot Trend Curated rows
   const todayPicks = products.filter(p => p.badges.recommended).slice(0, 4);
@@ -891,8 +962,9 @@ export default function App() {
             {selectedProductId ? (() => {
               const matchedProduct = products.find(
                 p => p.id === selectedProductId ||
+                     (p.seoSlug && p.seoSlug.toLowerCase() === selectedProductId.toLowerCase()) ||
                      p.id.toLowerCase() === selectedProductId.toLowerCase() ||
-                     p.title.toLowerCase().replace(/[^a-z0-9]+/g, '-') === selectedProductId.toLowerCase()
+                     slugify(p.title) === selectedProductId.toLowerCase()
               );
 
               if (isDetailLoading) {
@@ -995,57 +1067,30 @@ export default function App() {
                       </div>
                     )}
 
-                    {/* MAIN CATALOG WITH ADAPTIVE FILTERS */}
+                    {/* MAIN CATALOG WITH SMART FILTERS */}
                     <div className="space-y-6">
-                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
-                        <div>
-                          <h2 className="text-base sm:text-lg font-black text-slate-950 dark:text-white font-display">{t.catalogTitle}</h2>
-                          <p className="text-xs text-slate-400">{t.catalogSub}</p>
-                        </div>
-
-                        {/* Filter Controls Row */}
-                        <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
-                          {/* Tested/Recommended Badge Buttons */}
-                          <div className="flex bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-xl p-1 shrink-0 shadow-3xs">
-                            <button
-                              onClick={() => setBadgeFilter('all')}
-                              className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
-                                badgeFilter === 'all' ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white' : 'text-slate-400 hover:text-slate-700'
-                              }`}
-                            >
-                              All
-                            </button>
-                            <button
-                              onClick={() => setBadgeFilter('tested')}
-                              className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
-                                badgeFilter === 'tested' ? 'bg-emerald-500/10 text-emerald-600' : 'text-slate-400 hover:text-slate-700'
-                              }`}
-                            >
-                              Tested
-                            </button>
-                            <button
-                              onClick={() => setBadgeFilter('trending')}
-                              className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
-                                badgeFilter === 'trending' ? 'bg-red-500/10 text-red-600' : 'text-slate-400 hover:text-slate-700'
-                              }`}
-                            >
-                              Trending
-                            </button>
-                          </div>
-
-                          {/* Sort Dropdown */}
-                          <select
-                            value={sortOption}
-                            onChange={e => setSortOption(e.target.value as any)}
-                            className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 text-[11px] font-bold rounded-xl px-3 py-2 text-slate-700 dark:text-white focus:outline-none focus:border-[#FF5A00] shrink-0 cursor-pointer shadow-3xs"
-                          >
-                            <option value="popular">Popularity</option>
-                            <option value="latest">New Arrivals</option>
-                            <option value="low-price">Lowest Price</option>
-                            <option value="discount">Highest Discount</option>
-                          </select>
-                        </div>
-                      </div>
+                      <SmartSearchFilters
+                        products={products}
+                        categories={categories}
+                        filterState={filterState}
+                        setFilterState={setFilterState}
+                        sortOption={sortOption as SortOption}
+                        setSortOption={setSortOption as (sort: SortOption) => void}
+                        totalFilteredCount={filteredProducts.length}
+                        onClearAll={() => {
+                          setFilterState({
+                            category: '',
+                            brand: '',
+                            marketplace: '',
+                            priceRange: null,
+                            minDiscount: 0,
+                            minRating: 0,
+                            badge: 'all'
+                          });
+                          setSelectedCategory('');
+                          setSelectedPriceRange(null);
+                        }}
+                      />
 
                       {/* Catalog Grid */}
                       {isFilterLoading ? (
@@ -1071,6 +1116,20 @@ export default function App() {
                         </div>
                       )}
                     </div>
+
+                    {/* AI RECOMMENDATION ENGINE SECTIONS */}
+                    {searchQuery === '' && selectedCategory === '' && selectedPriceRange === null && (
+                      <HomeRecommendationSections
+                        products={products}
+                        reels={reels}
+                        wishlist={wishlist}
+                        recentlyViewedIds={recentlyViewed}
+                        onOpenProduct={handleOpenProduct}
+                        onToggleWishlist={handleToggleWishlist}
+                        onOpenSocialLinks={setSocialModalProduct}
+                        currentCurrency={currentCurrency}
+                      />
+                    )}
                   </div>
                 )}
 
