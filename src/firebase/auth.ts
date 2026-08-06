@@ -1,6 +1,7 @@
 import {
   signInWithEmailAndPassword as firebaseSignInWithEmailAndPassword,
   createUserWithEmailAndPassword as firebaseCreateUserWithEmailAndPassword,
+  sendPasswordResetEmail as firebaseSendPasswordResetEmail,
   signInWithPopup as firebaseSignInWithPopup,
   signOut as firebaseSignOut,
   onAuthStateChanged,
@@ -103,6 +104,32 @@ export async function signOutUser(): Promise<void> {
   } catch (error: any) {
     const message = getFriendlyAuthErrorMessage(error);
     throw new Error(message);
+  }
+}
+
+/**
+ * Send Password Reset Email
+ */
+export async function sendPasswordReset(email: string): Promise<void> {
+  if (!email || !email.trim()) {
+    throw new Error('Please enter your email address.');
+  }
+  try {
+    await firebaseSendPasswordResetEmail(auth, email.trim());
+  } catch (error: any) {
+    const code = error?.code || '';
+    switch (code) {
+      case 'auth/invalid-email':
+        throw new Error('Please enter a valid email address.');
+      case 'auth/user-not-found':
+        throw new Error('No account exists with this email.');
+      case 'auth/network-request-failed':
+        throw new Error('Network error. Please try again.');
+      case 'auth/too-many-requests':
+        throw new Error('Too many attempts. Please try again later.');
+      default:
+        throw new Error(getFriendlyAuthErrorMessage(error));
+    }
   }
 }
 

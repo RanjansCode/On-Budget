@@ -11,7 +11,8 @@ import {
   signInWithGoogle, 
   signInWithEmail, 
   signUpWithEmail, 
-  signOutUser
+  signOutUser,
+  sendPasswordReset
 } from '../firebase/auth';
 import { syncUserProfile } from '../firebase/firestore';
 import { updateProfile, User as FirebaseUser } from 'firebase/auth';
@@ -37,6 +38,7 @@ interface NavbarProps {
   onSelectProduct?: (productId: string) => void;
   authModalOpenRequested?: boolean;
   onAuthModalClosed?: () => void;
+  onLogoutRequest?: () => void;
 }
 
 export default function Navbar({
@@ -57,6 +59,7 @@ export default function Navbar({
   onSelectProduct,
   authModalOpenRequested = false,
   onAuthModalClosed,
+  onLogoutRequest,
 }: NavbarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -70,6 +73,41 @@ export default function Navbar({
   const [showPassword, setShowPassword] = useState(false);
   const [isAuthUnconfigured, setIsAuthUnconfigured] = useState(false);
   const [wishlistCount, setWishlistCount] = useState(0);
+
+  // Password Reset Modal State
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetError, setResetError] = useState<string | null>(null);
+  const [resetSuccess, setResetSuccess] = useState<string | null>(null);
+  const [resetLoading, setResetLoading] = useState(false);
+
+  const handleSendResetEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setResetError(null);
+    setResetSuccess(null);
+
+    if (!resetEmail || !resetEmail.trim()) {
+      setResetError('Please enter your email address.');
+      return;
+    }
+
+    setResetLoading(true);
+    try {
+      await sendPasswordReset(resetEmail.trim());
+      setResetSuccess('Password reset email has been sent. Please check your inbox and spam folder.');
+    } catch (err: any) {
+      setResetError(err.message || 'An error occurred. Please try again.');
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
+  const closeResetModal = () => {
+    setShowResetModal(false);
+    setResetError(null);
+    setResetSuccess(null);
+    setResetLoading(false);
+  };
 
   useEffect(() => {
     if (authModalOpenRequested) {
@@ -302,10 +340,19 @@ export default function Navbar({
   };
 
   const handleLogout = async () => {
+    if (onLogoutRequest) {
+      onLogoutRequest();
+      return;
+    }
     try {
       await signOutUser();
+      localStorage.clear();
+      sessionStorage.clear();
       toast.success('Logged out successfully.');
       setActiveTab('home');
+      if (window.location.pathname !== '/') {
+        window.history.replaceState({}, '', '/');
+      }
     } catch (err: any) {
       toast.error(err.message || 'Failed to log out.');
     }
@@ -1064,8 +1111,13 @@ export default function Navbar({
                       {authMode === 'signin' && (
                         <button
                           type="button"
-                          onClick={() => setAuthError('Password reset link is coming soon! Please check your credentials or log in with Google.')}
-                          className="text-[10px] text-[#FF5A00] font-bold hover:underline"
+                          onClick={() => {
+                            setResetEmail(authEmail || '');
+                            setResetError(null);
+                            setResetSuccess(null);
+                            setShowResetModal(true);
+                          }}
+                          className="text-[10px] text-[#FF5A00] font-bold hover:underline cursor-pointer"
                         >
                           Forgot?
                         </button>
@@ -1158,6 +1210,106 @@ export default function Navbar({
                   </p>
                 </div>
               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+      {/* Password Reset Modal */}
+      <AnimatePresence>
+        {showResetModal && (
+          <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs"
+              onClick={closeResetModal}
+            />
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="relative w-full max-w-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl p-6 sm:p-7 overflow-hidden z-10 space-y-4"
+            >
+              <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-full bg-[#FF5A00]/10 flex items-center justify-center text-[#FF5A00]">
+                    <KeyRound className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-extrabold text-slate-900 dark:text-slate-100 font-display">
+                      Reset Password
+                    </h3>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                      Enter your registered email address
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeResetModal}
+                  className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {resetError && (
+                <div className="p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/30 text-red-600 dark:text-red-400 text-xs rounded-xl flex items-center gap-2.5">
+                  <Info className="w-4 h-4 shrink-0 text-red-500" />
+                  <span className="leading-snug font-medium">{resetError}</span>
+                </div>
+              )}
+
+              {resetSuccess && (
+                <div className="p-3.5 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-xs rounded-xl flex items-start gap-2.5">
+                  <Check className="w-4 h-4 shrink-0 text-emerald-500 mt-0.5" />
+                  <span className="leading-relaxed font-medium">{resetSuccess}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleSendResetEmail} className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                    Registered Email
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="email"
+                      value={resetEmail}
+                      onChange={e => {
+                        setResetEmail(e.target.value);
+                        if (resetError) setResetError(null);
+                      }}
+                      placeholder="john@example.com"
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus:border-[#FF5A00] focus:ring-1 focus:ring-[#FF5A00] rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none"
+                    />
+                    <Mail className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2" />
+                  </div>
+                </div>
+
+                <div className="flex gap-2.5 pt-1">
+                  <button
+                    type="button"
+                    onClick={closeResetModal}
+                    className="flex-1 py-2.5 px-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-xl transition-all cursor-pointer font-display"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={resetLoading}
+                    className="flex-1 py-2.5 px-3 bg-[#FF5A00] hover:bg-[#E04F00] text-white text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 shadow-md shadow-[#FF5A00]/20 font-display disabled:opacity-60"
+                  >
+                    {resetLoading ? (
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <span>Send Reset Link</span>
+                    )}
+                  </button>
+                </div>
+              </form>
             </motion.div>
           </div>
         )}

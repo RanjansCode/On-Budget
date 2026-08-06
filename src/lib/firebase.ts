@@ -4,7 +4,7 @@
 // directory structure.
 // -----------------------------------------------------------------------------
 
-export { auth, googleProvider, onAuthStateChanged } from '../firebase/auth';
+export { auth, googleProvider, onAuthStateChanged, signOutUser, sendPasswordReset } from '../firebase/auth';
 export type { User } from '../firebase/auth';
 export { db, isFirebaseConfigured } from '../firebase/config';
 

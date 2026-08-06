@@ -4,7 +4,7 @@ import {
   Sparkles, Search, MessageSquare, Heart, Bell, User, Layout, ArrowRight, ArrowLeft,
   Star, Laptop, Cpu, BookOpen, AlertCircle, Clock,
   Package, Check, Copy, Flame, ShieldAlert, Play, Send, ChevronRight,
-  SlidersHorizontal, CheckCircle2, Award, Zap, RefreshCw
+  SlidersHorizontal, CheckCircle2, Award, Zap, RefreshCw, LogOut
 } from 'lucide-react';
 
 import {
@@ -40,7 +40,8 @@ import {
   fetchAnalyticsFromFirestore,
   fetchLaunchSettingsFromFirestore,
   saveLaunchSettingsToFirestore,
-  LaunchSettings
+  LaunchSettings,
+  signOutUser
 } from './lib/firebase';
 import { onSnapshot, doc } from 'firebase/firestore';
 
@@ -143,6 +144,7 @@ export default function App() {
   });
   const [showAccessDenied, setShowAccessDenied] = useState(false);
   const [authModalOpenRequested, setAuthModalOpenRequested] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   // --- Launch Mode States ---
   const [launchSettings, setLaunchSettings] = useState<LaunchSettings>({
@@ -527,6 +529,36 @@ export default function App() {
     }
   };
 
+  const handleConfirmLogout = async () => {
+    setShowLogoutConfirm(false);
+    try {
+      await signOutUser();
+    } catch (err: any) {
+      console.error('Sign out error:', err);
+    }
+
+    // Clear every locally stored authentication/session data
+    try {
+      localStorage.clear();
+      sessionStorage.clear();
+    } catch (err) {
+      console.error('Storage clear error:', err);
+    }
+
+    // Clear all user/admin React states
+    setCurrentUser(null);
+    setWishlist([]);
+    setSelectedProductId(null);
+    setActiveTab('home');
+
+    // Remove route history from /admin to '/'
+    if (window.location.pathname !== '/') {
+      window.history.replaceState({}, '', '/');
+    }
+
+    toast.success('Logged out successfully.');
+  };
+
   const handleToggleWishlist = async (productId: string) => {
     let updatedWishlist: string[];
     const isAdding = !wishlist.includes(productId);
@@ -841,6 +873,7 @@ export default function App() {
           }}
           authModalOpenRequested={authModalOpenRequested}
           onAuthModalClosed={() => setAuthModalOpenRequested(false)}
+          onLogoutRequest={() => setShowLogoutConfirm(true)}
         />
 
         {/* MAIN BODY WRAPPER */}
@@ -1168,6 +1201,29 @@ export default function App() {
                         </div>
                       </div>
                     )}
+
+                    {/* Logout Button (At bottom of profile page) */}
+                    <div className="pt-6 border-t border-slate-200/60 dark:border-slate-800 flex flex-col items-center gap-3">
+                      {currentUser ? (
+                        <button
+                          type="button"
+                          onClick={() => setShowLogoutConfirm(true)}
+                          className="w-full sm:w-auto px-8 py-3.5 border-2 border-red-500/40 hover:border-red-500 bg-red-500/5 hover:bg-red-500 text-red-500 hover:text-white dark:border-red-500/40 dark:bg-red-950/20 dark:hover:bg-red-600 dark:text-red-400 dark:hover:text-white font-bold text-xs rounded-2xl transition-all cursor-pointer flex items-center justify-center gap-2.5 shadow-sm shadow-red-500/10 font-display"
+                        >
+                          <LogOut className="w-4 h-4" />
+                          Logout
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setAuthModalOpenRequested(true)}
+                          className="w-full sm:w-auto px-8 py-3.5 bg-[#FF5A00] hover:bg-[#E04F00] text-white font-bold text-xs rounded-2xl transition-all cursor-pointer flex items-center justify-center gap-2.5 shadow-md shadow-[#FF5A00]/20 font-display"
+                        >
+                          <User className="w-4 h-4" />
+                          Sign In
+                        </button>
+                      )}
+                    </div>
                   </div>
                 )}
 
@@ -1255,7 +1311,7 @@ export default function App() {
                 </a>
 
                 <a
-                  href="https://wa.me/mock-onbudget-channel"
+                  href="https://whatsapp.com/channel/0029Vb8SOImD8SDvTKYTcr15"
                   target="_blank"
                   rel="noreferrer"
                   className="flex items-center gap-3 p-3.5 bg-slate-50 dark:bg-slate-900 hover:bg-slate-100/60 dark:hover:bg-slate-850/60 border border-slate-200/50 dark:border-slate-850 rounded-2xl transition-all group shadow-3xs"
@@ -1336,6 +1392,59 @@ export default function App() {
               >
                 Return to Explore
               </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Logout Confirmation Dialog */}
+      <AnimatePresence>
+        {showLogoutConfirm && (
+          <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs"
+              onClick={() => setShowLogoutConfirm(false)}
+            />
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="relative w-full max-w-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl p-6 sm:p-7 overflow-hidden z-10 text-center space-y-5"
+            >
+              <div className="inline-flex w-12 h-12 bg-red-50 dark:bg-red-950/30 rounded-2xl items-center justify-center text-red-500 border border-red-100 dark:border-red-900/30 shadow-2xs">
+                <LogOut className="w-6 h-6 stroke-[2.5]" />
+              </div>
+
+              <div className="space-y-1.5">
+                <h3 className="text-lg font-extrabold text-slate-950 dark:text-white font-display">
+                  Logout?
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                  Are you sure you want to sign out of your account?
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowLogoutConfirm(false)}
+                  className="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-xl transition-all cursor-pointer font-display"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmLogout}
+                  className="py-2.5 px-4 bg-red-500 hover:bg-red-600 text-white text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 shadow-md shadow-red-500/20 font-display"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  Logout
+                </button>
+              </div>
             </motion.div>
           </div>
         )}
