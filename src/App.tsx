@@ -10,7 +10,13 @@ import {
 import {
   Product, Category, Reel, AnalyticsData, NotificationItem, ADMIN_EMAILS
 } from './types';
-import { slugify, getProductSlug } from './lib/seo';
+import {
+  slugify,
+  getProductSlug,
+  updateDocumentSEO,
+  generateOrganizationSchema,
+  generateWebSiteSchema
+} from './lib/seo';
 
 import {
   auth,
@@ -464,6 +470,24 @@ export default function App() {
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, [currentUser]);
+
+  // Update dynamic SEO head metadata for Homepage
+  useEffect(() => {
+    if (activeTab === 'home' && !selectedProductId) {
+      const domain = 'https://inourbudget.vercel.app';
+      const orgSchema = generateOrganizationSchema(domain);
+      const websiteSchema = generateWebSiteSchema(domain);
+
+      updateDocumentSEO({
+        title: 'In Our Budget – Find the Best Products at the Right Price',
+        description: 'Discover and compare products on In Our Budget. Find useful products, explore categories, save your favorites, and shop smarter within your budget.',
+        canonicalUrl: 'https://inourbudget.vercel.app/',
+        imageUrl: `${domain}/src/assets/images/in_our_budget_logo_1784107312483.jpg`,
+        ogType: 'website',
+        jsonLdSchemas: [orgSchema, websiteSchema]
+      });
+    }
+  }, [activeTab, selectedProductId]);
 
   // Record real live visitor stats in Firestore
   useEffect(() => {

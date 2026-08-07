@@ -67,14 +67,14 @@ export function getDomain(): string {
   if (typeof window !== 'undefined' && window.location) {
     return window.location.origin;
   }
-  return 'https://onbudget.app';
+  return 'https://inourbudget.vercel.app';
 }
 
 /**
  * Generates absolute canonical URL
  */
 export function getCanonicalUrl(path: string, domain?: string): string {
-  const host = domain || getDomain();
+  const host = domain || 'https://inourbudget.vercel.app';
   const cleanPath = path.startsWith('/') ? path : `/${path}`;
   return `${host}${cleanPath}`;
 }
@@ -82,7 +82,7 @@ export function getCanonicalUrl(path: string, domain?: string): string {
 /**
  * Structured Data: Schema.org Product JSON-LD
  */
-export function generateProductSchema(product: Product, domain: string = getDomain()) {
+export function generateProductSchema(product: Product, domain: string = 'https://inourbudget.vercel.app') {
   const slug = getProductSlug(product);
   const productUrl = getCanonicalUrl(`/product/${slug}`, domain);
 
@@ -90,21 +90,28 @@ export function generateProductSchema(product: Product, domain: string = getDoma
     ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
     : undefined;
 
-  return {
+  const schema: any = {
     '@context': 'https://schema.org',
     '@type': 'Product',
     '@id': productUrl,
+    url: productUrl,
     name: product.seoTitle || product.title,
-    description: product.seoDescription || product.description,
-    image: product.images && product.images.length > 0 ? product.images : undefined,
-    brand: {
-      '@type': 'Brand',
-      name: product.brand || 'On Budget'
-    },
-    category: product.category,
+    description: product.seoDescription || product.description || `Buy ${product.title} on In Our Budget`,
     sku: product.id,
     mpn: product.id,
-    offers: {
+    category: product.category,
+    brand: {
+      '@type': 'Brand',
+      name: product.brand?.trim() || 'In Our Budget'
+    }
+  };
+
+  if (product.images && product.images.length > 0) {
+    schema.image = product.images;
+  }
+
+  if (product.price !== undefined && product.price !== null) {
+    schema.offers = {
       '@type': 'Offer',
       url: productUrl,
       priceCurrency: 'INR',
@@ -112,26 +119,57 @@ export function generateProductSchema(product: Product, domain: string = getDoma
       priceValidUntil: '2028-12-31',
       availability: 'https://schema.org/InStock',
       itemCondition: 'https://schema.org/NewCondition',
-      priceSpecification: product.originalPrice ? {
+      seller: {
+        '@type': 'Organization',
+        name: 'In Our Budget'
+      }
+    };
+
+    if (product.originalPrice && product.originalPrice > product.price) {
+      schema.offers.priceSpecification = {
         '@type': 'UnitPriceSpecification',
         price: product.originalPrice,
         priceCurrency: 'INR',
         valueAddedTaxIncluded: true
-      } : undefined,
-      seller: {
-        '@type': 'Organization',
-        name: 'On Budget'
-      }
-    },
-    aggregateRating: {
+      };
+    }
+  }
+
+  // Only include aggregateRating if a valid rating exists on the product
+  const ratingVal = product.creatorReview?.rating || product.rating;
+  if (ratingVal && ratingVal > 0) {
+    schema.aggregateRating = {
       '@type': 'AggregateRating',
-      ratingValue: product.creatorReview?.rating || product.rating || 4.5,
-      reviewCount: 28,
+      ratingValue: ratingVal,
       bestRating: 5,
-      worstRating: 1
-    },
-    ...(discountPercent ? { discount: `${discountPercent}% OFF` } : {})
-  };
+      worstRating: 1,
+      ratingCount: 1
+    };
+  }
+
+  // Include review schema if creator review text exists
+  if (product.creatorReview?.reviewText) {
+    schema.review = {
+      '@type': 'Review',
+      author: {
+        '@type': 'Person',
+        name: 'In Our Budget Team'
+      },
+      reviewRating: {
+        '@type': 'Rating',
+        ratingValue: product.creatorReview.rating || 5,
+        bestRating: 5,
+        worstRating: 1
+      },
+      reviewBody: product.creatorReview.reviewText
+    };
+  }
+
+  if (discountPercent) {
+    schema.discount = `${discountPercent}% OFF`;
+  }
+
+  return schema;
 }
 
 export interface SEOAnalysisResult {

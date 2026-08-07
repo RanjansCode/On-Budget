@@ -24,6 +24,7 @@ import {
   generateWebSiteSchema,
   getCanonicalUrl,
   getProductSlug,
+  slugify,
   getDomain
 } from '../lib/seo';
 
@@ -72,22 +73,27 @@ export default function ProductDetail({
   // Dynamic SEO, Canonical Link, Open Graph & JSON-LD Structured Data
   useEffect(() => {
     const previousTitle = document.title;
-    const domain = getDomain();
+    const domain = 'https://inourbudget.vercel.app';
     const slug = getProductSlug(product);
     const canonicalUrl = getCanonicalUrl(`/product/${slug}`, domain);
 
+    // Format: "[Product Name] – Price, Details & Review | In Our Budget"
     const title = product.seoTitle?.trim()
       ? product.seoTitle
-      : `${product.title} | On Budget`;
+      : `${product.title} – Price, Details & Review | In Our Budget`;
+
+    const priceText = product.price ? ` priced at ₹${product.price}` : '';
+    const categoryText = product.category ? ` in ${product.category}` : '';
+    const brandText = product.brand ? ` by ${product.brand}` : '';
 
     const description = product.seoDescription?.trim()
       ? product.seoDescription
-      : (product.description || `Buy ${product.title} by ${product.brand || 'On Budget'} on On Budget. Curated budget deals & honest reviews.`);
+      : `Discover ${product.title}${brandText}${categoryText}${priceText}. Explore specifications, key features, and honest reviews on In Our Budget.`;
 
     const productSchema = generateProductSchema(product, domain);
     const breadcrumbSchema = generateBreadcrumbSchema([
       { name: 'Home', url: '/' },
-      { name: product.category, url: `/category/${product.category}` },
+      { name: product.category, url: `/category/${slugify(product.category)}` },
       { name: product.title, url: `/product/${slug}` }
     ], domain);
     const orgSchema = generateOrganizationSchema(domain);
@@ -96,7 +102,7 @@ export default function ProductDetail({
     updateDocumentSEO({
       title,
       description,
-      keywords: product.searchTags || [product.title, product.brand, product.category],
+      keywords: product.searchTags || [product.title, product.brand, product.category].filter(Boolean),
       canonicalUrl,
       imageUrl: product.images?.[0],
       ogType: 'product',
