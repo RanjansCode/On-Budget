@@ -60,9 +60,7 @@ Sitemap: ${domain}/sitemap.xml
 // 2. AUTOMATIC DYNAMIC SITEMAP.XML
 app.get('/sitemap.xml', async (req, res) => {
   try {
-    const protocol = req.headers['x-forwarded-proto'] || 'https';
-    const host = req.headers['x-forwarded-host'] || req.headers.host || 'inourbudget.vercel.app';
-    const domain = `${protocol}://${host}`;
+    const domain = 'https://inourbudget.vercel.app';
 
     let productsList = INITIAL_PRODUCTS;
     let categoriesList = INITIAL_CATEGORIES;
@@ -70,10 +68,14 @@ app.get('/sitemap.xml', async (req, res) => {
     if (isFirebaseConfigured) {
       try {
         const productsRef = collection(db, 'products');
-        const q = query(productsRef, where('status', '==', 'Published'));
-        const snapshot = await getDocs(q);
+        const snapshot = await getDocs(productsRef);
         if (!snapshot.empty) {
-          productsList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+          const fetchedProducts = snapshot.docs
+            .map(doc => ({ id: doc.id, ...doc.data() } as any))
+            .filter(p => p.status !== 'Draft' && p.status !== 'Archived');
+          if (fetchedProducts.length > 0) {
+            productsList = fetchedProducts;
+          }
         }
       } catch (e) {
         console.warn('Firestore products query fallback for sitemap:', e);
@@ -83,7 +85,10 @@ app.get('/sitemap.xml', async (req, res) => {
         const catRef = collection(db, 'categories');
         const catSnap = await getDocs(catRef);
         if (!catSnap.empty) {
-          categoriesList = catSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+          const fetchedCategories = catSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+          if (fetchedCategories.length > 0) {
+            categoriesList = fetchedCategories;
+          }
         }
       } catch (e) {
         console.warn('Firestore categories query fallback for sitemap:', e);
@@ -114,8 +119,9 @@ app.get('/sitemap.xml', async (req, res) => {
 
     // Categories URLs
     categoriesList.forEach(cat => {
+      const catSlug = slugify(cat.id || cat.name);
       urlsXml += `\n  <url>
-    <loc>${domain}/category/${cat.id}</loc>
+    <loc>${domain}/category/${catSlug}</loc>
     <lastmod>${todayIso}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -128,12 +134,14 @@ app.get('/sitemap.xml', async (req, res) => {
         ? slugify(prod.seoSlug)
         : slugify(prod.title) || prod.id;
 
-      const lastmod = prod.createdAt ? prod.createdAt.split('T')[0] : todayIso;
+      const lastmod = (prod as any).updatedAt
+        ? (prod as any).updatedAt.split('T')[0]
+        : (prod.createdAt ? prod.createdAt.split('T')[0] : todayIso);
 
       urlsXml += `\n  <url>
     <loc>${domain}/product/${slug}</loc>
     <lastmod>${lastmod}</lastmod>
-    <changefreq>weekly</changefreq>
+    <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>`;
     });
@@ -144,7 +152,8 @@ app.get('/sitemap.xml', async (req, res) => {
 ${urlsXml}
 </urlset>`;
 
-    res.setHeader('Content-Type', 'application/xml');
+    res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=3600, s-maxage=3600');
     res.status(200).send(sitemapXml);
   } catch (err: any) {
     console.error('Sitemap generation error:', err);
