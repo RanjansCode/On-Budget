@@ -40,20 +40,14 @@ app.get('/google:id.html', (req, res) => {
 });
 
 app.get('/robots.txt', (req, res) => {
-  const protocol = req.headers['x-forwarded-proto'] || 'https';
-  const host = req.headers['x-forwarded-host'] || req.headers.host || 'inourbudget.vercel.app';
-  const domain = `${protocol}://${host}`;
-
   const robotsTxt = `User-agent: *
 Allow: /
-Disallow: /admin
-Disallow: /profile/private
-Disallow: /api
 
-Sitemap: ${domain}/sitemap.xml
+Sitemap: https://inourbudget.vercel.app/sitemap.xml
 `;
 
-  res.setHeader('Content-Type', 'text/plain');
+  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+  res.setHeader('Cache-Control', 'public, max-age=3600, s-maxage=3600');
   res.status(200).send(robotsTxt);
 });
 
@@ -97,12 +91,10 @@ app.get('/sitemap.xml', async (req, res) => {
 
     const todayIso = new Date().toISOString().split('T')[0];
 
-    // Static Base Pages
+    // Static Base Public Pages (no private/user-specific pages)
     const staticPages = [
       { loc: '/', priority: '1.0', changefreq: 'daily' },
       { loc: '/explore', priority: '0.9', changefreq: 'daily' },
-      { loc: '/wishlist', priority: '0.6', changefreq: 'weekly' },
-      { loc: '/profile', priority: '0.5', changefreq: 'monthly' },
       { loc: '/privacy', priority: '0.3', changefreq: 'yearly' },
       { loc: '/terms', priority: '0.3', changefreq: 'yearly' },
       { loc: '/contact', priority: '0.4', changefreq: 'monthly' },
