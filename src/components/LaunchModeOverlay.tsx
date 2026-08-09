@@ -84,12 +84,9 @@ export default function LaunchModeOverlay({
         {/* Brand Logo */}
         <div className="flex justify-center" id="launch-logo-container">
           <img
-            src="src/assets/image/logo_inourbudget.png"
+            src="/lunch_logo.png.png"
             alt="In Our Budget"
             className="h-12 sm:h-14 object-contain"
-            onError={(e) => {
-              e.currentTarget.src = 'https://images.unsplash.com/photo-1616440347437-b1c73416efc2?w=120';
-            }}
           />
         </div>
 
