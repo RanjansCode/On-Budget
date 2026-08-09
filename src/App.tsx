@@ -4,7 +4,7 @@ import {
   Sparkles, Search, MessageSquare, Heart, Bell, User, Layout, ArrowRight, ArrowLeft,
   Star, Laptop, Cpu, BookOpen, AlertCircle, Clock,
   Package, Check, Copy, Flame, ShieldAlert, Play, Send, ChevronRight,
-  SlidersHorizontal, CheckCircle2, Award, Zap, RefreshCw, LogOut, Loader2
+  SlidersHorizontal, CheckCircle2, Award, Zap, RefreshCw, LogOut, Loader2, Instagram
 } from 'lucide-react';
 
 import {
@@ -906,7 +906,7 @@ export default function App() {
       newsPlaceholder: "Enter your email for deals",
       newsButton: "Subscribe",
       channels: "Community Broadcast Channels",
-      tgTitle: "Telegram Deal Broadcast",
+      tgTitle: "Instagram Community Channel",
       tgSub: "Get real-time flash deal alerts under ₹199",
       waTitle: "WhatsApp Channel",
       waSub: "Get daily product reviews and unboxings directly in chat",
@@ -927,7 +927,7 @@ export default function App() {
       newsPlaceholder: "सौदों के लिए ईमेल दर्ज करें",
       newsButton: "सदस्य बनें",
       channels: "सामुदायिक प्रसारण चैनल",
-      tgTitle: "टेलीग्राम सौदा प्रसारण",
+      tgTitle: "इंस्टाग्राम कम्युनिटी चैनल",
       tgSub: "₹199 से कम के त्वरित सौदे प्राप्त करें",
       waTitle: "व्हाट्सएप चैनल",
       waSub: "सीधे चैट में दैनिक उत्पाद समीक्षा और अनबॉक्सिंग प्राप्त करें",
@@ -1433,13 +1433,13 @@ export default function App() {
               <h3 className="text-sm font-extrabold text-slate-950 dark:text-white font-display">{t.channels}</h3>
               <div className="space-y-3 text-xs">
                 <a
-                  href="https://t.me/mock-onbudget-channel"
+                  href="https://instagram.com/"
                   target="_blank"
                   rel="noreferrer"
                   className="flex items-center gap-3 p-3.5 bg-slate-50 dark:bg-slate-900 hover:bg-slate-100/60 dark:hover:bg-slate-850/60 border border-slate-200/50 dark:border-slate-850 rounded-2xl transition-all group shadow-3xs"
                 >
-                  <div className="w-8 h-8 bg-sky-50 dark:bg-sky-950/40 border border-sky-100 dark:border-sky-900/30 text-sky-600 dark:text-sky-400 rounded-xl flex items-center justify-center shrink-0">
-                    <MessageSquare className="w-4 h-4" />
+                  <div className="w-8 h-8 bg-rose-50 dark:bg-rose-950/40 border border-rose-100 dark:border-rose-900/30 text-rose-600 dark:text-rose-400 rounded-xl flex items-center justify-center shrink-0">
+                    <Instagram className="w-4 h-4" />
                   </div>
                   <div>
                     <h4 className="font-bold text-slate-950 dark:text-white group-hover:text-[#FF5A00] transition-colors font-display">{t.tgTitle}</h4>
