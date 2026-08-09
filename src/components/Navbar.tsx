@@ -52,7 +52,7 @@ interface NavbarProps {
   onLogoutRequest?: () => void;
 }
 
-export default function Navbar({
+function Navbar({
   activeTab,
   setActiveTab,
   categories,
@@ -1578,3 +1578,5 @@ export default function Navbar({
     </>
   );
 }
+
+export default React.memo(Navbar);

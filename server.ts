@@ -12,6 +12,8 @@ import { INITIAL_PRODUCTS, INITIAL_CATEGORIES } from './src/data';
 import { slugify } from './src/lib/seo';
 import { db, isFirebaseConfigured } from './src/firebase/config';
 import { collection, getDocs, query, where } from 'firebase/firestore';
+import { generateSitemapXml } from './src/lib/sitemapGenerator';
+import { processNewsletterSubscription, processNewsletterUnsubscribe } from './src/lib/newsletterService';
 
 dotenv.config();
 
@@ -54,102 +56,82 @@ Sitemap: https://inourbudget.vercel.app/sitemap.xml
 // 2. AUTOMATIC DYNAMIC SITEMAP.XML
 app.get('/sitemap.xml', async (req, res) => {
   try {
-    const domain = 'https://inourbudget.vercel.app';
-
-    let productsList = INITIAL_PRODUCTS;
-    let categoriesList = INITIAL_CATEGORIES;
-
-    if (isFirebaseConfigured) {
-      try {
-        const productsRef = collection(db, 'products');
-        const snapshot = await getDocs(productsRef);
-        if (!snapshot.empty) {
-          const fetchedProducts = snapshot.docs
-            .map(doc => ({ id: doc.id, ...doc.data() } as any))
-            .filter(p => p.status !== 'Draft' && p.status !== 'Archived');
-          if (fetchedProducts.length > 0) {
-            productsList = fetchedProducts;
-          }
-        }
-      } catch (e) {
-        console.warn('Firestore products query fallback for sitemap:', e);
-      }
-
-      try {
-        const catRef = collection(db, 'categories');
-        const catSnap = await getDocs(catRef);
-        if (!catSnap.empty) {
-          const fetchedCategories = catSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
-          if (fetchedCategories.length > 0) {
-            categoriesList = fetchedCategories;
-          }
-        }
-      } catch (e) {
-        console.warn('Firestore categories query fallback for sitemap:', e);
-      }
-    }
-
-    const todayIso = new Date().toISOString().split('T')[0];
-
-    // Static Base Public Pages (no private/user-specific pages)
-    const staticPages = [
-      { loc: '/', priority: '1.0', changefreq: 'daily' },
-      { loc: '/explore', priority: '0.9', changefreq: 'daily' },
-      { loc: '/privacy', priority: '0.3', changefreq: 'yearly' },
-      { loc: '/terms', priority: '0.3', changefreq: 'yearly' },
-      { loc: '/contact', priority: '0.4', changefreq: 'monthly' },
-      { loc: '/about', priority: '0.5', changefreq: 'monthly' },
-      { loc: '/faq', priority: '0.4', changefreq: 'monthly' },
-    ];
-
-    let urlsXml = staticPages.map(page => `  <url>
-    <loc>${domain}${page.loc}</loc>
-    <lastmod>${todayIso}</lastmod>
-    <changefreq>${page.changefreq}</changefreq>
-    <priority>${page.priority}</priority>
-  </url>`).join('\n');
-
-    // Categories URLs
-    categoriesList.forEach(cat => {
-      const catSlug = slugify(cat.id || cat.name);
-      urlsXml += `\n  <url>
-    <loc>${domain}/category/${catSlug}</loc>
-    <lastmod>${todayIso}</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>`;
-    });
-
-    // Product URLs using SEO Slugs
-    productsList.forEach(prod => {
-      const slug = prod.seoSlug && prod.seoSlug.trim()
-        ? slugify(prod.seoSlug)
-        : slugify(prod.title) || prod.id;
-
-      const lastmod = (prod as any).updatedAt
-        ? (prod as any).updatedAt.split('T')[0]
-        : (prod.createdAt ? prod.createdAt.split('T')[0] : todayIso);
-
-      urlsXml += `\n  <url>
-    <loc>${domain}/product/${slug}</loc>
-    <lastmod>${lastmod}</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.9</priority>
-  </url>`;
-    });
-
-    const sitemapXml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
-        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
-${urlsXml}
-</urlset>`;
-
+    const sitemapXml = await generateSitemapXml();
     res.setHeader('Content-Type', 'application/xml; charset=utf-8');
-    res.setHeader('Cache-Control', 'public, max-age=3600, s-maxage=3600');
+    res.setHeader('Cache-Control', 'public, max-age=600, s-maxage=3600, stale-while-revalidate=86400');
     res.status(200).send(sitemapXml);
   } catch (err: any) {
     console.error('Sitemap generation error:', err);
     res.status(500).send('Error generating sitemap');
+  }
+});
+
+// 3. NEWSLETTER SUBSCRIBE & UNSUBSCRIBE API
+app.post('/api/newsletter/subscribe', async (req, res) => {
+  try {
+    const { email, source } = req.body || {};
+    const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0] || req.ip || '127.0.0.1';
+
+    const result = await processNewsletterSubscription(email, source || 'website_footer', clientIp);
+
+    if (!result.success) {
+      return res.status(400).json({
+        success: false,
+        message: result.message,
+        isDuplicate: result.isDuplicate || false,
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: result.message,
+      emailSent: result.emailSent || false,
+    });
+  } catch (err: any) {
+    console.error('Error in /api/newsletter/subscribe:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error while processing subscription. Please try again later.',
+    });
+  }
+});
+
+app.get('/api/newsletter/unsubscribe', async (req, res) => {
+  try {
+    const token = req.query.token as string;
+    const result = await processNewsletterUnsubscribe(token);
+
+    const htmlResponse = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Unsubscribe - In Our Budget</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0F172A; color: #F8FAFC; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; }
+    .card { background: #1E293B; border: 1px solid #334155; border-radius: 20px; padding: 40px 32px; max-width: 480px; width: 100%; text-align: center; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5); }
+    .logo { color: #FF5A00; font-weight: 800; font-size: 24px; margin-bottom: 24px; letter-spacing: -0.5px; }
+    .title { font-size: 20px; font-weight: 700; margin-bottom: 12px; }
+    .desc { font-size: 14px; color: #94A3B8; line-height: 1.6; margin-bottom: 28px; }
+    .btn { display: inline-block; background: #FF5A00; color: #FFFFFF; font-weight: 700; text-decoration: none; padding: 12px 28px; border-radius: 12px; font-size: 14px; transition: background 0.2s; }
+    .btn:hover { background: #E04F00; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">In Our Budget.</div>
+    <div class="title">${result.success ? 'Unsubscribed Successfully' : 'Unsubscribe Request'}</div>
+    <div class="desc">${result.message}</div>
+    <a href="/" class="btn">Return to In Our Budget</a>
+  </div>
+</body>
+</html>`;
+
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    return res.status(200).send(htmlResponse);
+  } catch (err: any) {
+    console.error('Error in /api/newsletter/unsubscribe:', err);
+    return res.status(500).send('Internal server error processing unsubscribe request.');
   }
 });
 

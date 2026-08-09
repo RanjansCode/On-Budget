@@ -164,7 +164,7 @@ function SectionCarousel({
   );
 }
 
-export default function HomeRecommendationSections({
+function HomeRecommendationSections({
   products,
   wishlist,
   onToggleWishlist,
@@ -349,3 +349,5 @@ export default function HomeRecommendationSections({
     </div>
   );
 }
+
+export default React.memo(HomeRecommendationSections);

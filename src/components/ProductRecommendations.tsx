@@ -361,12 +361,11 @@ export default function ProductRecommendations({
   onTrackAffiliateClick,
   onClearRecentlyViewed,
 }: ProductRecommendationsProps) {
-  const [isReady, setIsReady] = useState(false);
+  const [isReady, setIsReady] = useState(true);
   const [localRecentlyViewed, setLocalRecentlyViewed] = useState<string[]>(recentlyViewedIds);
 
   useEffect(() => {
-    const timer = setTimeout(() => setIsReady(true), 100);
-    return () => clearTimeout(timer);
+    setIsReady(true);
   }, [currentProduct.id]);
 
   useEffect(() => {

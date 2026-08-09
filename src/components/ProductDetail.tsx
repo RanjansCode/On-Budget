@@ -280,6 +280,7 @@ export default function ProductDetail({
                 <ImageSkeleton
                   src={product.images[0]}
                   alt={product.title}
+                  priority={true}
                   containerClassName="w-full h-full"
                   className="max-w-full max-h-full w-auto h-auto object-contain object-center group-hover/detailimg:scale-105 transition-transform duration-300 select-none"
                   referrerPolicy="no-referrer"

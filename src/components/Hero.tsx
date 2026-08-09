@@ -12,7 +12,7 @@ interface HeroProps {
   currentCurrency?: string;
 }
 
-export default function Hero({
+function Hero({
   categories,
   selectedCategory,
   setSelectedCategory,
@@ -125,3 +125,5 @@ export default function Hero({
     </div>
   );
 }
+
+export default React.memo(Hero);

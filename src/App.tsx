@@ -4,7 +4,7 @@ import {
   Sparkles, Search, MessageSquare, Heart, Bell, User, Layout, ArrowRight, ArrowLeft,
   Star, Laptop, Cpu, BookOpen, AlertCircle, Clock,
   Package, Check, Copy, Flame, ShieldAlert, Play, Send, ChevronRight,
-  SlidersHorizontal, CheckCircle2, Award, Zap, RefreshCw, LogOut
+  SlidersHorizontal, CheckCircle2, Award, Zap, RefreshCw, LogOut, Loader2
 } from 'lucide-react';
 
 import {
@@ -59,9 +59,9 @@ import Navbar from './components/Navbar';
 import Hero from './components/Hero';
 import ProductCard from './components/ProductCard';
 import ProductDetail from './components/ProductDetail';
-import AdminPanel from './components/AdminPanel';
-import LaunchModeOverlay from './components/LaunchModeOverlay';
-import SocialLinksModal from './components/SocialLinksModal';
+const AdminPanel = React.lazy(() => import('./components/AdminPanel'));
+const LaunchModeOverlay = React.lazy(() => import('./components/LaunchModeOverlay'));
+const SocialLinksModal = React.lazy(() => import('./components/SocialLinksModal'));
 import ScrollToTop from './components/ScrollToTop';
 import { useToast } from './components/Toast';
 import { LocationCurrencyBanner } from './components/CurrencySwitcher';
@@ -107,6 +107,8 @@ export default function App() {
 
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [newsletterSuccess, setNewsletterSuccess] = useState(false);
+  const [isNewsletterSubmitting, setIsNewsletterSubmitting] = useState(false);
+  const [newsletterErrorMessage, setNewsletterErrorMessage] = useState('');
 
   // Analytics state (synchronized fallback)
   const [analytics, setAnalytics] = useState<AnalyticsData>(() => {
@@ -173,33 +175,10 @@ export default function App() {
   const [badgeFilter, setBadgeFilter] = useState<'all' | 'tested' | 'recommended' | 'trending'>('all');
   const [sortOption, setSortOption] = useState<'popular' | 'latest' | 'low-price' | 'discount' | 'rating'>('popular');
 
-  // --- Skeleton Loading States for Smooth Transitions ---
-  const [isFilterLoading, setIsFilterLoading] = useState(false);
-  const [isDetailLoading, setIsDetailLoading] = useState(false);
-  const [isTabLoading, setIsTabLoading] = useState(false);
-
-  // Transition skeleton on filter / category / search query change
-  useEffect(() => {
-    setIsFilterLoading(true);
-    const timer = setTimeout(() => setIsFilterLoading(false), 220);
-    return () => clearTimeout(timer);
-  }, [selectedCategory, searchQuery, selectedPriceRange, badgeFilter, sortOption]);
-
-  // Transition skeleton on product detail selection
-  useEffect(() => {
-    if (selectedProductId) {
-      setIsDetailLoading(true);
-      const timer = setTimeout(() => setIsDetailLoading(false), 200);
-      return () => clearTimeout(timer);
-    }
-  }, [selectedProductId]);
-
-  // Transition skeleton on tab navigation
-  useEffect(() => {
-    setIsTabLoading(true);
-    const timer = setTimeout(() => setIsTabLoading(false), 200);
-    return () => clearTimeout(timer);
-  }, [activeTab]);
+  // --- Skeleton Loading States ---
+  const isFilterLoading = false;
+  const isDetailLoading = false;
+  const isTabLoading = false;
 
   // --- Language State ---
   const [language, setLanguage] = useState<'en' | 'hi'>('en');
@@ -489,7 +468,7 @@ export default function App() {
     }
   }, [activeTab, selectedProductId]);
 
-  // Record real live visitor stats in Firestore
+  // Record real live visitor stats in Firestore (deferred to unblock initial paint)
   useEffect(() => {
     if (!isFirebaseConfigured) return;
     
@@ -524,7 +503,15 @@ export default function App() {
       }
     };
     
-    trackVisitor();
+    const timer = setTimeout(() => {
+      if ('requestIdleCallback' in window) {
+        (window as any).requestIdleCallback(() => trackVisitor());
+      } else {
+        trackVisitor();
+      }
+    }, 1200);
+
+    return () => clearTimeout(timer);
   }, [isFirebaseConfigured]);
 
   // --- Callbacks for state management ---
@@ -756,23 +743,57 @@ export default function App() {
 
   const handleNewsletterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newsletterEmail.trim() || !newsletterEmail.includes('@')) return;
+    if (isNewsletterSubmitting) return;
 
-    localStorage.setItem('onbudget_newsletter_active', 'true');
-    setNewsletterSubscribed(true);
-    setNewsletterSuccess(true);
-    
-    try {
-      // Save to Firestore newsletter collection
-      await subscribeNewsletterInFirestore(newsletterEmail);
-      toast.success('Subscribed successfully to budget drops!');
-    } catch (err) {
-      console.error('Failed to subscribe newsletter:', err);
-      toast.error('Subscription error. Please try again later.');
+    const trimmed = newsletterEmail.trim();
+    if (!trimmed) {
+      toast.error('Please enter a valid email address.');
+      setNewsletterErrorMessage('Please enter a valid email address.');
+      return;
     }
-    
-    setNewsletterEmail('');
-    setTimeout(() => setNewsletterSuccess(false), 5000);
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmed)) {
+      toast.error('Please enter a valid email address.');
+      setNewsletterErrorMessage('Please enter a valid email address.');
+      return;
+    }
+
+    setIsNewsletterSubmitting(true);
+    setNewsletterErrorMessage('');
+
+    try {
+      const response = await fetch('/api/newsletter/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: trimmed, source: 'website_footer' }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        localStorage.setItem('onbudget_newsletter_active', 'true');
+        setNewsletterSubscribed(true);
+        setNewsletterSuccess(true);
+        setNewsletterEmail('');
+        toast.success(data.message || "You're subscribed! Check your inbox for a confirmation email.");
+      } else {
+        const errorMsg = data.message || 'Failed to subscribe. Please try again.';
+        setNewsletterErrorMessage(errorMsg);
+        if (data.isDuplicate) {
+          toast.info(errorMsg);
+        } else {
+          toast.error(errorMsg);
+        }
+      }
+    } catch (err) {
+      console.error('Newsletter submission error:', err);
+      const networkMsg = 'Network error. Please check your connection and try again.';
+      setNewsletterErrorMessage(networkMsg);
+      toast.error(networkMsg);
+    } finally {
+      setIsNewsletterSubmitting(false);
+    }
   };
 
   // --- Smart Filter & Search Logic ---
@@ -1126,10 +1147,11 @@ export default function App() {
                         </div>
                       ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                          {filteredProducts.map(p => (
+                          {filteredProducts.map((p, idx) => (
                             <ProductCard
                               key={p.id}
                               product={p}
+                              priority={idx < 4}
                               onOpenProduct={handleOpenProduct}
                               isWishlisted={wishlist.includes(p.id)}
                               onToggleWishlist={handleToggleWishlist}
@@ -1312,24 +1334,26 @@ export default function App() {
 
                 {/* TAB 5: ADMIN HQ PANEL with real-time firestore updates */}
                 {activeTab === 'admin' && isAdmin && (
-                  <AdminPanel
-                    products={products}
-                    categories={categories}
-                    reels={reels}
-                    analytics={analytics}
-                    isLoading={isTabLoading}
-                    onAddProduct={handleAddProduct}
-                    onUpdateProduct={handleUpdateProduct}
-                    onDeleteProduct={handleDeleteProduct}
-                    onAddCategory={handleAddCategory}
-                    onUpdateCategory={handleUpdateCategory}
-                    onDeleteCategory={handleDeleteCategory}
-                    onAddReel={handleAddReel}
-                    onUpdateReel={handleUpdateReel}
-                    onDeleteReel={handleDeleteReel}
-                    launchSettings={launchSettings}
-                    onSaveLaunchSettings={handleSaveLaunchSettings}
-                  />
+                  <React.Suspense fallback={<AdminFormSkeleton />}>
+                    <AdminPanel
+                      products={products}
+                      categories={categories}
+                      reels={reels}
+                      analytics={analytics}
+                      isLoading={isTabLoading}
+                      onAddProduct={handleAddProduct}
+                      onUpdateProduct={handleUpdateProduct}
+                      onDeleteProduct={handleDeleteProduct}
+                      onAddCategory={handleAddCategory}
+                      onUpdateCategory={handleUpdateCategory}
+                      onDeleteCategory={handleDeleteCategory}
+                      onAddReel={handleAddReel}
+                      onUpdateReel={handleUpdateReel}
+                      onDeleteReel={handleDeleteReel}
+                      launchSettings={launchSettings}
+                      onSaveLaunchSettings={handleSaveLaunchSettings}
+                    />
+                  </React.Suspense>
                 )}
 
               </div>
@@ -1352,24 +1376,38 @@ export default function App() {
               {newsletterSubscribed ? (
                 <div className="p-3.5 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-xs rounded-2xl flex items-center gap-2">
                   <Check className="w-4 h-4 shrink-0" />
-                  <span>You are subscribed to exclusive budget alerts!</span>
+                  <span>You're subscribed! Check your inbox for a confirmation email.</span>
                 </div>
               ) : (
-                <form onSubmit={handleNewsletterSubmit} className="flex gap-2">
-                  <input
-                    type="email"
-                    required
-                    value={newsletterEmail}
-                    onChange={e => setNewsletterEmail(e.target.value)}
-                    placeholder={t.newsPlaceholder}
-                    className="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:border-[#FF5A00] dark:focus:border-[#FF5A00] focus:ring-1 focus:ring-[#FF5A00] rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none placeholder-slate-400 dark:placeholder-slate-500"
-                  />
-                  <button
-                    type="submit"
-                    className="bg-[#FF5A00] hover:bg-[#E04F00] text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-colors cursor-pointer shadow-xs"
-                  >
-                    {t.newsButton}
-                  </button>
+                <form onSubmit={handleNewsletterSubmit} className="space-y-2">
+                  <div className="flex gap-2">
+                    <input
+                      type="email"
+                      required
+                      value={newsletterEmail}
+                      onChange={e => {
+                        setNewsletterEmail(e.target.value);
+                        if (newsletterErrorMessage) setNewsletterErrorMessage('');
+                      }}
+                      disabled={isNewsletterSubmitting}
+                      placeholder={t.newsPlaceholder}
+                      className="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:border-[#FF5A00] dark:focus:border-[#FF5A00] focus:ring-1 focus:ring-[#FF5A00] rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none placeholder-slate-400 dark:placeholder-slate-500 disabled:opacity-60"
+                    />
+                    <button
+                      type="submit"
+                      disabled={isNewsletterSubmitting}
+                      className="bg-[#FF5A00] hover:bg-[#E04F00] text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-colors cursor-pointer shadow-xs disabled:opacity-60 flex items-center justify-center min-w-[90px]"
+                    >
+                      {isNewsletterSubmitting ? (
+                        <Loader2 className="w-4 h-4 animate-spin text-white" />
+                      ) : (
+                        t.newsButton
+                      )}
+                    </button>
+                  </div>
+                  {newsletterErrorMessage && (
+                    <p className="text-[11px] text-rose-500 font-medium pl-1">{newsletterErrorMessage}</p>
+                  )}
                 </form>
               )}
             </div>
@@ -1536,20 +1574,24 @@ export default function App() {
       {/* Launch Mode Landing Overlay */}
       <AnimatePresence>
         {launchSettings.enabled && !isAdmin && (
-          <LaunchModeOverlay
-            settings={launchSettings}
-            onCountdownComplete={handleCountdownComplete}
-            isAdmin={isAdmin}
-          />
+          <React.Suspense fallback={null}>
+            <LaunchModeOverlay
+              settings={launchSettings}
+              onCountdownComplete={handleCountdownComplete}
+              isAdmin={isAdmin}
+            />
+          </React.Suspense>
         )}
       </AnimatePresence>
 
       {/* Social Links Modal Popup */}
-      <SocialLinksModal
-        isOpen={!!socialModalProduct}
-        onClose={() => setSocialModalProduct(null)}
-        product={socialModalProduct}
-      />
+      <React.Suspense fallback={null}>
+        <SocialLinksModal
+          isOpen={!!socialModalProduct}
+          onClose={() => setSocialModalProduct(null)}
+          product={socialModalProduct}
+        />
+      </React.Suspense>
 
       {/* Floating Scroll to Top button */}
       <ScrollToTop />

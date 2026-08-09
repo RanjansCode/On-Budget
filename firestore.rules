@@ -60,7 +60,13 @@ service cloud.firestore {
       allow read, write: if isOwner(userId);
     }
 
-    // Newsletter: anyone can create subscriptions, but only admin can manage
+    // Newsletter Subscribers: allow backend & clients to create, query duplicate email, and handle unsubscribe tokens
+    match /newsletterSubscribers/{subscriptionId} {
+      allow create, read, update: if true;
+      allow delete: if isAdmin();
+    }
+
+    // Legacy Newsletter: anyone can create subscriptions, but only admin can manage
     match /newsletter/{subscriptionId} {
       allow create: if true;
       allow read, update, delete: if isAdmin();

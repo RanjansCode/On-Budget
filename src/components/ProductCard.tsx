@@ -16,15 +16,17 @@ interface ProductCardProps {
   onToggleWishlist: (productId: string) => void;
   onOpenSocialLinks?: (product: Product) => void;
   currentCurrency?: string;
+  priority?: boolean;
 }
 
-export default function ProductCard({
+function ProductCard({
   product,
   onOpenProduct,
   isWishlisted,
   onToggleWishlist,
   onOpenSocialLinks,
   currentCurrency: propCurrency,
+  priority = false,
 }: ProductCardProps) {
   const { title, price, originalPrice, brand, images, badges } = product;
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
@@ -87,6 +89,7 @@ export default function ProductCard({
           <ImageSkeleton
             src={images[0]}
             alt={title}
+            priority={priority}
             containerClassName="w-full h-full"
             className="max-w-full max-h-full w-auto h-auto object-contain object-center group-hover/img:scale-105 transition-transform duration-300 ease-out select-none"
             referrerPolicy="no-referrer"
@@ -202,3 +205,5 @@ export default function ProductCard({
     </>
   );
 }
+
+export default React.memo(ProductCard);
