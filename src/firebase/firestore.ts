@@ -71,68 +71,100 @@ export function cleanData<T>(obj: T): T {
   return JSON.parse(JSON.stringify(obj)) as T;
 }
 
+// --- IN-MEMORY & LOCALSTORAGE CACHE LAYER ---
+const MEMORY_CACHE: Record<string, { data: any; timestamp: number }> = {};
+const DEFAULT_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes cache TTL
+
+function getCachedData<T>(key: string, ttl = DEFAULT_CACHE_TTL_MS): T | null {
+  const now = Date.now();
+  if (MEMORY_CACHE[key] && now - MEMORY_CACHE[key].timestamp < ttl) {
+    return MEMORY_CACHE[key].data as T;
+  }
+  try {
+    const raw = localStorage.getItem(`onbudget_cache_${key}`);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && now - parsed.timestamp < ttl) {
+        MEMORY_CACHE[key] = { data: parsed.data, timestamp: parsed.timestamp };
+        return parsed.data as T;
+      }
+    }
+  } catch {
+    // Ignore storage read errors
+  }
+  return null;
+}
+
+function setCachedData<T>(key: string, data: T) {
+  const now = Date.now();
+  MEMORY_CACHE[key] = { data, timestamp: now };
+  try {
+    localStorage.setItem(`onbudget_cache_${key}`, JSON.stringify({ data, timestamp: now }));
+  } catch {
+    // Ignore storage write errors
+  }
+}
+
 // --- DB SEEDING FUNCTION ---
 export async function seedDatabaseIfEmpty() {
+  const isAdminUser = !!(auth.currentUser && (
+    (auth.currentUser.email && ADMIN_EMAILS.includes(auth.currentUser.email))
+  ));
+  
+  // Normal visitors skip seeding check to avoid 1 extra query per pageview
+  if (!isAdminUser) {
+    return;
+  }
+
   const productsRef = collection(db, 'products');
-  let productsSnapshot;
   try {
-    const isAdminUser = !!(auth.currentUser && (
-      (auth.currentUser.email && ADMIN_EMAILS.includes(auth.currentUser.email))
-    ));
-    const q = isAdminUser 
-      ? productsRef 
-      : query(productsRef, where('status', '==', 'Published'));
-    productsSnapshot = await getDocs(q);
+    const productsSnapshot = await getDocs(productsRef);
 
     if (productsSnapshot.empty) {
-      if (isAdminUser) {
-        console.log('Seeding products, categories, and reels to Firestore...');
-        
-        // 1. Seed Categories
-        for (const cat of INITIAL_CATEGORIES) {
-          try {
-            await setDoc(doc(db, 'categories', cat.id), cleanData(cat));
-          } catch (err) {
-            handleFirestoreError(err, OperationType.WRITE, `categories/${cat.id}`);
-          }
+      console.log('Seeding products, categories, and reels to Firestore...');
+      
+      // 1. Seed Categories
+      for (const cat of INITIAL_CATEGORIES) {
+        try {
+          await setDoc(doc(db, 'categories', cat.id), cleanData(cat));
+        } catch (err) {
+          handleFirestoreError(err, OperationType.WRITE, `categories/${cat.id}`);
         }
-
-        // 2. Seed Products
-        for (const prod of INITIAL_PRODUCTS) {
-          try {
-            await setDoc(doc(db, 'products', prod.id), cleanData(prod));
-          } catch (err) {
-            handleFirestoreError(err, OperationType.WRITE, `products/${prod.id}`);
-          }
-        }
-
-        // 3. Seed Reels
-        for (const reel of INITIAL_REELS) {
-          try {
-            await setDoc(doc(db, 'reels', reel.id), cleanData(reel));
-          } catch (err) {
-            handleFirestoreError(err, OperationType.WRITE, `reels/${reel.id}`);
-          }
-        }
-
-        // 4. Seed Default Notifications
-        const defaultNotifs: NotificationItem[] = [
-          { id: 'n-1', title: '🚨 Epic Coupon Unlocked!', description: 'Use code GALAXY100 to get an extra ₹100 off the Astronaut Galaxy Star Projector!', type: 'deal', date: 'Just now', read: false },
-          { id: 'n-2', title: '📉 Price Drop Alert!', description: 'Sleek Flat Felt Desk Mat dropped from ₹389 to ₹349! Buy now before stock runs out.', type: 'price_drop', date: '3 hours ago', read: false },
-          { id: 'n-3', title: '🔥 Viral Trend Tracker', description: 'Sunset Projection Lamp is exploding on Instagram Reels. 15,000+ views in past hour!', type: 'trending', date: '1 day ago', read: false },
-        ];
-        for (const notif of defaultNotifs) {
-          try {
-            await setDoc(doc(db, 'notifications', notif.id), cleanData(notif));
-          } catch (err) {
-            handleFirestoreError(err, OperationType.WRITE, `notifications/${notif.id}`);
-          }
-        }
-
-        console.log('Database successfully seeded!');
-      } else {
-        console.log('Database is empty, but current user is not admin. Skipping seeding.');
       }
+
+      // 2. Seed Products
+      for (const prod of INITIAL_PRODUCTS) {
+        try {
+          await setDoc(doc(db, 'products', prod.id), cleanData(prod));
+        } catch (err) {
+          handleFirestoreError(err, OperationType.WRITE, `products/${prod.id}`);
+        }
+      }
+
+      // 3. Seed Reels
+      for (const reel of INITIAL_REELS) {
+        try {
+          await setDoc(doc(db, 'reels', reel.id), cleanData(reel));
+        } catch (err) {
+          handleFirestoreError(err, OperationType.WRITE, `reels/${reel.id}`);
+        }
+      }
+
+      // 4. Seed Default Notifications
+      const defaultNotifs: NotificationItem[] = [
+        { id: 'n-1', title: '🚨 Epic Coupon Unlocked!', description: 'Use code GALAXY100 to get an extra ₹100 off the Astronaut Galaxy Star Projector!', type: 'deal', date: 'Just now', read: false },
+        { id: 'n-2', title: '📉 Price Drop Alert!', description: 'Sleek Flat Felt Desk Mat dropped from ₹389 to ₹349! Buy now before stock runs out.', type: 'price_drop', date: '3 hours ago', read: false },
+        { id: 'n-3', title: '🔥 Viral Trend Tracker', description: 'Sunset Projection Lamp is exploding on Instagram Reels. 15,000+ views in past hour!', type: 'trending', date: '1 day ago', read: false },
+      ];
+      for (const notif of defaultNotifs) {
+        try {
+          await setDoc(doc(db, 'notifications', notif.id), cleanData(notif));
+        } catch (err) {
+          handleFirestoreError(err, OperationType.WRITE, `notifications/${notif.id}`);
+        }
+      }
+
+      console.log('Database successfully seeded!');
     }
   } catch (err) {
     console.warn('Skipping database seeding check due to error/permissions:', err);
@@ -141,6 +173,21 @@ export async function seedDatabaseIfEmpty() {
 
 // --- PRODUCTS API ---
 export async function fetchProductsFromFirestore(): Promise<Product[]> {
+  const cached = getCachedData<Product[]>('products');
+  if (cached && cached.length > 0) {
+    // Return cached immediately; fetch fresh in background
+    fetchProductsFresh().then(fresh => {
+      if (fresh && fresh.length > 0) {
+        setCachedData('products', fresh);
+      }
+    }).catch(() => {});
+    return cached;
+  }
+
+  return fetchProductsFresh();
+}
+
+async function fetchProductsFresh(): Promise<Product[]> {
   try {
     const isUserAdmin = !!(
       auth.currentUser &&
@@ -157,16 +204,23 @@ export async function fetchProductsFromFirestore(): Promise<Product[]> {
     productsSnapshot.forEach((docSnap) => {
       items.push(docSnap.data() as Product);
     });
-    // Sort by creation date or ID
-    return items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    
+    const sorted = items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    if (sorted.length > 0) {
+      setCachedData('products', sorted);
+    }
+    return sorted.length > 0 ? sorted : INITIAL_PRODUCTS;
   } catch (err) {
-    handleFirestoreError(err, OperationType.GET, 'products');
+    console.warn('Firestore fetch products fallback to initial products:', err);
+    return INITIAL_PRODUCTS;
   }
 }
 
 export async function addProductToFirestore(product: Product) {
   try {
     await setDoc(doc(db, 'products', product.id), cleanData(product));
+    delete MEMORY_CACHE['products'];
+    localStorage.removeItem('onbudget_cache_products');
   } catch (err) {
     handleFirestoreError(err, OperationType.CREATE, `products/${product.id}`);
   }
@@ -175,6 +229,8 @@ export async function addProductToFirestore(product: Product) {
 export async function updateProductInFirestore(product: Product) {
   try {
     await setDoc(doc(db, 'products', product.id), cleanData(product));
+    delete MEMORY_CACHE['products'];
+    localStorage.removeItem('onbudget_cache_products');
   } catch (err) {
     handleFirestoreError(err, OperationType.UPDATE, `products/${product.id}`);
   }
@@ -183,6 +239,8 @@ export async function updateProductInFirestore(product: Product) {
 export async function deleteProductFromFirestore(productId: string) {
   try {
     await deleteDoc(doc(db, 'products', productId));
+    delete MEMORY_CACHE['products'];
+    localStorage.removeItem('onbudget_cache_products');
   } catch (err) {
     handleFirestoreError(err, OperationType.DELETE, `products/${productId}`);
   }
@@ -190,21 +248,31 @@ export async function deleteProductFromFirestore(productId: string) {
 
 // --- CATEGORIES API ---
 export async function fetchCategoriesFromFirestore(): Promise<Category[]> {
+  const cached = getCachedData<Category[]>('categories');
+  if (cached && cached.length > 0) return cached;
+
   try {
     const categoriesSnapshot = await getDocs(collection(db, 'categories'));
     const items: Category[] = [];
     categoriesSnapshot.forEach((docSnap) => {
       items.push(docSnap.data() as Category);
     });
-    return items;
+    if (items.length > 0) {
+      setCachedData('categories', items);
+      return items;
+    }
+    return INITIAL_CATEGORIES;
   } catch (err) {
-    handleFirestoreError(err, OperationType.GET, 'categories');
+    console.warn('Firestore fetch categories fallback to initial categories:', err);
+    return INITIAL_CATEGORIES;
   }
 }
 
 export async function addCategoryToFirestore(category: Category) {
   try {
     await setDoc(doc(db, 'categories', category.id), cleanData(category));
+    delete MEMORY_CACHE['categories'];
+    localStorage.removeItem('onbudget_cache_categories');
   } catch (err) {
     handleFirestoreError(err, OperationType.CREATE, `categories/${category.id}`);
   }
@@ -213,6 +281,8 @@ export async function addCategoryToFirestore(category: Category) {
 export async function updateCategoryInFirestore(category: Category) {
   try {
     await setDoc(doc(db, 'categories', category.id), cleanData(category));
+    delete MEMORY_CACHE['categories'];
+    localStorage.removeItem('onbudget_cache_categories');
   } catch (err) {
     handleFirestoreError(err, OperationType.UPDATE, `categories/${category.id}`);
   }
@@ -221,6 +291,8 @@ export async function updateCategoryInFirestore(category: Category) {
 export async function deleteCategoryFromFirestore(categoryId: string) {
   try {
     await deleteDoc(doc(db, 'categories', categoryId));
+    delete MEMORY_CACHE['categories'];
+    localStorage.removeItem('onbudget_cache_categories');
   } catch (err) {
     handleFirestoreError(err, OperationType.DELETE, `categories/${categoryId}`);
   }
@@ -228,15 +300,23 @@ export async function deleteCategoryFromFirestore(categoryId: string) {
 
 // --- REELS API ---
 export async function fetchReelsFromFirestore(): Promise<Reel[]> {
+  const cached = getCachedData<Reel[]>('reels');
+  if (cached && cached.length > 0) return cached;
+
   try {
     const reelsSnapshot = await getDocs(collection(db, 'reels'));
     const items: Reel[] = [];
     reelsSnapshot.forEach((docSnap) => {
       items.push(docSnap.data() as Reel);
     });
-    return items;
+    if (items.length > 0) {
+      setCachedData('reels', items);
+      return items;
+    }
+    return INITIAL_REELS;
   } catch (err) {
-    handleFirestoreError(err, OperationType.GET, 'reels');
+    console.warn('Firestore fetch reels fallback to initial reels:', err);
+    return INITIAL_REELS;
   }
 }
 
@@ -290,15 +370,22 @@ export async function saveWishlistToFirestore(userId: string, productIds: string
 
 // --- NOTIFICATIONS API ---
 export async function fetchNotificationsFromFirestore(): Promise<NotificationItem[]> {
+  const cached = getCachedData<NotificationItem[]>('notifications');
+  if (cached && cached.length > 0) return cached;
+
   try {
     const snapshot = await getDocs(collection(db, 'notifications'));
     const items: NotificationItem[] = [];
     snapshot.forEach((docSnap) => {
       items.push(docSnap.data() as NotificationItem);
     });
+    if (items.length > 0) {
+      setCachedData('notifications', items);
+    }
     return items;
   } catch (err) {
-    handleFirestoreError(err, OperationType.GET, 'notifications');
+    console.warn('Failed to fetch notifications from Firestore:', err);
+    return [];
   }
 }
 
@@ -377,6 +464,12 @@ export async function syncUserProfile(user: any): Promise<UserProfile> {
 
 export async function trackVisitorInFirestore(sessionId: string, device: string) {
   try {
+    const trackedKey = `onbudget_tracked_${sessionId}`;
+    if (sessionStorage.getItem(trackedKey)) {
+      return; // Already tracked for this session
+    }
+    sessionStorage.setItem(trackedKey, 'true');
+
     await setDoc(doc(db, 'visitors', sessionId), {
       timestamp: new Date().toISOString(),
       device: device || 'Desktop',

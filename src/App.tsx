@@ -10,6 +10,7 @@ import {
 import {
   Product, Category, Reel, AnalyticsData, NotificationItem, ADMIN_EMAILS
 } from './types';
+import { INITIAL_PRODUCTS, INITIAL_CATEGORIES, INITIAL_REELS } from './data';
 import {
   slugify,
   getProductSlug,
@@ -86,14 +87,15 @@ export default function App() {
   // --- Firebase User Auth State ---
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [dbLoading, setDbLoading] = useState(true);
+  const [dbLoading, setDbLoading] = useState(false);
 
   // --- Core Cloud Synchronized States ---
-  const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [reels, setReels] = useState<Reel[]>([]);
+  const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
+  const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);
+  const [reels, setReels] = useState<Reel[]>(INITIAL_REELS);
   const [wishlist, setWishlist] = useState<string[]>([]);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [visibleCatalogCount, setVisibleCatalogCount] = useState(12);
 
   // --- Local / Device States ---
   const [recentlyViewed, setRecentlyViewed] = useState<string[]>(() => {
@@ -872,13 +874,14 @@ export default function App() {
 
     // Step 9: Sorting
     return matched.sort((a, b) => {
-      if (sortOption === 'popular') return b.rating - a.rating;
-      if (sortOption === 'latest' || sortOption === 'newest') return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-      if (sortOption === 'low-price') return a.price - b.price;
-      if (sortOption === 'high-price') return b.price - a.price;
-      if (sortOption === 'discount') return calculateDiscount(b.originalPrice, b.price).percentage - calculateDiscount(a.originalPrice, a.price).percentage;
-      if (sortOption === 'rating') return b.rating - a.rating;
-      if (sortOption === 'trending') return (b.badges.trending ? 1 : 0) - (a.badges.trending ? 1 : 0);
+      const s = sortOption as string;
+      if (s === 'popular') return b.rating - a.rating;
+      if (s === 'latest' || s === 'newest') return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      if (s === 'low-price') return a.price - b.price;
+      if (s === 'high-price') return b.price - a.price;
+      if (s === 'discount') return calculateDiscount(b.originalPrice, b.price).percentage - calculateDiscount(a.originalPrice, a.price).percentage;
+      if (s === 'rating') return b.rating - a.rating;
+      if (s === 'trending') return (b.badges.trending ? 1 : 0) - (a.badges.trending ? 1 : 0);
       return 0;
     });
   }, [products, searchQuery, filterState, selectedCategory, selectedPriceRange, badgeFilter, sortOption]);
@@ -1146,19 +1149,32 @@ export default function App() {
                           <p className="text-xs text-slate-600 dark:text-slate-300 font-semibold">{t.emptyCatalog}</p>
                         </div>
                       ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                          {filteredProducts.map((p, idx) => (
-                            <ProductCard
-                              key={p.id}
-                              product={p}
-                              priority={idx < 4}
-                              onOpenProduct={handleOpenProduct}
-                              isWishlisted={wishlist.includes(p.id)}
-                              onToggleWishlist={handleToggleWishlist}
-                              onOpenSocialLinks={setSocialModalProduct}
-                              currentCurrency={currentCurrency}
-                            />
-                          ))}
+                        <div className="space-y-8">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                            {filteredProducts.slice(0, visibleCatalogCount).map((p, idx) => (
+                              <ProductCard
+                                key={p.id}
+                                product={p}
+                                priority={idx < 4}
+                                onOpenProduct={handleOpenProduct}
+                                isWishlisted={wishlist.includes(p.id)}
+                                onToggleWishlist={handleToggleWishlist}
+                                onOpenSocialLinks={setSocialModalProduct}
+                                currentCurrency={currentCurrency}
+                              />
+                            ))}
+                          </div>
+
+                          {filteredProducts.length > visibleCatalogCount && (
+                            <div className="text-center pt-2">
+                              <button
+                                onClick={() => setVisibleCatalogCount(prev => prev + 12)}
+                                className="px-6 py-3 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200/80 dark:border-slate-800 rounded-2xl text-xs font-bold transition-all shadow-xs hover:shadow-md cursor-pointer inline-flex items-center gap-2"
+                              >
+                                Load More Curations ({filteredProducts.length - visibleCatalogCount} remaining)
+                              </button>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>

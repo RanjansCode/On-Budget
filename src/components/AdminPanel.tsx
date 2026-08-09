@@ -913,10 +913,10 @@ function ProductFormModal({ product, categories, existingProducts = [], onClose,
   };
 
   // Badges
-  const [seenInReel, setSeenInReel] = useState(product?.badges.seenInReel || false);
-  const [personallyTested, setPersonallyTested] = useState(product?.badges.personallyTested || true);
-  const [recommended, setRecommended] = useState(product?.badges.recommended || true);
-  const [trending, setTrending] = useState(product?.badges.trending || false);
+  const [seenInReel, setSeenInReel] = useState<boolean>(product?.badges.seenInReel || false);
+  const [personallyTested, setPersonallyTested] = useState<boolean>(product?.badges.personallyTested ?? true);
+  const [recommended, setRecommended] = useState<boolean>(product?.badges.recommended ?? true);
+  const [trending, setTrending] = useState<boolean>(product?.badges.trending || false);
 
   // Review
   const [reviewRating, setReviewRating] = useState<number | string>(product?.creatorReview?.rating ?? product?.rating ?? 5);

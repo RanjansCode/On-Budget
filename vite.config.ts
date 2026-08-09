@@ -30,6 +30,7 @@ export default defineConfig(() => {
             'motion-vendor': ['motion/react'],
             'lucide-icons': ['lucide-react'],
             'firebase-vendor': ['firebase/app', 'firebase/auth', 'firebase/firestore'],
+            'recharts-vendor': ['recharts'],
           },
         },
       },
