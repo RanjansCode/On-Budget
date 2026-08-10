@@ -74,7 +74,7 @@ export default function CategoryNav({
   return (
     <nav
       aria-label="Category Navigation"
-      className="bg-white dark:bg-slate-900 transition-colors"
+      className="bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800/60 transition-colors"
     >
       <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 relative group">
         {/* Left Scroll Button (Desktop) */}
@@ -91,7 +91,7 @@ export default function CategoryNav({
         {/* Scrollable Container */}
         <div
           ref={scrollContainerRef}
-          className="flex items-center gap-1 sm:gap-2 overflow-x-auto py-2.5 sm:py-3 scrollbar-none scroll-smooth select-none px-1"
+          className="flex items-center gap-1 sm:gap-2 overflow-x-auto py-2 sm:py-2.5 scrollbar-none scroll-smooth select-none px-1"
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
           {categories.map((cat) => {
