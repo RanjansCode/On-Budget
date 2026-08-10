@@ -162,46 +162,6 @@ function Hero({
           )}
         </div>
       </div>
-
-      {/* Category Slider / Selector */}
-      <div className="space-y-3">
-        <div className="flex justify-between items-center">
-          <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest font-display text-left">Popular Categories</h3>
-          {selectedCategory !== '' && (
-            <button
-              onClick={() => setSelectedCategory('')}
-              className="text-[11px] font-bold text-[#FF5A00] hover:underline cursor-pointer"
-            >
-              All Categories
-            </button>
-          )}
-        </div>
-        <div className="flex gap-2.5 overflow-x-auto pb-2 scrollbar-thin">
-          <button
-            onClick={() => setSelectedCategory('')}
-            className={`px-4.5 py-2.5 rounded-xl border text-xs font-bold tracking-wide transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-              selectedCategory === ''
-                ? 'bg-[#FF5A00]/10 border-[#FF5A00] text-[#FF5A00]'
-                : 'bg-white dark:bg-slate-900 border-slate-200/60 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            All Products ({totalProducts})
-          </button>
-          {categories.map(c => (
-            <button
-              key={c.id}
-              onClick={() => setSelectedCategory(c.id)}
-              className={`px-4.5 py-2.5 rounded-xl border text-xs font-bold tracking-wide transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-                selectedCategory === c.id
-                  ? 'bg-[#FF5A00]/10 border-[#FF5A00] text-[#FF5A00]'
-                  : 'bg-white dark:bg-slate-900 border-slate-200/60 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              {c.name}
-            </button>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }

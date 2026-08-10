@@ -142,3 +142,19 @@ export interface UserProfile {
   lastLogin: string;
 }
 
+export interface PromotionalBanner {
+  id: string;
+  name: string;
+  imageUrl: string;
+  title?: string;
+  subtitle?: string;
+  buttonText?: string;
+  destinationUrl: string;
+  displayOrder: number;
+  isActive: boolean;
+  startAt?: string;
+  endAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+

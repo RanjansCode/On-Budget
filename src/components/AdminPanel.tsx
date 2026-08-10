@@ -12,9 +12,9 @@ import {
 import {
   ShieldAlert, LayoutDashboard, ShoppingBag, FolderOpen, Film, Plus, Edit2, Trash2,
   TrendingUp, MousePointer, Share2, DollarSign, Upload, Info, Check, Eye, HelpCircle, Save, X,
-  SlidersHorizontal, Search, Sparkles
+  SlidersHorizontal, Search, Sparkles, Image, ArrowUp, ArrowDown, Calendar, Power, Megaphone
 } from 'lucide-react';
-import { Product, Category, Reel, AnalyticsData, PurchaseLink } from '../types';
+import { Product, Category, Reel, AnalyticsData, PurchaseLink, PromotionalBanner } from '../types';
 import { validateSocialUrl, validatePurchaseUrl, formatUrl } from '../utils/validation';
 import { getPurchaseLinks } from '../utils/purchaseLinks';
 import { calculateDiscount } from '../utils/discount';
@@ -23,11 +23,14 @@ import { LaunchSettings } from '../firebase/firestore';
 import { AdminFormSkeleton } from './Skeletons';
 import { slugify, generateUniqueSlug, getDomain, calculateProductSEOScore } from '../lib/seo';
 import { fetchSearchAnalyticsData } from '../lib/searchEngine';
+import CategoryIcon, { CATEGORY_ICON_OPTIONS } from './CategoryIcon';
+import { getBannerStatus, isBannerActive, PromotionalCarousel } from './PromotionalCarousel';
 
 interface AdminPanelProps {
   products: Product[];
   categories: Category[];
   reels: Reel[];
+  promotionalBanners: PromotionalBanner[];
   analytics: AnalyticsData;
   isLoading?: boolean;
   onAddProduct: (product: Product) => void;
@@ -39,6 +42,10 @@ interface AdminPanelProps {
   onAddReel: (reel: Reel) => void;
   onUpdateReel: (reel: Reel) => void;
   onDeleteReel: (reelId: string) => void;
+  onAddPromotionalBanner: (banner: PromotionalBanner) => void;
+  onUpdatePromotionalBanner: (banner: PromotionalBanner) => void;
+  onDeletePromotionalBanner: (bannerId: string) => void;
+  onReorderPromotionalBanners: (banners: PromotionalBanner[]) => void;
   launchSettings: LaunchSettings;
   onSaveLaunchSettings: (settings: LaunchSettings) => Promise<void>;
 }
@@ -47,6 +54,7 @@ export default function AdminPanel({
   products,
   categories,
   reels,
+  promotionalBanners = [],
   analytics,
   onAddProduct,
   onUpdateProduct,
@@ -57,11 +65,15 @@ export default function AdminPanel({
   onAddReel,
   onUpdateReel,
   onDeleteReel,
+  onAddPromotionalBanner,
+  onUpdatePromotionalBanner,
+  onDeletePromotionalBanner,
+  onReorderPromotionalBanners,
   launchSettings,
   onSaveLaunchSettings,
   isLoading = false,
 }: AdminPanelProps) {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'products' | 'categories' | 'reels' | 'launch' | 'search'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'products' | 'categories' | 'reels' | 'banners' | 'launch' | 'search'>('dashboard');
   const [searchAnalyticsData, setSearchAnalyticsData] = useState<any>(null);
   const [loadingSearchAnalytics, setLoadingSearchAnalytics] = useState(false);
 
@@ -83,6 +95,11 @@ export default function AdminPanel({
 
   const [reelFormOpen, setReelFormOpen] = useState(false);
   const [editingReel, setEditingReel] = useState<Reel | null>(null);
+
+  const [bannerFormOpen, setBannerFormOpen] = useState(false);
+  const [editingBanner, setEditingBanner] = useState<PromotionalBanner | null>(null);
+  const [previewingBanner, setPreviewingBanner] = useState<PromotionalBanner | null>(null);
+  const [deleteConfirmBannerId, setDeleteConfirmBannerId] = useState<string | null>(null);
 
   // Image Presets for premium catalog creation
   const imagePresets = [
@@ -191,6 +208,17 @@ export default function AdminPanel({
         >
           <Film className="w-4 h-4" />
           Reel Manager ({reels.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('banners')}
+          className={`flex items-center gap-2 text-xs font-bold pb-3 px-4 border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+            activeTab === 'banners'
+              ? 'border-emerald-500 text-emerald-400'
+              : 'border-transparent text-neutral-400 hover:text-white'
+          }`}
+        >
+          <Image className="w-4 h-4" />
+          Promotional Banners ({promotionalBanners.length})
         </button>
         <button
           onClick={() => setActiveTab('launch')}
@@ -476,9 +504,14 @@ export default function AdminPanel({
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {categories.map(c => (
                 <div key={c.id} className="p-4 bg-neutral-900 border border-neutral-800 rounded-2xl flex justify-between items-center">
-                  <div>
-                    <h4 className="text-xs font-extrabold text-white">{c.name}</h4>
-                    <p className="text-[10px] text-neutral-500 font-mono mt-0.5">ID: {c.id} | Icon: {c.icon}</p>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-neutral-800/80 border border-neutral-700/50 flex items-center justify-center text-[#FF5A00] shrink-0">
+                      <CategoryIcon iconKey={c.icon} className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-extrabold text-white">{c.name}</h4>
+                      <p className="text-[10px] text-neutral-500 font-mono mt-0.5">ID: {c.id} | Icon: {c.icon}</p>
+                    </div>
                   </div>
                   <div className="flex gap-1">
                     <button
@@ -575,6 +608,259 @@ export default function AdminPanel({
             launchSettings={launchSettings}
             onSaveLaunchSettings={onSaveLaunchSettings}
           />
+        )}
+
+        {/* Promotional Banners Manager Tab */}
+        {activeTab === 'banners' && (
+          <div className="space-y-6">
+            {/* Header & Add Button */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-neutral-900 border border-neutral-800 p-5 rounded-2xl">
+              <div>
+                <h3 className="text-sm font-black text-white flex items-center gap-2 font-display">
+                  <Megaphone className="w-4 h-4 text-[#FF5A00]" />
+                  Promotional Banners Carousel ({promotionalBanners.length})
+                </h3>
+                <p className="text-xs text-neutral-400 mt-0.5">
+                  Manage Flipkart-style promotional banner cards displayed on the homepage below Category Navigation.
+                </p>
+              </div>
+
+              <button
+                onClick={() => {
+                  setEditingBanner(null);
+                  setBannerFormOpen(true);
+                }}
+                className="bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md shrink-0"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Add Promotional Banner</span>
+              </button>
+            </div>
+
+            {/* List of Banners Table / Cards */}
+            {promotionalBanners.length === 0 ? (
+              <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-12 text-center space-y-3">
+                <Image className="w-10 h-10 text-neutral-600 mx-auto stroke-1" />
+                <h4 className="text-sm font-bold text-neutral-300">No Promotional Banners Yet</h4>
+                <p className="text-xs text-neutral-500 max-w-sm mx-auto">
+                  Add your first promotional offer banner to showcase top deals, brand highlights, and discounts on your homepage.
+                </p>
+                <button
+                  onClick={() => {
+                    setEditingBanner(null);
+                    setBannerFormOpen(true);
+                  }}
+                  className="px-4 py-2 bg-[#FF5A00] hover:bg-[#E04F00] text-white text-xs font-bold rounded-xl transition-all inline-flex items-center gap-2 cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  Create First Banner
+                </button>
+              </div>
+            ) : (
+              <div className="bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden shadow-xl">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs text-neutral-300">
+                    <thead className="bg-neutral-950 border-b border-neutral-800 text-[11px] uppercase font-bold text-neutral-400 tracking-wider">
+                      <tr>
+                        <th className="py-3 px-4">Order</th>
+                        <th className="py-3 px-4">Banner Preview</th>
+                        <th className="py-3 px-4">Banner Details</th>
+                        <th className="py-3 px-4">Status</th>
+                        <th className="py-3 px-4">Schedule</th>
+                        <th className="py-3 px-4 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-neutral-800/80">
+                      {promotionalBanners
+                        .slice()
+                        .sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0))
+                        .map((b, idx, sortedArr) => {
+                          const status = getBannerStatus(b);
+                          return (
+                            <tr key={b.id} className="hover:bg-neutral-850/50 transition-colors">
+                              {/* Order & Reorder Controls */}
+                              <td className="py-3 px-4 font-mono font-bold text-neutral-400">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="w-5 text-center">{b.displayOrder ?? idx + 1}</span>
+                                  <div className="flex flex-col gap-0.5">
+                                    <button
+                                      disabled={idx === 0}
+                                      onClick={() => {
+                                        if (idx === 0) return;
+                                        const newArr = [...sortedArr];
+                                        const temp = newArr[idx];
+                                        newArr[idx] = newArr[idx - 1];
+                                        newArr[idx - 1] = temp;
+                                        onReorderPromotionalBanners(newArr);
+                                      }}
+                                      className="p-1 hover:bg-neutral-800 disabled:opacity-30 disabled:cursor-not-allowed text-neutral-400 hover:text-white rounded cursor-pointer"
+                                      title="Move Up"
+                                    >
+                                      <ArrowUp className="w-3 h-3" />
+                                    </button>
+                                    <button
+                                      disabled={idx === sortedArr.length - 1}
+                                      onClick={() => {
+                                        if (idx === sortedArr.length - 1) return;
+                                        const newArr = [...sortedArr];
+                                        const temp = newArr[idx];
+                                        newArr[idx] = newArr[idx + 1];
+                                        newArr[idx + 1] = temp;
+                                        onReorderPromotionalBanners(newArr);
+                                      }}
+                                      className="p-1 hover:bg-neutral-800 disabled:opacity-30 disabled:cursor-not-allowed text-neutral-400 hover:text-white rounded cursor-pointer"
+                                      title="Move Down"
+                                    >
+                                      <ArrowDown className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                </div>
+                              </td>
+
+                              {/* Preview Thumbnail */}
+                              <td className="py-3 px-4">
+                                <div className="w-28 h-12 rounded-xl bg-slate-950 border border-neutral-700/80 overflow-hidden relative group">
+                                  <img
+                                    src={b.imageUrl}
+                                    alt={b.name}
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                      (e.target as HTMLImageElement).src =
+                                        'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=600&auto=format&fit=crop&q=80';
+                                    }}
+                                  />
+                                  <button
+                                    onClick={() => setPreviewingBanner(b)}
+                                    className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-[10px] font-bold transition-opacity cursor-pointer gap-1"
+                                  >
+                                    <Eye className="w-3.5 h-3.5" />
+                                    Preview
+                                  </button>
+                                </div>
+                              </td>
+
+                              {/* Details */}
+                              <td className="py-3 px-4">
+                                <div className="space-y-0.5 max-w-xs">
+                                  <h4 className="font-bold text-white text-xs truncate">{b.name}</h4>
+                                  {b.title && <p className="text-[11px] text-emerald-400 font-medium truncate">Title: {b.title}</p>}
+                                  {b.subtitle && <p className="text-[10px] text-neutral-400 truncate">{b.subtitle}</p>}
+                                  <div className="flex items-center gap-2 pt-0.5">
+                                    <span className="text-[10px] bg-neutral-800 text-neutral-300 font-mono px-1.5 py-0.5 rounded border border-neutral-700 truncate max-w-[180px]">
+                                      🔗 {b.destinationUrl || 'None'}
+                                    </span>
+                                    {b.buttonText && (
+                                      <span className="text-[10px] bg-[#FF5A00]/20 text-[#FF5A00] font-bold px-1.5 py-0.5 rounded border border-[#FF5A00]/30">
+                                        CTA: {b.buttonText}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </td>
+
+                              {/* Status Badge */}
+                              <td className="py-3 px-4">
+                                <span
+                                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider border ${
+                                    status === 'Active'
+                                      ? 'bg-emerald-950/80 text-emerald-400 border-emerald-800/80'
+                                      : status === 'Scheduled'
+                                      ? 'bg-amber-950/80 text-amber-400 border-amber-800/80'
+                                      : status === 'Expired'
+                                      ? 'bg-neutral-800 text-neutral-400 border-neutral-700'
+                                      : 'bg-red-950/80 text-red-400 border-red-800/80'
+                                  }`}
+                                >
+                                  <span
+                                    className={`w-1.5 h-1.5 rounded-full ${
+                                      status === 'Active'
+                                        ? 'bg-emerald-400 animate-pulse'
+                                        : status === 'Scheduled'
+                                        ? 'bg-amber-400'
+                                        : status === 'Expired'
+                                        ? 'bg-neutral-400'
+                                        : 'bg-red-400'
+                                    }`}
+                                  />
+                                  {status === 'Active' ? '🟢 Active' : status === 'Scheduled' ? '🟡 Scheduled' : status === 'Expired' ? '⚪ Expired' : '🔴 Inactive'}
+                                </span>
+                              </td>
+
+                              {/* Schedule */}
+                              <td className="py-3 px-4 text-[10px] text-neutral-400 font-mono space-y-0.5">
+                                <div>
+                                  <span className="text-neutral-500 font-bold">Start:</span>{' '}
+                                  {b.startAt ? new Date(b.startAt).toLocaleString() : 'Immediate'}
+                                </div>
+                                <div>
+                                  <span className="text-neutral-500 font-bold">End:</span>{' '}
+                                  {b.endAt ? new Date(b.endAt).toLocaleString() : 'No Expiry'}
+                                </div>
+                              </td>
+
+                              {/* Actions */}
+                              <td className="py-3 px-4 text-right">
+                                <div className="flex items-center justify-end gap-2">
+                                  {/* ON / OFF Quick Toggle */}
+                                  <button
+                                    onClick={() => {
+                                      onUpdatePromotionalBanner({
+                                        ...b,
+                                        isActive: !b.isActive,
+                                        updatedAt: new Date().toISOString()
+                                      });
+                                    }}
+                                    className={`px-2 py-1 rounded-lg text-[10px] font-bold border transition-all cursor-pointer flex items-center gap-1 ${
+                                      b.isActive
+                                        ? 'bg-emerald-950/60 text-emerald-400 border-emerald-800 hover:bg-emerald-900/60'
+                                        : 'bg-neutral-800 text-neutral-400 border-neutral-700 hover:bg-neutral-750'
+                                    }`}
+                                    title={b.isActive ? 'Turn OFF Banner' : 'Turn ON Banner'}
+                                  >
+                                    <Power className="w-3 h-3" />
+                                    <span>{b.isActive ? 'ON' : 'OFF'}</span>
+                                  </button>
+
+                                  {/* Preview */}
+                                  <button
+                                    onClick={() => setPreviewingBanner(b)}
+                                    className="p-1.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 rounded-lg transition-colors cursor-pointer"
+                                    title="Live Preview"
+                                  >
+                                    <Eye className="w-3.5 h-3.5" />
+                                  </button>
+
+                                  {/* Edit */}
+                                  <button
+                                    onClick={() => {
+                                      setEditingBanner(b);
+                                      setBannerFormOpen(true);
+                                    }}
+                                    className="p-1.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 rounded-lg transition-colors cursor-pointer"
+                                    title="Edit Banner"
+                                  >
+                                    <Edit2 className="w-3.5 h-3.5" />
+                                  </button>
+
+                                  {/* Delete */}
+                                  <button
+                                    onClick={() => setDeleteConfirmBannerId(b.id)}
+                                    className="p-1.5 bg-red-950/30 hover:bg-red-900/40 text-red-400 rounded-lg transition-colors cursor-pointer"
+                                    title="Delete Banner"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
         )}
 
         {/* Search Engine Analytics Tab */}
@@ -828,6 +1114,78 @@ export default function AdminPanel({
             }}
             imagePresets={imagePresets}
           />
+        )}
+      </AnimatePresence>
+
+      {/* MODAL: PROMOTIONAL BANNER FORM */}
+      <AnimatePresence>
+        {bannerFormOpen && (
+          <PromotionalBannerFormModal
+            banner={editingBanner}
+            categories={categories}
+            products={products}
+            displayOrderDefault={promotionalBanners.length + 1}
+            onClose={() => setBannerFormOpen(false)}
+            onSave={(b) => {
+              if (editingBanner) {
+                onUpdatePromotionalBanner(b);
+              } else {
+                onAddPromotionalBanner(b);
+              }
+              setBannerFormOpen(false);
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* MODAL: PROMOTIONAL BANNER PREVIEW */}
+      <AnimatePresence>
+        {previewingBanner && (
+          <PromotionalBannerPreviewModal
+            banner={previewingBanner}
+            onClose={() => setPreviewingBanner(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* MODAL: DELETE BANNER CONFIRMATION */}
+      <AnimatePresence>
+        {deleteConfirmBannerId && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-sm bg-neutral-900 border border-neutral-800 rounded-2xl p-6 text-center space-y-4 shadow-2xl"
+            >
+              <div className="w-12 h-12 bg-red-950/50 text-red-400 border border-red-900/60 rounded-full flex items-center justify-center mx-auto">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white">Delete Promotional Banner?</h3>
+                <p className="text-xs text-neutral-400 mt-1">
+                  Are you sure you want to remove this promotional banner? This action cannot be undone.
+                </p>
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button
+                  onClick={() => setDeleteConfirmBannerId(null)}
+                  className="flex-1 px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-bold rounded-xl cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    onDeletePromotionalBanner(deleteConfirmBannerId);
+                    setDeleteConfirmBannerId(null);
+                  }}
+                  className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl cursor-pointer shadow-md"
+                >
+                  Delete Banner
+                </button>
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </div>
@@ -2010,22 +2368,24 @@ function CategoryFormModal({ category, onClose, onSave }: CategoryFormModalProps
 
           <div>
             <label className="block text-[11px] font-bold text-neutral-400 mb-1">Lucide Icon Key</label>
-            <select
-              value={icon}
-              onChange={e => setIcon(e.target.value)}
-              className="w-full bg-neutral-950 border border-neutral-800 focus:border-emerald-500 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
-            >
-              <option value="Layout">Layout</option>
-              <option value="Cpu">Cpu</option>
-              <option value="Gamepad2">Gamepad2</option>
-              <option value="Smartphone">Smartphone</option>
-              <option value="Laptop">Laptop</option>
-              <option value="Home">Home</option>
-              <option value="Utensils">Utensils</option>
-              <option value="BookOpen">BookOpen</option>
-              <option value="Car">Car</option>
-              <option value="Sparkles">Sparkles</option>
-            </select>
+            <div className="flex items-center gap-2">
+              <select
+                value={icon}
+                onChange={e => setIcon(e.target.value)}
+                className="w-full bg-neutral-950 border border-neutral-800 focus:border-emerald-500 rounded-xl px-3 py-2 text-xs text-white focus:outline-none cursor-pointer"
+              >
+                {CATEGORY_ICON_OPTIONS.map(opt => (
+                  <option key={opt.key} value={opt.key}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+              {/* Visual Icon Preview */}
+              <div className="w-10 h-9 rounded-xl bg-neutral-950 border border-neutral-800 flex items-center justify-center text-[#FF5A00] shrink-0" title={`Selected Preview: ${icon}`}>
+                <CategoryIcon iconKey={icon} className="w-5 h-5" />
+              </div>
+            </div>
+            <p className="text-[10px] text-neutral-500 mt-1">Live Preview: {icon}</p>
           </div>
 
           <div className="pt-2 border-t border-neutral-850 flex justify-end gap-2">
@@ -2197,3 +2557,426 @@ function ReelFormModal({ reel, products, categories, onClose, onSave, imagePrese
     </div>
   );
 }
+
+// ---------------------------------------------------------
+// COMPONENT: PromotionalBannerFormModal
+// ---------------------------------------------------------
+interface PromotionalBannerFormModalProps {
+  banner: PromotionalBanner | null;
+  categories: Category[];
+  products: Product[];
+  displayOrderDefault: number;
+  onClose: () => void;
+  onSave: (banner: PromotionalBanner) => void;
+}
+
+function PromotionalBannerFormModal({
+  banner,
+  categories,
+  products,
+  displayOrderDefault,
+  onClose,
+  onSave,
+}: PromotionalBannerFormModalProps) {
+  const [id] = useState(banner?.id || `banner-${Date.now()}`);
+  const [name, setName] = useState(banner?.name || '');
+  const [imageUrl, setImageUrl] = useState(
+    banner?.imageUrl ||
+      'https://images.unsplash.com/photo-1593784991095-a205069470b6?w=1200&auto=format&fit=crop&q=80'
+  );
+  const [title, setTitle] = useState(banner?.title || '');
+  const [subtitle, setSubtitle] = useState(banner?.subtitle || '');
+  const [buttonText, setButtonText] = useState(banner?.buttonText || '');
+  const [destinationUrl, setDestinationUrl] = useState(banner?.destinationUrl || '');
+  const [displayOrder, setDisplayOrder] = useState<number>(banner?.displayOrder ?? displayOrderDefault);
+  const [isActive, setIsActive] = useState<boolean>(banner?.isActive ?? true);
+  const [startAt, setStartAt] = useState(banner?.startAt || '');
+  const [endAt, setEndAt] = useState(banner?.endAt || '');
+
+  const presetBanners = [
+    'https://images.unsplash.com/photo-1593784991095-a205069470b6?w=1200&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=1200&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=1200&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1526738549149-8e07eca6c147?w=1200&auto=format&fit=crop&q=80',
+  ];
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File size exceeds 5MB limit. Please choose a smaller image.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        setImageUrl(reader.result);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) {
+      alert('Please enter a Banner Internal Name.');
+      return;
+    }
+    if (!imageUrl.trim()) {
+      alert('Please provide a Banner Image URL or upload an image.');
+      return;
+    }
+
+    onSave({
+      id,
+      name: name.trim(),
+      imageUrl: imageUrl.trim(),
+      title: title.trim(),
+      subtitle: subtitle.trim(),
+      buttonText: buttonText.trim(),
+      destinationUrl: destinationUrl.trim(),
+      displayOrder: Number(displayOrder) || 1,
+      isActive,
+      startAt,
+      endAt,
+      createdAt: banner?.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs overflow-y-auto">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="w-full max-w-2xl bg-neutral-900 border border-neutral-800 rounded-3xl shadow-2xl p-6 text-neutral-300 space-y-5 my-8"
+      >
+        <div className="flex justify-between items-center pb-3 border-b border-neutral-800">
+          <div>
+            <h3 className="text-sm font-black text-white uppercase tracking-wider font-display flex items-center gap-2">
+              <Megaphone className="w-4 h-4 text-[#FF5A00]" />
+              {banner ? 'Edit Promotional Banner' : 'Add Promotional Banner'}
+            </h3>
+            <p className="text-[11px] text-neutral-400 mt-0.5">
+              Configure banner visuals, scheduling, destination links, and CTA overlay.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1.5 rounded-xl text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+          {/* Banner Name & Active Toggle */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="sm:col-span-2">
+              <label className="block text-[11px] font-bold text-neutral-300 mb-1">
+                Banner Internal Name *
+              </label>
+              <input
+                type="text"
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g., Mini LED 4K TV Freedom Sale"
+                className="w-full bg-neutral-950 border border-neutral-800 focus:border-emerald-500 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-neutral-300 mb-1">
+                Status Toggle
+              </label>
+              <button
+                type="button"
+                onClick={() => setIsActive(!isActive)}
+                className={`w-full py-2 px-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all cursor-pointer border ${
+                  isActive
+                    ? 'bg-emerald-950/80 text-emerald-400 border-emerald-800 hover:bg-emerald-900/80'
+                    : 'bg-neutral-950 text-neutral-400 border-neutral-800 hover:bg-neutral-800'
+                }`}
+              >
+                <Power className="w-3.5 h-3.5" />
+                <span>{isActive ? 'ACTIVE (ON)' : 'INACTIVE (OFF)'}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Image URL & File Upload */}
+          <div className="space-y-2">
+            <div className="flex justify-between items-center">
+              <label className="block text-[11px] font-bold text-neutral-300">
+                Banner Image * (Landscape Aspect Ratio Recommended)
+              </label>
+              <label className="text-[10px] bg-neutral-800 hover:bg-neutral-700 text-neutral-200 px-2.5 py-1 rounded-lg border border-neutral-700 cursor-pointer inline-flex items-center gap-1 font-bold">
+                <Upload className="w-3 h-3" />
+                <span>Upload Local File</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+              </label>
+            </div>
+
+            <input
+              type="url"
+              required
+              value={imageUrl}
+              onChange={(e) => setImageUrl(e.target.value)}
+              placeholder="Paste image URL (https://...)"
+              className="w-full bg-neutral-950 border border-neutral-800 focus:border-emerald-500 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+            />
+
+            {/* Presets */}
+            <div className="flex items-center gap-2 overflow-x-auto pt-1">
+              <span className="text-[10px] text-neutral-500 shrink-0 font-bold">Presets:</span>
+              {presetBanners.map((p, idx) => (
+                <img
+                  key={idx}
+                  src={p}
+                  alt={`preset-${idx}`}
+                  onClick={() => setImageUrl(p)}
+                  className={`w-14 h-8 object-cover rounded-lg cursor-pointer border hover:scale-105 transition-all shrink-0 ${
+                    imageUrl === p ? 'border-emerald-500 ring-2 ring-emerald-500/30' : 'border-neutral-800'
+                  }`}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Banner Card Text Overlay Fields */}
+          <div className="p-3 bg-neutral-950/60 border border-neutral-850 rounded-2xl space-y-3">
+            <h4 className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5" />
+              Overlay Copy & Call To Action (Optional)
+            </h4>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[11px] font-bold text-neutral-400 mb-1">
+                  Headline Title
+                </label>
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="e.g., Mini LED 4K Smart TVs"
+                  className="w-full bg-neutral-900 border border-neutral-800 focus:border-emerald-500 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-neutral-400 mb-1">
+                  Sub-headline / Offer Details
+                </label>
+                <input
+                  type="text"
+                  value={subtitle}
+                  onChange={(e) => setSubtitle(e.target.value)}
+                  placeholder="e.g., From ₹24,999 | Card Discounts"
+                  className="w-full bg-neutral-900 border border-neutral-800 focus:border-emerald-500 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[11px] font-bold text-neutral-400 mb-1">
+                  CTA Button Label
+                </label>
+                <input
+                  type="text"
+                  value={buttonText}
+                  onChange={(e) => setButtonText(e.target.value)}
+                  placeholder="e.g., Explore TV Offers"
+                  className="w-full bg-neutral-900 border border-neutral-800 focus:border-emerald-500 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-neutral-400 mb-1">
+                  Destination Category / URL *
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    required
+                    value={destinationUrl}
+                    onChange={(e) => setDestinationUrl(e.target.value)}
+                    placeholder="e.g., tv-audio-video or https://..."
+                    className="w-full bg-neutral-900 border border-neutral-800 focus:border-emerald-500 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+                  />
+                  <select
+                    onChange={(e) => {
+                      if (e.target.value) setDestinationUrl(e.target.value);
+                    }}
+                    className="bg-neutral-900 border border-neutral-800 text-neutral-300 rounded-xl px-2 text-xs focus:outline-none shrink-0 cursor-pointer"
+                  >
+                    <option value="">Quick Select Category</option>
+                    {categories.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name} ({c.id})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Schedule & Display Order */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="block text-[11px] font-bold text-neutral-400 mb-1">
+                Display Order Position
+              </label>
+              <input
+                type="number"
+                min="1"
+                required
+                value={displayOrder}
+                onChange={(e) => setDisplayOrder(Number(e.target.value))}
+                className="w-full bg-neutral-950 border border-neutral-800 focus:border-emerald-500 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-neutral-400 mb-1 flex items-center gap-1">
+                <Calendar className="w-3 h-3 text-neutral-500" />
+                <span>Start Date & Time (Optional)</span>
+              </label>
+              <input
+                type="datetime-local"
+                value={startAt}
+                onChange={(e) => setStartAt(e.target.value)}
+                className="w-full bg-neutral-950 border border-neutral-800 focus:border-emerald-500 rounded-xl px-3 py-2 text-xs text-white focus:outline-none font-mono"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-neutral-400 mb-1 flex items-center gap-1">
+                <Calendar className="w-3 h-3 text-neutral-500" />
+                <span>End Date & Time (Optional)</span>
+              </label>
+              <input
+                type="datetime-local"
+                value={endAt}
+                onChange={(e) => setEndAt(e.target.value)}
+                className="w-full bg-neutral-950 border border-neutral-800 focus:border-emerald-500 rounded-xl px-3 py-2 text-xs text-white focus:outline-none font-mono"
+              />
+            </div>
+          </div>
+
+          {/* Live Card Preview Box */}
+          <div className="space-y-1.5 pt-2">
+            <label className="block text-[11px] font-bold text-neutral-400">
+              Live Banner Preview Card
+            </label>
+            <div className="relative w-full aspect-[21/9] rounded-2xl overflow-hidden bg-slate-950 border border-neutral-700 shadow-md">
+              <img
+                src={imageUrl}
+                alt="preview"
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src =
+                    'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=1200&auto=format&fit=crop&q=80';
+                }}
+              />
+              <div className="absolute inset-0 bg-gradient-to-r from-slate-950/90 via-slate-950/40 to-transparent flex items-center p-4 sm:p-6">
+                <div className="space-y-1 text-white">
+                  {title && <h3 className="text-sm sm:text-lg font-black font-display">{title}</h3>}
+                  {subtitle && <p className="text-[10px] sm:text-xs text-slate-200">{subtitle}</p>}
+                  {buttonText && (
+                    <span className="inline-block px-3 py-1 bg-[#FF5A00] text-white text-[10px] font-bold rounded-lg mt-1 font-display">
+                      {buttonText}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="pt-3 border-t border-neutral-800 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-semibold px-4 py-2.5 rounded-xl transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold px-6 py-2.5 rounded-xl shadow-md transition-colors"
+            >
+              Save Banner
+            </button>
+          </div>
+        </form>
+      </motion.div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------
+// COMPONENT: PromotionalBannerPreviewModal
+// ---------------------------------------------------------
+interface PromotionalBannerPreviewModalProps {
+  banner: PromotionalBanner;
+  onClose: () => void;
+}
+
+function PromotionalBannerPreviewModal({ banner, onClose }: PromotionalBannerPreviewModalProps) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-xs">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="w-full max-w-4xl bg-neutral-900 border border-neutral-800 rounded-3xl shadow-2xl p-6 text-neutral-300 space-y-4"
+      >
+        <div className="flex justify-between items-center pb-2 border-b border-neutral-800">
+          <div>
+            <h3 className="text-sm font-bold text-white uppercase tracking-wider font-display flex items-center gap-2">
+              <Eye className="w-4 h-4 text-[#FF5A00]" />
+              Live Interactive Banner Preview
+            </h3>
+            <p className="text-xs text-neutral-400">
+              Previewing: <span className="text-white font-bold">{banner.name}</span>
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-xl text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="py-2">
+          <PromotionalCarousel banners={[banner]} />
+        </div>
+
+        <div className="pt-2 border-t border-neutral-800 flex justify-between items-center text-xs">
+          <div className="text-[11px] text-neutral-400 font-mono">
+            Destination: <span className="text-emerald-400">{banner.destinationUrl || 'None'}</span>
+          </div>
+          <button
+            onClick={onClose}
+            className="px-5 py-2 bg-neutral-800 hover:bg-neutral-700 text-white font-bold rounded-xl cursor-pointer"
+          >
+            Close Preview
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+

@@ -14,9 +14,9 @@ import {
 
 import { db } from './config';
 import { auth } from './auth';
-import { Product, Category, Reel, NotificationItem, ADMIN_EMAILS, UserProfile, AnalyticsData } from '../types';
+import { Product, Category, Reel, NotificationItem, ADMIN_EMAILS, UserProfile, AnalyticsData, PromotionalBanner } from '../types';
 import { User } from 'firebase/auth';
-import { INITIAL_PRODUCTS, INITIAL_CATEGORIES, INITIAL_REELS } from '../data';
+import { INITIAL_PRODUCTS, INITIAL_CATEGORIES, INITIAL_REELS, INITIAL_PROMOTIONAL_BANNERS } from '../data';
 
 // --- FIRESTORE ERROR HANDLING ---
 export enum OperationType {
@@ -161,6 +161,15 @@ export async function seedDatabaseIfEmpty() {
           await setDoc(doc(db, 'notifications', notif.id), cleanData(notif));
         } catch (err) {
           handleFirestoreError(err, OperationType.WRITE, `notifications/${notif.id}`);
+        }
+      }
+
+      // 5. Seed Promotional Banners
+      for (const banner of INITIAL_PROMOTIONAL_BANNERS) {
+        try {
+          await setDoc(doc(db, 'promotional_banners', banner.id), cleanData(banner));
+        } catch (err) {
+          handleFirestoreError(err, OperationType.WRITE, `promotional_banners/${banner.id}`);
         }
       }
 
@@ -670,6 +679,77 @@ export async function saveLaunchSettingsToFirestore(settings: LaunchSettings) {
     }));
   } catch (err) {
     handleFirestoreError(err, OperationType.WRITE, 'settings/launch');
+  }
+}
+
+// --- PROMOTIONAL BANNERS API ---
+export async function fetchPromotionalBannersFromFirestore(): Promise<PromotionalBanner[]> {
+  const cached = getCachedData<PromotionalBanner[]>('promotional_banners');
+  if (cached && cached.length > 0) return cached;
+
+  try {
+    const bannersSnapshot = await getDocs(collection(db, 'promotional_banners'));
+    const items: PromotionalBanner[] = [];
+    bannersSnapshot.forEach((docSnap) => {
+      items.push(docSnap.data() as PromotionalBanner);
+    });
+    
+    // Sort by displayOrder ascending
+    const sorted = items.sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0));
+    
+    if (sorted.length > 0) {
+      setCachedData('promotional_banners', sorted);
+      return sorted;
+    }
+    return INITIAL_PROMOTIONAL_BANNERS;
+  } catch (err) {
+    console.warn('Firestore fetch promotional banners fallback to initial banners:', err);
+    return INITIAL_PROMOTIONAL_BANNERS;
+  }
+}
+
+export async function addPromotionalBannerToFirestore(banner: PromotionalBanner) {
+  try {
+    await setDoc(doc(db, 'promotional_banners', banner.id), cleanData(banner));
+    delete MEMORY_CACHE['promotional_banners'];
+    localStorage.removeItem('onbudget_cache_promotional_banners');
+  } catch (err) {
+    handleFirestoreError(err, OperationType.CREATE, `promotional_banners/${banner.id}`);
+  }
+}
+
+export async function updatePromotionalBannerInFirestore(banner: PromotionalBanner) {
+  try {
+    await setDoc(doc(db, 'promotional_banners', banner.id), cleanData(banner));
+    delete MEMORY_CACHE['promotional_banners'];
+    localStorage.removeItem('onbudget_cache_promotional_banners');
+  } catch (err) {
+    handleFirestoreError(err, OperationType.UPDATE, `promotional_banners/${banner.id}`);
+  }
+}
+
+export async function deletePromotionalBannerFromFirestore(bannerId: string) {
+  try {
+    await deleteDoc(doc(db, 'promotional_banners', bannerId));
+    delete MEMORY_CACHE['promotional_banners'];
+    localStorage.removeItem('onbudget_cache_promotional_banners');
+  } catch (err) {
+    handleFirestoreError(err, OperationType.DELETE, `promotional_banners/${bannerId}`);
+  }
+}
+
+export async function reorderPromotionalBannersInFirestore(banners: PromotionalBanner[]) {
+  try {
+    const batch = writeBatch(db);
+    banners.forEach((banner, index) => {
+      const bannerRef = doc(db, 'promotional_banners', banner.id);
+      batch.update(bannerRef, { displayOrder: index + 1, updatedAt: new Date().toISOString() });
+    });
+    await batch.commit();
+    delete MEMORY_CACHE['promotional_banners'];
+    localStorage.removeItem('onbudget_cache_promotional_banners');
+  } catch (err) {
+    handleFirestoreError(err, OperationType.UPDATE, 'promotional_banners');
   }
 }
 

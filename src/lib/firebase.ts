@@ -36,6 +36,11 @@ export {
   fetchAnalyticsFromFirestore,
   fetchLaunchSettingsFromFirestore,
   saveLaunchSettingsToFirestore,
+  fetchPromotionalBannersFromFirestore,
+  addPromotionalBannerToFirestore,
+  updatePromotionalBannerInFirestore,
+  deletePromotionalBannerFromFirestore,
+  reorderPromotionalBannersInFirestore,
 } from '../firebase/firestore';
 
 export type { LaunchSettings } from '../firebase/firestore';

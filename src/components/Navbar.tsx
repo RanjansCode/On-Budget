@@ -19,6 +19,7 @@ import { updateProfile, User as FirebaseUser } from 'firebase/auth';
 import { useToast } from './Toast';
 import inOurBudgetLogo from '../assets/images/in_our_budget_logo_1784107312483.jpg';
 import CurrencySwitcher from './CurrencySwitcher';
+import CategoryIcon from './CategoryIcon';
 import {
   getSearchHistory,
   saveSearchHistoryItem,
@@ -1204,24 +1205,27 @@ function Navbar({
                       >
                         All Categories
                       </button>
-                      {categories.map(c => (
-                        <button
-                          key={c.id}
-                          onClick={() => {
-                            onSelectCategory(c.name);
-                            setActiveTab('home');
-                            setMobileMenuOpen(false);
-                          }}
-                          className={`text-[11px] font-bold px-3 py-1.5 rounded-xl border transition-all cursor-pointer font-display flex items-center gap-1.5 ${
-                            selectedCategory === c.name
-                              ? 'bg-[#FF5A00]/10 text-[#FF5A00] border-[#FF5A00]/30 font-black'
-                              : 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800'
-                          }`}
-                        >
-                          <span>{c.icon}</span>
-                          <span>{c.name}</span>
-                        </button>
-                      ))}
+                      {categories.map(c => {
+                        const active = selectedCategory === c.id || selectedCategory === c.name;
+                        return (
+                          <button
+                            key={c.id}
+                            onClick={() => {
+                              onSelectCategory(c.id);
+                              setActiveTab('home');
+                              setMobileMenuOpen(false);
+                            }}
+                            className={`text-[11px] font-bold px-3 py-1.5 rounded-xl border transition-all cursor-pointer font-display flex items-center gap-1.5 ${
+                              active
+                                ? 'bg-[#FF5A00]/10 text-[#FF5A00] border-[#FF5A00]/30 font-black'
+                                : 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800'
+                            }`}
+                          >
+                            <CategoryIcon iconKey={c.icon} className="w-3.5 h-3.5" />
+                            <span>{c.name}</span>
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 )}

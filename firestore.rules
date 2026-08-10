@@ -89,5 +89,11 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isAdmin();
     }
+
+    // Promotional Banners: anyone can read active banners, admin can write
+    match /promotional_banners/{bannerId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
   }
 }

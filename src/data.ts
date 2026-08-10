@@ -6,25 +6,32 @@
 import { Category, Product, Reel } from './types';
 
 export const INITIAL_CATEGORIES: Category[] = [
-  { id: 'tech', name: 'Tech & Gadgets', icon: 'Cpu' },
-  { id: 'gaming', name: 'Gaming Hub', icon: 'Gamepad2' },
-  { id: 'desk-setup', name: 'Desk Setups', icon: 'Layout' },
-  { id: 'mobile-accessories', name: 'Mobile Accessories', icon: 'Smartphone' },
-  { id: 'laptop-accessories', name: 'Laptop Accessories', icon: 'Laptop' },
-  { id: 'home', name: 'Home & Decor', icon: 'Home' },
-  { id: 'kitchen', name: 'Kitchen Gadgets', icon: 'Utensils' },
-  { id: 'fashion', name: 'Fashion & Apparel', icon: 'Shirt' },
-  { id: 'beauty', name: 'Beauty & Personal Care', icon: 'Sparkles' },
-  { id: 'study-essentials', name: 'Study Essentials', icon: 'BookOpen' },
-  { id: 'office-essentials', name: 'Office Essentials', icon: 'Briefcase' },
-  { id: 'smart-gadgets', name: 'Smart Home Gadgets', icon: 'Zap' },
-  { id: 'fitness', name: 'Fitness & Outdoors', icon: 'Dumbbell' },
-  { id: 'travel', name: 'Travel Essentials', icon: 'Compass' },
-  { id: 'pet-accessories', name: 'Pet Accessories', icon: 'Footprints' },
-  { id: 'car-accessories', name: 'Car Accessories', icon: 'Car' },
-  { id: 'storage', name: 'Storage & Organizers', icon: 'FolderOpen' },
-  { id: 'lighting', name: 'Ambient Lighting', icon: 'Sun' },
-  { id: 'accessories', name: 'Daily Accessories', icon: 'Glasses' }
+  { id: 'all-categories', name: 'All Categories', icon: 'LayoutGrid' },
+  { id: 'mobiles-accessories', name: 'Mobiles & Accessories', icon: 'Smartphone' },
+  { id: 'electronics', name: 'Electronics', icon: 'Cpu' },
+  { id: 'computers-accessories', name: 'Computers & Accessories', icon: 'Laptop' },
+  { id: 'tv-audio-video', name: 'TV, Audio & Video', icon: 'Tv' },
+  { id: 'home-kitchen', name: 'Home & Kitchen', icon: 'CookingPot' },
+  { id: 'home-decor', name: 'Home Decor', icon: 'HomeLamp' },
+  { id: 'furniture', name: 'Furniture', icon: 'Armchair' },
+  { id: 'appliances', name: 'Appliances', icon: 'Refrigerator' },
+  { id: 'beauty-personal-care', name: 'Beauty & Personal Care', icon: 'Lipstick' },
+  { id: 'womens-fashion', name: "Women's Fashion", icon: 'Women' },
+  { id: 'mens-fashion', name: "Men's Fashion", icon: 'Men' },
+  { id: 'kids-baby', name: 'Kids & Baby', icon: 'Baby' },
+  { id: 'footwear', name: 'Footwear', icon: 'Footprints' },
+  { id: 'bags-luggage', name: 'Bags & Luggage', icon: 'Luggage' },
+  { id: 'jewellery-accessories', name: 'Jewellery & Accessories', icon: 'Gem' },
+  { id: 'sports-fitness', name: 'Sports & Fitness', icon: 'Dumbbell' },
+  { id: 'books-stationery', name: 'Books & Stationery', icon: 'BookOpen' },
+  { id: 'automotive', name: 'Automotive', icon: 'Car' },
+  { id: 'health-wellness', name: 'Health & Wellness', icon: 'HeartPulse' },
+  { id: 'toys-games', name: 'Toys & Games', icon: 'Gamepad2' },
+  { id: 'cameras-photography', name: 'Cameras & Photography', icon: 'Camera' },
+  { id: 'musical-instruments', name: 'Musical Instruments', icon: 'Music2' },
+  { id: 'garden-outdoor', name: 'Garden & Outdoor', icon: 'Flower2' },
+  { id: 'tools-home-improvement', name: 'Tools & Home Improvement', icon: 'Wrench' },
+  { id: 'others', name: 'Others', icon: 'MoreHorizontal' },
 ];
 
 export const INITIAL_PRODUCTS: Product[] = [
@@ -758,3 +765,52 @@ export const INITIAL_REELS: Reel[] = [
     shares: 2310
   }
 ];
+
+export const INITIAL_PROMOTIONAL_BANNERS = [
+  {
+    id: 'banner-1',
+    name: 'Latest TV & Home Entertainment Sale',
+    imageUrl: 'https://images.unsplash.com/photo-1593784991095-a205069470b6?w=1200&auto=format&fit=crop&q=80',
+    title: 'Mini LED 4K Smart TVs',
+    subtitle: 'From ₹24,999 | Extra ₹2,000 Card Savings',
+    buttonText: 'Explore TV Offers',
+    destinationUrl: 'tv-audio-video',
+    displayOrder: 1,
+    isActive: true,
+    startAt: '',
+    endAt: '',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  {
+    id: 'banner-2',
+    name: 'Laptop & Computing Mega Deals',
+    imageUrl: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=1200&auto=format&fit=crop&q=80',
+    title: 'Next-Gen Laptops & Computing',
+    subtitle: 'Up to 45% OFF + Extra ₹3,000 Exchange Bonus',
+    buttonText: 'Shop Laptops',
+    destinationUrl: 'computers-accessories',
+    displayOrder: 2,
+    isActive: true,
+    startAt: '',
+    endAt: '',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  {
+    id: 'banner-3',
+    name: 'Audio & Wireless Accessories Sale',
+    imageUrl: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=1200&auto=format&fit=crop&q=80',
+    title: 'Premium Noise Cancelling Audio',
+    subtitle: 'Starting at ₹1,299 | Limited Stock Freedom Sale',
+    buttonText: 'Grab Deal',
+    destinationUrl: 'mobiles-accessories',
+    displayOrder: 3,
+    isActive: true,
+    startAt: '',
+    endAt: '',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  }
+];
+

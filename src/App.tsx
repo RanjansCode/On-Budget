@@ -8,9 +8,9 @@ import {
 } from 'lucide-react';
 
 import {
-  Product, Category, Reel, AnalyticsData, NotificationItem, ADMIN_EMAILS
+  Product, Category, Reel, AnalyticsData, NotificationItem, ADMIN_EMAILS, PromotionalBanner
 } from './types';
-import { INITIAL_PRODUCTS, INITIAL_CATEGORIES, INITIAL_REELS } from './data';
+import { INITIAL_PRODUCTS, INITIAL_CATEGORIES, INITIAL_REELS, INITIAL_PROMOTIONAL_BANNERS } from './data';
 import {
   slugify,
   getProductSlug,
@@ -36,6 +36,11 @@ import {
   addReelToFirestore,
   updateReelInFirestore,
   deleteReelFromFirestore,
+  fetchPromotionalBannersFromFirestore,
+  addPromotionalBannerToFirestore,
+  updatePromotionalBannerInFirestore,
+  deletePromotionalBannerFromFirestore,
+  reorderPromotionalBannersInFirestore,
   fetchWishlistFromFirestore,
   saveWishlistToFirestore,
   fetchNotificationsFromFirestore,
@@ -57,6 +62,8 @@ import HomeRecommendationSections from './components/HomeRecommendationSections'
 import SmartSearchFilters, { SmartFilterState, SortOption } from './components/SmartSearchFilters';
 import { smartSearchProducts } from './lib/searchEngine';
 import Navbar from './components/Navbar';
+import CategoryNav from './components/CategoryNav';
+import PromotionalCarousel from './components/PromotionalCarousel';
 import Hero from './components/Hero';
 import ProductCard from './components/ProductCard';
 import ProductDetail from './components/ProductDetail';
@@ -93,6 +100,7 @@ export default function App() {
   const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
   const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);
   const [reels, setReels] = useState<Reel[]>(INITIAL_REELS);
+  const [promotionalBanners, setPromotionalBanners] = useState<PromotionalBanner[]>(INITIAL_PROMOTIONAL_BANNERS);
   const [wishlist, setWishlist] = useState<string[]>([]);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [visibleCatalogCount, setVisibleCatalogCount] = useState(12);
@@ -205,13 +213,14 @@ export default function App() {
         await seedDatabaseIfEmpty();
 
         // Load all data sets in parallel from cloud
-        const [cloudProducts, cloudCategories, cloudReels, cloudNotifs, cloudAnalytics, cloudLaunch] = await Promise.all([
+        const [cloudProducts, cloudCategories, cloudReels, cloudNotifs, cloudAnalytics, cloudLaunch, cloudBanners] = await Promise.all([
           fetchProductsFromFirestore(),
           fetchCategoriesFromFirestore(),
           fetchReelsFromFirestore(),
           fetchNotificationsFromFirestore(),
           fetchAnalyticsFromFirestore(),
-          fetchLaunchSettingsFromFirestore()
+          fetchLaunchSettingsFromFirestore(),
+          fetchPromotionalBannersFromFirestore()
         ]);
 
         if (cloudProducts.length > 0) setProducts(cloudProducts);
@@ -220,6 +229,7 @@ export default function App() {
         if (cloudNotifs.length > 0) setNotifications(cloudNotifs);
         if (cloudAnalytics) setAnalytics(cloudAnalytics);
         if (cloudLaunch) setLaunchSettings(cloudLaunch);
+        if (cloudBanners.length > 0) setPromotionalBanners(cloudBanners);
 
       } catch (err) {
         console.error("Failed to load Cloud Firestore database collections:", err);
@@ -703,6 +713,27 @@ export default function App() {
     await deleteReelFromFirestore(reelId);
   };
 
+  const handleAddPromotionalBanner = async (banner: PromotionalBanner) => {
+    setPromotionalBanners(prev => [...prev, banner]);
+    await addPromotionalBannerToFirestore(banner);
+  };
+
+  const handleUpdatePromotionalBanner = async (banner: PromotionalBanner) => {
+    setPromotionalBanners(prev => prev.map(b => (b.id === banner.id ? banner : b)));
+    await updatePromotionalBannerInFirestore(banner);
+  };
+
+  const handleDeletePromotionalBanner = async (bannerId: string) => {
+    setPromotionalBanners(prev => prev.filter(b => b.id !== bannerId));
+    await deletePromotionalBannerFromFirestore(bannerId);
+  };
+
+  const handleReorderPromotionalBanners = async (banners: PromotionalBanner[]) => {
+    const updated = banners.map((b, idx) => ({ ...b, displayOrder: idx + 1 }));
+    setPromotionalBanners(updated);
+    await reorderPromotionalBannersInFirestore(updated);
+  };
+
   const handleMarkNotificationsRead = async () => {
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
     await markNotificationsAsReadInFirestore(notifications.map(n => n.id));
@@ -828,8 +859,36 @@ export default function App() {
 
     // Step 2: Category Filter
     const cat = filterState.category || selectedCategory;
-    if (cat) {
-      matched = matched.filter(p => p.category.toLowerCase() === cat.toLowerCase());
+    if (cat && cat !== '' && cat !== 'all-categories' && cat.toLowerCase() !== 'all categories') {
+      const catLower = cat.toLowerCase();
+      matched = matched.filter(p => {
+        const pCat = (p.category || '').toLowerCase();
+        if (pCat === catLower) return true;
+
+        if (catLower === 'mobiles-accessories' || catLower === 'mobiles & accessories') {
+          return pCat.includes('mobile') || pCat.includes('smartphone') || pCat === 'mobile-accessories';
+        }
+        if (catLower === 'electronics') {
+          return pCat.includes('tech') || pCat.includes('electronic') || pCat === 'tech';
+        }
+        if (catLower === 'computers-accessories' || catLower === 'computers & accessories') {
+          return pCat.includes('laptop') || pCat.includes('desk') || pCat.includes('computer') || pCat === 'desk-setup' || pCat === 'laptop-accessories';
+        }
+        if (catLower === 'tv-audio-video' || catLower === 'tv, audio & video') {
+          return pCat.includes('audio') || pCat.includes('video') || pCat.includes('tv');
+        }
+        if (catLower === 'home-kitchen' || catLower === 'home & kitchen') {
+          return pCat.includes('kitchen') || pCat.includes('home');
+        }
+        if (catLower === 'home-decor' || catLower === 'home decor') {
+          return pCat.includes('home') || pCat.includes('decor');
+        }
+        if (catLower === 'toys-games' || catLower === 'toys & games') {
+          return pCat.includes('game') || pCat.includes('toy') || pCat === 'gaming';
+        }
+
+        return pCat.includes(catLower) || catLower.includes(pCat);
+      });
     }
 
     // Step 3: Brand Filter
@@ -995,6 +1054,16 @@ export default function App() {
           onLogoutRequest={() => setShowLogoutConfirm(true)}
         />
 
+        {/* Flipkart-Style E-Commerce Category Navigation */}
+        <CategoryNav
+          categories={categories}
+          selectedCategory={selectedCategory}
+          onSelectCategory={(catId) => {
+            setSelectedCategory(catId);
+            handleNavigate('home');
+          }}
+        />
+
         {/* MAIN BODY WRAPPER */}
         {dbLoading ? (
           <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8 py-6">
@@ -1075,7 +1144,18 @@ export default function App() {
                 {/* TAB 1: EXPLORE CATALOG */}
                 {activeTab === 'home' && (
                   <div className="space-y-10">
-                    {/* Hero Banner */}
+                    {/* Promotional Banner Carousel (placed below Category Navigation and above Browse by Price Bracket) */}
+                    <PromotionalCarousel
+                      banners={promotionalBanners}
+                      onSelectCategory={(catId) => {
+                        setSelectedCategory(catId);
+                        setSelectedPriceRange(null);
+                        handleNavigate('home');
+                      }}
+                      onOpenProduct={(prodId) => handleOpenProduct(prodId)}
+                    />
+
+                    {/* Hero Banner (Browse by Price Bracket) */}
                     <Hero
                       categories={categories}
                       selectedCategory={selectedCategory}
@@ -1355,6 +1435,7 @@ export default function App() {
                       products={products}
                       categories={categories}
                       reels={reels}
+                      promotionalBanners={promotionalBanners}
                       analytics={analytics}
                       isLoading={isTabLoading}
                       onAddProduct={handleAddProduct}
@@ -1366,6 +1447,10 @@ export default function App() {
                       onAddReel={handleAddReel}
                       onUpdateReel={handleUpdateReel}
                       onDeleteReel={handleDeleteReel}
+                      onAddPromotionalBanner={handleAddPromotionalBanner}
+                      onUpdatePromotionalBanner={handleUpdatePromotionalBanner}
+                      onDeletePromotionalBanner={handleDeletePromotionalBanner}
+                      onReorderPromotionalBanners={handleReorderPromotionalBanners}
                       launchSettings={launchSettings}
                       onSaveLaunchSettings={handleSaveLaunchSettings}
                     />
