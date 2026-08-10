@@ -25,6 +25,8 @@ import { slugify, generateUniqueSlug, getDomain, calculateProductSEOScore } from
 import { fetchSearchAnalyticsData } from '../lib/searchEngine';
 import CategoryIcon, { CATEGORY_ICON_OPTIONS } from './CategoryIcon';
 import { getBannerStatus, isBannerActive, PromotionalCarousel } from './PromotionalCarousel';
+import { uploadFileToStorage } from '../lib/firebase';
+import { getProductImages, getProductMainImage } from '../utils/imageUtils';
 
 interface AdminPanelProps {
   products: Product[];
@@ -406,7 +408,7 @@ export default function AdminPanel({
                       <tr key={p.id} className="hover:bg-neutral-850/30 transition-colors">
                         <td className="p-4 flex items-center gap-3">
                           <img
-                            src={p.images[0]}
+                            src={getProductMainImage(p)}
                             alt={p.title}
                             className="w-10 h-10 object-cover rounded-lg"
                             referrerPolicy="no-referrer"
@@ -1112,7 +1114,112 @@ function ProductFormModal({ product, categories, existingProducts = [], onClose,
   const [brand, setBrand] = useState(product?.brand || '');
   const [category, setCategory] = useState(product?.category || categories[0]?.id || 'desk-setup');
   const [rating, setRating] = useState(product?.rating || 4.5);
-  const [imageUrl, setImageUrl] = useState(product?.images?.[0] || '');
+  
+  // Multi-Image Product Gallery State
+  const [productImages, setProductImages] = useState<string[]>(() => getProductImages(product));
+  const [newImageUrlInput, setNewImageUrlInput] = useState('');
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [uploadProgressText, setUploadProgressText] = useState('');
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  const handleSetMainImage = (index: number) => {
+    if (index <= 0 || index >= productImages.length) return;
+    setProductImages(prev => {
+      const copy = [...prev];
+      const [selected] = copy.splice(index, 1);
+      return [selected, ...copy];
+    });
+  };
+
+  const handleMoveImage = (index: number, direction: 'left' | 'right') => {
+    const targetIndex = direction === 'left' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= productImages.length) return;
+    setProductImages(prev => {
+      const copy = [...prev];
+      const temp = copy[index];
+      copy[index] = copy[targetIndex];
+      copy[targetIndex] = temp;
+      return copy;
+    });
+  };
+
+  const handleRemoveImage = (index: number) => {
+    setProductImages(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleAddImageByUrl = () => {
+    if (!newImageUrlInput.trim()) return;
+    if (productImages.length >= 8) {
+      setUploadError('Maximum limit of 8 images reached.');
+      return;
+    }
+    setProductImages(prev => [...prev, newImageUrlInput.trim()]);
+    setNewImageUrlInput('');
+    setUploadError(null);
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const fileList = Array.from(files);
+    const remainingSlots = 8 - productImages.length;
+    if (remainingSlots <= 0) {
+      setUploadError('Maximum limit of 8 product images reached.');
+      return;
+    }
+
+    const filesToProcess = fileList.slice(0, remainingSlots);
+    setIsUploadingImage(true);
+    setUploadError(null);
+
+    for (let i = 0; i < filesToProcess.length; i++) {
+      const file = filesToProcess[i];
+      setUploadProgressText(`Uploading ${i + 1} of ${filesToProcess.length}...`);
+
+      if (!file.type.startsWith('image/')) {
+        setUploadError(`File "${file.name}" is not a valid image file.`);
+        continue;
+      }
+
+      if (file.size > 10 * 1024 * 1024) {
+        setUploadError(`File "${file.name}" exceeds 10MB limit.`);
+        continue;
+      }
+
+      try {
+        const downloadUrl = await uploadFileToStorage(file, 'product-images');
+        setProductImages(prev => [...prev, downloadUrl]);
+      } catch (err) {
+        console.warn('Storage upload fallback to local reader:', err);
+        await new Promise<void>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            if (ev.target?.result) {
+              setProductImages(prev => [...prev, ev.target!.result as string]);
+            }
+            resolve();
+          };
+          reader.readAsDataURL(file);
+        });
+      }
+    }
+
+    setIsUploadingImage(false);
+    setUploadProgressText('');
+    e.target.value = '';
+  };
+
+  const handleSelectPreset = (presetUrl: string) => {
+    if (productImages.length >= 8) {
+      setUploadError('Maximum limit of 8 images reached.');
+      return;
+    }
+    if (!productImages.includes(presetUrl)) {
+      setProductImages(prev => [...prev, presetUrl]);
+      setUploadError(null);
+    }
+  };
   // Purchase Links state initialization
   const [purchaseLinks, setPurchaseLinks] = useState<PurchaseLink[]>(() => {
     const loaded = getPurchaseLinks(product);
@@ -1201,6 +1308,9 @@ function ProductFormModal({ product, categories, existingProducts = [], onClose,
   const currentDomain = getDomain();
   const canonicalUrl = `${currentDomain}/product/${effectiveSlug}`;
 
+  const effectiveImages = productImages.filter(Boolean);
+  const finalImages = effectiveImages.length > 0 ? effectiveImages : ['https://images.unsplash.com/photo-1526738549149-8e07eca6c147?w=800&auto=format&fit=crop&q=80'];
+
   const seoAudit = calculateProductSEOScore({
     title,
     description,
@@ -1208,7 +1318,7 @@ function ProductFormModal({ product, categories, existingProducts = [], onClose,
     seoDescription,
     seoSlug: effectiveSlug,
     searchTags,
-    images: imageUrl ? [imageUrl] : [],
+    images: finalImages,
     brand,
     category
   });
@@ -1292,7 +1402,12 @@ function ProductFormModal({ product, categories, existingProducts = [], onClose,
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title || !description || !imageUrl) return;
+    if (!title || !description) return;
+
+    if (finalImages.length === 0) {
+      setUploadError('At least 1 product image is required.');
+      return;
+    }
 
     // Validate Social Media URLs before saving
     const ytVal = validateSocialUrl(youtubeUrl, 'youtube');
@@ -1376,7 +1491,8 @@ function ProductFormModal({ product, categories, existingProducts = [], onClose,
       brand,
       category,
       rating: parsedRating,
-      images: [imageUrl],
+      images: finalImages,
+      image: finalImages[0],
       videos: ['https://assets.mixkit.co/videos/preview/mixkit-working-with-various-tools-and-devices-on-desk-43301-large.mp4'],
       affiliateLinks,
       purchaseLinks: validPurchaseLinks,
@@ -1395,7 +1511,7 @@ function ProductFormModal({ product, categories, existingProducts = [], onClose,
         setupGuideText,
         myExperience,
         myVerdict,
-        photos: [imageUrl]
+        photos: finalImages
       },
       pros: prosText.split('\n').filter(Boolean),
       cons: consText.split('\n').filter(Boolean),
@@ -1502,33 +1618,186 @@ function ProductFormModal({ product, categories, existingProducts = [], onClose,
             </div>
           </div>
 
-          {/* Image & Preset selection */}
-          <div className="space-y-4">
-            <h4 className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest border-b border-neutral-800 pb-1">Media Assets</h4>
-            <div>
-              <label className="block text-[11px] font-bold text-neutral-400 mb-1">Display Image URL *</label>
-              <input
-                type="url"
-                required
-                value={imageUrl}
-                onChange={e => setImageUrl(e.target.value)}
-                placeholder="https://images.unsplash.com/..."
-                className="w-full bg-neutral-950 border border-neutral-800 focus:border-emerald-500 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
-              />
+          {/* Multiple Product Images Manager */}
+          <div className="space-y-4 bg-neutral-900/60 p-4 rounded-2xl border border-neutral-800">
+            <div className="flex items-center justify-between border-b border-neutral-800 pb-2">
+              <div>
+                <h4 className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest flex items-center gap-1.5 font-display">
+                  <Image className="w-3.5 h-3.5" /> Product Image Gallery ({productImages.length} / 8)
+                </h4>
+                <p className="text-[11px] text-neutral-400 mt-0.5">
+                  Upload up to 8 product photos. Image #1 is automatically set as the <span className="text-emerald-400 font-bold">MAIN / COVER</span> image.
+                </p>
+              </div>
+              <span className="text-[10px] px-2.5 py-1 rounded-full font-mono font-bold bg-neutral-800 text-neutral-300 border border-neutral-700/60">
+                {productImages.length} / 8
+              </span>
             </div>
+
+            {/* Selected Images Grid Previews */}
+            {productImages.length > 0 ? (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {productImages.map((img, idx) => {
+                  const isMain = idx === 0;
+                  return (
+                    <div
+                      key={idx}
+                      className={`relative group rounded-2xl overflow-hidden bg-neutral-950 border-2 transition-all p-1 flex flex-col justify-between ${
+                        isMain
+                          ? 'border-emerald-500 shadow-md ring-2 ring-emerald-500/20'
+                          : 'border-neutral-800 hover:border-neutral-700'
+                      }`}
+                    >
+                      <div className="relative w-full h-24 rounded-xl overflow-hidden bg-neutral-900 flex items-center justify-center p-1">
+                        <img
+                          src={img}
+                          alt={`Product photo ${idx + 1}`}
+                          className="w-full h-full object-contain"
+                          referrerPolicy="no-referrer"
+                        />
+
+                        {/* Badge for Main Cover Image */}
+                        {isMain ? (
+                          <span className="absolute top-1.5 left-1.5 bg-emerald-500 text-black text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md shadow-md">
+                            MAIN IMAGE
+                          </span>
+                        ) : (
+                          <span className="absolute top-1.5 left-1.5 bg-neutral-900/90 text-neutral-300 text-[9px] font-bold px-1.5 py-0.5 rounded backdrop-blur-xs">
+                            #{idx + 1}
+                          </span>
+                        )}
+
+                        {/* Delete Button */}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveImage(idx)}
+                          className="absolute top-1.5 right-1.5 p-1.5 bg-red-600 hover:bg-red-500 text-white rounded-lg transition-colors shadow-md cursor-pointer"
+                          title="Remove image"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      {/* Action Controls for Reordering / Setting Main */}
+                      <div className="flex items-center justify-between gap-1 pt-2 px-1">
+                        {!isMain && (
+                          <button
+                            type="button"
+                            onClick={() => handleSetMainImage(idx)}
+                            className="text-[9px] font-bold text-emerald-400 hover:text-white bg-emerald-950/80 hover:bg-emerald-600 border border-emerald-800/80 px-2 py-1 rounded-lg transition-all cursor-pointer"
+                          >
+                            Set as Main
+                          </button>
+                        )}
+                        <div className="flex items-center gap-1 ml-auto">
+                          <button
+                            type="button"
+                            disabled={idx === 0}
+                            onClick={() => handleMoveImage(idx, 'left')}
+                            className="p-1 rounded bg-neutral-800 hover:bg-neutral-700 disabled:opacity-30 text-neutral-300 disabled:cursor-not-allowed cursor-pointer"
+                            title="Move Left / Forward"
+                          >
+                            <ArrowUp className="w-3 h-3 -rotate-90" />
+                          </button>
+                          <button
+                            type="button"
+                            disabled={idx === productImages.length - 1}
+                            onClick={() => handleMoveImage(idx, 'right')}
+                            className="p-1 rounded bg-neutral-800 hover:bg-neutral-700 disabled:opacity-30 text-neutral-300 disabled:cursor-not-allowed cursor-pointer"
+                            title="Move Right / Backward"
+                          >
+                            <ArrowDown className="w-3 h-3 -rotate-90" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="p-6 border-2 border-dashed border-neutral-800 rounded-2xl text-center space-y-2">
+                <Image className="w-8 h-8 text-neutral-600 mx-auto" />
+                <p className="text-xs text-neutral-400 font-medium">No product images added yet.</p>
+                <p className="text-[10px] text-neutral-500">Upload or paste image URLs below to populate the gallery.</p>
+              </div>
+            )}
+
+            {/* Inputs for Upload or Adding Image URLs */}
+            {productImages.length < 8 && (
+              <div className="space-y-3 pt-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <div className="sm:col-span-2 flex gap-2">
+                    <input
+                      type="url"
+                      value={newImageUrlInput}
+                      onChange={e => setNewImageUrlInput(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddImageByUrl();
+                        }
+                      }}
+                      placeholder="Paste image URL (https://...)"
+                      className="flex-1 bg-neutral-950 border border-neutral-800 focus:border-emerald-500 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddImageByUrl}
+                      className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3 py-2 rounded-xl text-xs transition-colors shrink-0 flex items-center gap-1 cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> Add URL
+                    </button>
+                  </div>
+
+                  <label className="flex items-center justify-center gap-2 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-neutral-200 text-xs font-bold px-3 py-2 rounded-xl cursor-pointer transition-colors text-center">
+                    <Upload className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Upload Image</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleFileUpload}
+                      className="hidden"
+                      disabled={isUploadingImage}
+                    />
+                  </label>
+                </div>
+
+                {isUploadingImage && (
+                  <div className="text-xs text-emerald-400 font-bold flex items-center gap-2 animate-pulse bg-emerald-950/40 p-2.5 rounded-xl border border-emerald-800/50">
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>{uploadProgressText || 'Uploading image to storage...'}</span>
+                  </div>
+                )}
+
+                {uploadError && (
+                  <div className="text-xs text-red-400 font-medium bg-red-950/40 p-2.5 rounded-xl border border-red-900/50 flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <span>{uploadError}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Presets Bar */}
             <div>
-              <span className="block text-[10px] font-bold text-neutral-500 uppercase mb-2">Or Select High-Quality Presets:</span>
+              <span className="block text-[10px] font-bold text-neutral-500 uppercase mb-2">
+                Or Click High-Quality Presets to Append:
+              </span>
               <div className="flex gap-2.5 overflow-x-auto pb-1.5 scrollbar-thin">
                 {imagePresets.map((preset, i) => (
                   <img
                     key={i}
-                    onClick={() => setImageUrl(preset)}
+                    onClick={() => handleSelectPreset(preset)}
                     src={preset}
                     alt="Preset"
                     className={`w-12 h-12 object-cover rounded-xl cursor-pointer border-2 transition-all ${
-                      imageUrl === preset ? 'border-emerald-500 scale-95' : 'border-transparent hover:border-neutral-700'
+                      productImages.includes(preset)
+                        ? 'border-emerald-500 scale-95 opacity-50'
+                        : 'border-transparent hover:border-neutral-700'
                     }`}
                     referrerPolicy="no-referrer"
+                    title="Click to add preset photo"
                   />
                 ))}
               </div>

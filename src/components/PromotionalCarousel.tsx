@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, ArrowRight, ExternalLink } from 'lucide-react';
 import { PromotionalBanner } from '../types';
+import { getOptimizedImageUrl } from './ImageSkeleton';
 
 interface PromotionalCarouselProps {
   banners: PromotionalBanner[];
@@ -172,10 +173,12 @@ export const PromotionalCarousel: React.FC<PromotionalCarouselProps> = ({
             >
               {/* Background Image */}
               <img
-                src={banner.imageUrl}
+                src={getOptimizedImageUrl(banner.imageUrl, 1200)}
                 alt={banner.name || 'Promotional Offer'}
                 className="w-full h-full object-cover object-center transition-transform duration-700 group-hover/carousel:scale-[1.01]"
                 loading={index === 0 ? 'eager' : 'lazy'}
+                fetchPriority={index === 0 ? 'high' : 'auto'}
+                decoding={index === 0 ? 'sync' : 'async'}
                 onError={(e) => {
                   // Fallback for broken images
                   (e.target as HTMLImageElement).src =

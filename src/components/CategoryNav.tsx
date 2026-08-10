@@ -74,7 +74,7 @@ export default function CategoryNav({
   return (
     <nav
       aria-label="Category Navigation"
-      className="bg-white dark:bg-slate-900 border-b border-slate-200/80 dark:border-slate-800 shadow-3xs sticky top-0 z-20 transition-colors"
+      className="bg-white dark:bg-slate-900 transition-colors"
     >
       <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 relative group">
         {/* Left Scroll Button (Desktop) */}

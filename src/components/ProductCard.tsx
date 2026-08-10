@@ -7,6 +7,7 @@ import { formatCurrencyPrice, detectUserCurrency } from '../utils/currency';
 import { calculateDiscount } from '../utils/discount';
 import ImageSkeleton from './ImageSkeleton';
 import ProductShareButton from './ProductShareButton';
+import { getProductMainImage, getProductImages } from '../utils/imageUtils';
 
 interface ProductCardProps {
   key?: string;
@@ -28,7 +29,9 @@ function ProductCard({
   currentCurrency: propCurrency,
   priority = false,
 }: ProductCardProps) {
-  const { title, price, originalPrice, brand, images, badges } = product;
+  const { title, price, originalPrice, brand, badges } = product;
+  const productImages = getProductImages(product);
+  const mainImage = getProductMainImage(product);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [activeCurrencyCode, setActiveCurrencyCode] = useState(propCurrency || 'INR');
 
@@ -87,7 +90,7 @@ function ProductCard({
           title="Click to view product details"
         >
           <ImageSkeleton
-            src={images[0]}
+            src={mainImage}
             alt={title}
             priority={priority}
             containerClassName="w-full h-full"
@@ -199,7 +202,7 @@ function ProductCard({
       <ImageLightboxModal
         isOpen={isLightboxOpen}
         onClose={() => setIsLightboxOpen(false)}
-        images={images}
+        images={productImages}
         productTitle={title}
       />
     </>

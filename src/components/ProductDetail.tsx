@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   ArrowLeft, Heart, Share2, ShieldAlert, CheckCircle, Star, Sparkles,
   ExternalLink, Play, HelpCircle, Cpu, AlertCircle, Film,
-  Check, Copy, RefreshCw, ShoppingBag, Plus, Sparkle, ArrowRight
+  Check, Copy, RefreshCw, ShoppingBag, Plus, Sparkle, ArrowRight,
+  ChevronLeft, ChevronRight, Maximize2
 } from 'lucide-react';
 import { Product, Reel } from '../types';
 import SocialLinksModal from './SocialLinksModal';
@@ -13,9 +14,10 @@ import { getPurchaseLinks } from '../utils/purchaseLinks';
 import { formatUrl } from '../utils/validation';
 import { formatCurrencyPrice, detectUserCurrency } from '../utils/currency';
 import { calculateDiscount } from '../utils/discount';
-import ImageSkeleton from './ImageSkeleton';
+import ImageSkeleton, { getOptimizedImageUrl } from './ImageSkeleton';
 import ProductRecommendations from './ProductRecommendations';
 import ProductShareButton from './ProductShareButton';
+import { getProductImages } from '../utils/imageUtils';
 import {
   updateDocumentSEO,
   generateProductSchema,
@@ -61,6 +63,43 @@ export default function ProductDetail({
   const [isSocialModalOpen, setIsSocialModalOpen] = useState(false);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [activeCurrencyCode, setActiveCurrencyCode] = useState(() => detectUserCurrency().currency.code);
+
+  // Gallery & Multiple Image Navigation State
+  const productImages = getProductImages(product);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
+
+  useEffect(() => {
+    setSelectedImageIndex(0);
+  }, [product.id]);
+
+  const handlePrevImage = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setSelectedImageIndex((prev) => (prev > 0 ? prev - 1 : productImages.length - 1));
+  };
+
+  const handleNextImage = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setSelectedImageIndex((prev) => (prev < productImages.length - 1 ? prev + 1 : 0));
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStartX(e.touches[0].clientX);
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX === null) return;
+    const touchEndX = e.changedTouches[0].clientX;
+    const diff = touchStartX - touchEndX;
+    if (Math.abs(diff) > 40) {
+      if (diff > 0) {
+        handleNextImage();
+      } else {
+        handlePrevImage();
+      }
+    }
+    setTouchStartX(null);
+  };
 
   useEffect(() => {
     const handleCurrencyChange = (e: any) => {
@@ -269,18 +308,22 @@ export default function ProductDetail({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         
         {/* Media Player Section with Phone simulation */}
-        <div className="space-y-6">
-          <div className="relative aspect-video rounded-3xl overflow-hidden bg-slate-100 dark:bg-slate-950 border border-slate-200/60 dark:border-slate-800 shadow-md">
+        <div className="space-y-4">
+          <div
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+            className="relative aspect-4/3 sm:aspect-16/10 rounded-3xl overflow-hidden bg-slate-100 dark:bg-slate-950 border border-slate-200/60 dark:border-slate-800 shadow-md group/detailimg"
+          >
             {activeMedia === 'image' ? (
               <div 
                 onClick={() => setIsLightboxOpen(true)}
-                className="w-full h-full flex items-center justify-center p-4 bg-slate-100/90 dark:bg-slate-950/90 cursor-pointer group/detailimg"
+                className="w-full h-full flex items-center justify-center p-4 bg-slate-100/90 dark:bg-slate-950/90 cursor-pointer"
                 title="Click to open full-screen image preview"
               >
                 <ImageSkeleton
-                  src={product.images[0]}
+                  src={productImages[selectedImageIndex] || productImages[0]}
                   alt={product.title}
-                  priority={true}
+                  priority={selectedImageIndex === 0}
                   containerClassName="w-full h-full"
                   className="max-w-full max-h-full w-auto h-auto object-contain object-center group-hover/detailimg:scale-105 transition-transform duration-300 select-none"
                   referrerPolicy="no-referrer"
@@ -297,13 +340,54 @@ export default function ProductDetail({
               />
             )}
 
+            {/* Previous / Next Arrow Controls (Desktop & Mobile Tap) - Rendered if > 1 image */}
+            {activeMedia === 'image' && productImages.length > 1 && (
+              <>
+                <button
+                  type="button"
+                  onClick={handlePrevImage}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 z-20 p-2.5 rounded-full bg-slate-900/70 hover:bg-[#FF5A00] text-white transition-all backdrop-blur-xs cursor-pointer shadow-md opacity-85 hover:opacity-100 focus:outline-none"
+                  title="Previous Image"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={handleNextImage}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 z-20 p-2.5 rounded-full bg-slate-900/70 hover:bg-[#FF5A00] text-white transition-all backdrop-blur-xs cursor-pointer shadow-md opacity-85 hover:opacity-100 focus:outline-none"
+                  title="Next Image"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+              </>
+            )}
+
+            {/* Pagination indicator (e.g. 1 / 5) */}
+            {activeMedia === 'image' && productImages.length > 1 && (
+              <div className="absolute top-3.5 right-3.5 z-20 px-2.5 py-1 rounded-full bg-slate-900/80 text-white text-[10px] font-bold tracking-wider backdrop-blur-md select-none border border-white/10 shadow-xs font-display">
+                {selectedImageIndex + 1} / {productImages.length}
+              </div>
+            )}
+
+            {/* Expand Fullscreen Button */}
+            {activeMedia === 'image' && (
+              <button
+                type="button"
+                onClick={() => setIsLightboxOpen(true)}
+                className="absolute bottom-3.5 right-3.5 z-20 p-2 rounded-xl bg-slate-900/80 hover:bg-[#FF5A00] text-white transition-all backdrop-blur-md cursor-pointer border border-white/10 shadow-xs"
+                title="Expand Fullscreen Image"
+              >
+                <Maximize2 className="w-4 h-4" />
+              </button>
+            )}
+
             {/* Media Overlay Toggles - Render Photo/Video button ONLY if social links exist */}
             {hasSocialLinks && (
-              <div className="absolute bottom-4 left-4 z-10 flex gap-2">
+              <div className="absolute bottom-3.5 left-3.5 z-20 flex gap-2">
                 <button
                   onClick={() => setIsSocialModalOpen(true)}
                   type="button"
-                  className="text-[10px] font-bold px-3.5 py-2 rounded-lg border transition-all cursor-pointer flex items-center gap-1.5 bg-white/90 dark:bg-black/70 backdrop-blur-md text-slate-800 dark:text-white border-slate-200/50 dark:border-slate-800 hover:bg-[#FF5A00] hover:text-white hover:border-[#FF5A00] shadow-sm group font-display"
+                  className="text-[10px] font-bold px-3.5 py-2 rounded-xl border transition-all cursor-pointer flex items-center gap-1.5 bg-white/90 dark:bg-slate-950/80 backdrop-blur-md text-slate-800 dark:text-white border-slate-200/50 dark:border-slate-800 hover:bg-[#FF5A00] hover:text-white hover:border-[#FF5A00] shadow-sm group font-display"
                 >
                   <Film className="w-3.5 h-3.5 text-[#FF5A00] group-hover:text-white" />
                   <span>Photo/Video</span>
@@ -312,7 +396,43 @@ export default function ProductDetail({
             )}
           </div>
 
-          {/* Instagram / YouTube Shorts Vertical Simulator Mockup Frame */}
+          {/* Thumbnail Navigation Strip (Rendered ONLY if > 1 image) */}
+          {activeMedia === 'image' && productImages.length > 1 && (
+            <div className="flex items-center gap-2.5 overflow-x-auto pb-2 pt-1 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700">
+              {productImages.map((img, idx) => {
+                const isMain = idx === 0;
+                const isSelected = idx === selectedImageIndex;
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setSelectedImageIndex(idx)}
+                    className={`relative rounded-2xl overflow-hidden shrink-0 transition-all duration-200 cursor-pointer border-2 bg-slate-100 dark:bg-slate-950 p-1 ${
+                      isSelected
+                        ? 'border-[#FF5A00] ring-2 ring-[#FF5A00]/30 scale-100 opacity-100 shadow-md'
+                        : 'border-slate-200 dark:border-slate-800 opacity-70 hover:opacity-100 hover:border-slate-400 dark:hover:border-slate-600 scale-95'
+                    }`}
+                    title={isMain ? `Image ${idx + 1} (Main/Cover)` : `Image ${idx + 1}`}
+                  >
+                    <div className="w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center overflow-hidden rounded-xl">
+                      <img
+                        src={getOptimizedImageUrl(img, 150)}
+                        alt={`${product.title} thumbnail ${idx + 1}`}
+                        className="w-full h-full object-contain"
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    </div>
+                    {isMain && (
+                      <span className="absolute top-1 left-1 bg-[#FF5A00] text-white text-[7px] font-black uppercase tracking-wider px-1 py-0.2 rounded shadow-xs">
+                        Main
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Curation Details Panel */}
@@ -818,7 +938,8 @@ export default function ProductDetail({
       <ImageLightboxModal
         isOpen={isLightboxOpen}
         onClose={() => setIsLightboxOpen(false)}
-        images={product.images}
+        images={productImages}
+        initialIndex={selectedImageIndex}
         productTitle={product.title}
       />
     </div>

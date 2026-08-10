@@ -45,6 +45,7 @@ export interface Product {
   category: string;
   rating: number; // 1-5
   images: string[];
+  image?: string; // Legacy fallback field
   videos: string[]; // Product video clip
   affiliateLinks: AffiliateLink[];
   purchaseLinks?: PurchaseLink[];

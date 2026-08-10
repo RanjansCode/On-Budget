@@ -58,7 +58,7 @@ import {
 } from './lib/firebase';
 import { onSnapshot, doc } from 'firebase/firestore';
 
-import HomeRecommendationSections from './components/HomeRecommendationSections';
+const HomeRecommendationSections = React.lazy(() => import('./components/HomeRecommendationSections'));
 import SmartSearchFilters, { SmartFilterState, SortOption } from './components/SmartSearchFilters';
 import { smartSearchProducts } from './lib/searchEngine';
 import Navbar from './components/Navbar';
@@ -66,7 +66,7 @@ import CategoryNav from './components/CategoryNav';
 import PromotionalCarousel from './components/PromotionalCarousel';
 import Hero from './components/Hero';
 import ProductCard from './components/ProductCard';
-import ProductDetail from './components/ProductDetail';
+const ProductDetail = React.lazy(() => import('./components/ProductDetail'));
 const AdminPanel = React.lazy(() => import('./components/AdminPanel'));
 const LaunchModeOverlay = React.lazy(() => import('./components/LaunchModeOverlay'));
 const SocialLinksModal = React.lazy(() => import('./components/SocialLinksModal'));
@@ -200,45 +200,82 @@ export default function App() {
     (currentUser.email && ADMIN_EMAILS.includes(currentUser.email))
   ));
 
-  // 1. Database Initialization and Seeding on boot
+  // Helper to load admin-only datasets asynchronously
+  const loadAdminDataset = async () => {
+    try {
+      const [cloudAnalytics, cloudReels, cloudLaunch] = await Promise.all([
+        fetchAnalyticsFromFirestore(),
+        fetchReelsFromFirestore(),
+        fetchLaunchSettingsFromFirestore()
+      ]);
+      if (cloudAnalytics) setAnalytics(cloudAnalytics);
+      if (cloudReels && cloudReels.length > 0) setReels(cloudReels);
+      if (cloudLaunch) setLaunchSettings(cloudLaunch);
+    } catch (err) {
+      console.warn("Failed to load admin dataset:", err);
+    }
+  };
+
+  // 1. Non-blocking Database Initialization and Background Sync
   useEffect(() => {
     if (!isFirebaseConfigured) {
       setDbLoading(false);
       return;
     }
+
+    let isMounted = true;
+
     async function initAndFetch() {
       try {
-        setDbLoading(true);
         // Seed initial collections if empty
-        await seedDatabaseIfEmpty();
+        seedDatabaseIfEmpty().catch(() => {});
 
-        // Load all data sets in parallel from cloud
-        const [cloudProducts, cloudCategories, cloudReels, cloudNotifs, cloudAnalytics, cloudLaunch, cloudBanners] = await Promise.all([
+        // Stage 1: Critical Explore Data (Products, Categories, Promotional Banners)
+        const [cloudProducts, cloudCategories, cloudBanners] = await Promise.all([
           fetchProductsFromFirestore(),
           fetchCategoriesFromFirestore(),
-          fetchReelsFromFirestore(),
-          fetchNotificationsFromFirestore(),
-          fetchAnalyticsFromFirestore(),
-          fetchLaunchSettingsFromFirestore(),
           fetchPromotionalBannersFromFirestore()
         ]);
 
-        if (cloudProducts.length > 0) setProducts(cloudProducts);
-        if (cloudCategories.length > 0) setCategories(cloudCategories);
-        if (cloudReels.length > 0) setReels(cloudReels);
-        if (cloudNotifs.length > 0) setNotifications(cloudNotifs);
-        if (cloudAnalytics) setAnalytics(cloudAnalytics);
-        if (cloudLaunch) setLaunchSettings(cloudLaunch);
-        if (cloudBanners.length > 0) setPromotionalBanners(cloudBanners);
+        if (isMounted) {
+          if (cloudProducts && cloudProducts.length > 0) setProducts(cloudProducts);
+          if (cloudCategories && cloudCategories.length > 0) setCategories(cloudCategories);
+          if (cloudBanners && cloudBanners.length > 0) setPromotionalBanners(cloudBanners);
+        }
+
+        // Stage 2: Non-critical background data (Notifications)
+        setTimeout(async () => {
+          if (!isMounted) return;
+          try {
+            const cloudNotifs = await fetchNotificationsFromFirestore();
+            if (isMounted && cloudNotifs && cloudNotifs.length > 0) {
+              setNotifications(cloudNotifs);
+            }
+          } catch (e) {
+            console.warn('Background notification fetch:', e);
+          }
+        }, 1200);
 
       } catch (err) {
-        console.error("Failed to load Cloud Firestore database collections:", err);
+        console.error("Failed background Firestore synchronization:", err);
       } finally {
-        setDbLoading(false);
+        if (isMounted) setDbLoading(false);
       }
     }
+
     initAndFetch();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
+
+  // Fetch admin dataset whenever admin status is active
+  useEffect(() => {
+    if (isAdmin) {
+      loadAdminDataset();
+    }
+  }, [isAdmin]);
 
   // --- Live Launch Mode Real-Time Listener ---
   useEffect(() => {
@@ -1026,7 +1063,8 @@ export default function App() {
         }}
       />
 
-      <div className="space-y-6">
+      {/* STICKY HEADER NAVIGATION SYSTEM (Flipkart-Style) */}
+      <header className="sticky top-0 z-40 bg-white dark:bg-slate-900 border-b border-slate-200/80 dark:border-slate-800 shadow-2xs transition-colors">
         {/* Navigation Bar with authenticated user prop */}
         <Navbar
           activeTab={activeTab}
@@ -1063,6 +1101,9 @@ export default function App() {
             handleNavigate('home');
           }}
         />
+      </header>
+
+      <div className="space-y-6">
 
         {/* MAIN BODY WRAPPER */}
         {dbLoading ? (
@@ -1090,23 +1131,25 @@ export default function App() {
 
               if (matchedProduct) {
                 return (
-                  <ProductDetail
-                    product={matchedProduct}
-                    reels={reels}
-                    onBack={() => {
-                      setSelectedProductId(null);
-                      if (window.location.pathname.startsWith('/product/') || window.location.pathname.startsWith('/p/')) {
-                        window.history.pushState({}, '', '/');
-                      }
-                    }}
-                    isWishlisted={wishlist.includes(matchedProduct.id)}
-                    onToggleWishlist={handleToggleWishlist}
-                    onOpenProduct={handleOpenProduct}
-                    allProducts={products}
-                    onTrackAffiliateClick={handleTrackAffiliateClick}
-                    wishlist={wishlist}
-                    recentlyViewedIds={recentlyViewed}
-                  />
+                  <React.Suspense fallback={<ProductDetailsSkeleton />}>
+                    <ProductDetail
+                      product={matchedProduct}
+                      reels={reels}
+                      onBack={() => {
+                        setSelectedProductId(null);
+                        if (window.location.pathname.startsWith('/product/') || window.location.pathname.startsWith('/p/')) {
+                          window.history.pushState({}, '', '/');
+                        }
+                      }}
+                      isWishlisted={wishlist.includes(matchedProduct.id)}
+                      onToggleWishlist={handleToggleWishlist}
+                      onOpenProduct={handleOpenProduct}
+                      allProducts={products}
+                      onTrackAffiliateClick={handleTrackAffiliateClick}
+                      wishlist={wishlist}
+                      recentlyViewedIds={recentlyViewed}
+                    />
+                  </React.Suspense>
                 );
               }
 
@@ -1180,10 +1223,11 @@ export default function App() {
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                          {todayPicks.map(p => (
+                          {todayPicks.map((p, idx) => (
                             <ProductCard
                               key={p.id}
                               product={p}
+                              priority={idx < 2}
                               onOpenProduct={handleOpenProduct}
                               isWishlisted={wishlist.includes(p.id)}
                               onToggleWishlist={handleToggleWishlist}
@@ -1261,16 +1305,18 @@ export default function App() {
 
                     {/* AI RECOMMENDATION ENGINE SECTIONS */}
                     {searchQuery === '' && selectedCategory === '' && selectedPriceRange === null && (
-                      <HomeRecommendationSections
-                        products={products}
-                        reels={reels}
-                        wishlist={wishlist}
-                        recentlyViewedIds={recentlyViewed}
-                        onOpenProduct={handleOpenProduct}
-                        onToggleWishlist={handleToggleWishlist}
-                        onOpenSocialLinks={setSocialModalProduct}
-                        currentCurrency={currentCurrency}
-                      />
+                      <React.Suspense fallback={<ProductGridSkeleton count={4} />}>
+                        <HomeRecommendationSections
+                          products={products}
+                          reels={reels}
+                          wishlist={wishlist}
+                          recentlyViewedIds={recentlyViewed}
+                          onOpenProduct={handleOpenProduct}
+                          onToggleWishlist={handleToggleWishlist}
+                          onOpenSocialLinks={setSocialModalProduct}
+                          currentCurrency={currentCurrency}
+                        />
+                      </React.Suspense>
                     )}
                   </div>
                 )}
