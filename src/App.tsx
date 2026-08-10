@@ -1518,7 +1518,7 @@ export default function App() {
               <h3 className="text-sm font-extrabold text-slate-950 dark:text-white font-display">{t.channels}</h3>
               <div className="space-y-3 text-xs">
                 <a
-                  href="https://instagram.com/"
+                  href="https://www.instagram.com/channel/AbY6a8SO0q8Jx1aV/"
                   target="_blank"
                   rel="noreferrer"
                   className="flex items-center gap-3 p-3.5 bg-slate-50 dark:bg-slate-900 hover:bg-slate-100/60 dark:hover:bg-slate-850/60 border border-slate-200/50 dark:border-slate-850 rounded-2xl transition-all group shadow-3xs"

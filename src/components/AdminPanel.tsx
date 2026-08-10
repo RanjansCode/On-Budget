@@ -73,7 +73,7 @@ export default function AdminPanel({
   onSaveLaunchSettings,
   isLoading = false,
 }: AdminPanelProps) {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'products' | 'categories' | 'reels' | 'banners' | 'launch' | 'search'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'products' | 'categories' | 'banners' | 'launch' | 'search'>('dashboard');
   const [searchAnalyticsData, setSearchAnalyticsData] = useState<any>(null);
   const [loadingSearchAnalytics, setLoadingSearchAnalytics] = useState(false);
 
@@ -92,9 +92,6 @@ export default function AdminPanel({
 
   const [categoryFormOpen, setCategoryFormOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
-
-  const [reelFormOpen, setReelFormOpen] = useState(false);
-  const [editingReel, setEditingReel] = useState<Reel | null>(null);
 
   const [bannerFormOpen, setBannerFormOpen] = useState(false);
   const [editingBanner, setEditingBanner] = useState<PromotionalBanner | null>(null);
@@ -153,7 +150,7 @@ export default function AdminPanel({
               Admin Session
             </span>
           </div>
-          <p className="text-xs text-neutral-400 mt-0.5">Manage curated links, vertical video reels, and track affiliate metrics.</p>
+          <p className="text-xs text-neutral-400 mt-0.5">Manage curated links, product catalog, and promotional banners.</p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -197,17 +194,6 @@ export default function AdminPanel({
         >
           <FolderOpen className="w-4 h-4" />
           Category Manager ({categories.length})
-        </button>
-        <button
-          onClick={() => setActiveTab('reels')}
-          className={`flex items-center gap-2 text-xs font-bold pb-3 px-4 border-b-2 transition-all cursor-pointer whitespace-nowrap ${
-            activeTab === 'reels'
-              ? 'border-emerald-500 text-emerald-400'
-              : 'border-transparent text-neutral-400 hover:text-white'
-          }`}
-        >
-          <Film className="w-4 h-4" />
-          Reel Manager ({reels.length})
         </button>
         <button
           onClick={() => setActiveTab('banners')}
@@ -529,73 +515,6 @@ export default function AdminPanel({
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Reels Tab */}
-        {activeTab === 'reels' && (
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <h3 className="text-sm font-bold text-white">Curated Vertical Reels</h3>
-              <button
-                onClick={() => {
-                  setEditingReel(null);
-                  setReelFormOpen(true);
-                }}
-                className="bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold px-3 py-2 rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-                Add Video Reel
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {reels.map(r => (
-                <div key={r.id} className="bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden flex flex-col">
-                  <div className="relative aspect-[9/16] bg-neutral-950 overflow-hidden group">
-                    <img
-                      src={r.thumbnailUrl}
-                      alt={r.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      referrerPolicy="no-referrer"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-3">
-                      <span className="text-[8px] bg-red-500 text-white font-bold uppercase px-1.5 py-0.5 rounded self-start mb-1.5">
-                        {r.platform}
-                      </span>
-                      <p className="text-[11px] font-bold text-white line-clamp-2">{r.title}</p>
-                    </div>
-                  </div>
-
-                  <div className="p-3 bg-neutral-950/50 border-t border-neutral-850 flex justify-between items-center mt-auto">
-                    <div>
-                      <span className="text-[10px] text-neutral-400 font-bold block">Linked Product</span>
-                      <span className="text-[11px] text-emerald-400 font-semibold truncate max-w-[120px] block">
-                        {products.find(p => p.id === r.productId)?.title || 'No product linked'}
-                      </span>
-                    </div>
-
-                    <div className="flex gap-1 shrink-0">
-                      <button
-                        onClick={() => {
-                          setEditingReel(r);
-                          setReelFormOpen(true);
-                        }}
-                        className="p-1.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 rounded-lg transition-colors cursor-pointer"
-                      >
-                        <Edit2 className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => onDeleteReel(r.id)}
-                        className="p-1.5 bg-red-950/20 hover:bg-red-900/30 text-red-400 rounded-lg transition-colors cursor-pointer"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
                   </div>
                 </div>
               ))}
@@ -1092,27 +1011,6 @@ export default function AdminPanel({
               }
               setCategoryFormOpen(false);
             }}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* MODAL: REEL FORM */}
-      <AnimatePresence>
-        {reelFormOpen && (
-          <ReelFormModal
-            reel={editingReel}
-            products={products}
-            categories={categories}
-            onClose={() => setReelFormOpen(false)}
-            onSave={(r) => {
-              if (editingReel) {
-                onUpdateReel(r);
-              } else {
-                onAddReel(r);
-              }
-              setReelFormOpen(false);
-            }}
-            imagePresets={imagePresets}
           />
         )}
       </AnimatePresence>
