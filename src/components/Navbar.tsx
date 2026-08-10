@@ -439,7 +439,7 @@ function Navbar({
             </div>
 
             {/* DESKTOP SEARCH */}
-            <div ref={searchContainerRef} className="hidden md:flex flex-1 max-w-md relative" id="navbar-search">
+            <div ref={searchContainerRef} className="hidden md:flex flex-1 max-w-xl lg:max-w-2xl relative" id="navbar-search">
               <form
                 onSubmit={e => {
                   e.preventDefault();
@@ -694,22 +694,26 @@ function Navbar({
             </div>
 
             {/* DESKTOP NAV TABS */}
-            <div className="hidden md:flex items-center gap-1.5" id="navbar-tabs">
+            <div className="hidden md:flex items-center gap-1 sm:gap-1.5 shrink-0" id="navbar-tabs">
               {navItems.map(item => {
                 const Icon = item.icon;
+                const isActive = activeTab === item.id;
                 return (
                   <button
                     key={item.id}
                     id={`nav-tab-${item.id}`}
                     onClick={() => setActiveTab(item.id as any)}
-                    className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-bold tracking-wide transition-all duration-200 cursor-pointer ${
-                      activeTab === item.id
-                        ? 'bg-[#FF5A00]/10 text-[#FF5A00] border border-[#FF5A00]/25'
-                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 border border-transparent'
+                    className={`flex items-center justify-center gap-1.5 py-2 transition-all duration-200 cursor-pointer shrink-0 ${
+                      isActive
+                        ? 'px-3.5 bg-[#FF5A00]/10 text-[#FF5A00] border border-[#FF5A00]/25 rounded-full text-xs font-bold tracking-wide'
+                        : 'px-2.5 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full border border-transparent'
                     }`}
+                    title={item.name}
                   >
-                    <Icon className="w-4 h-4" />
-                    {item.name}
+                    <Icon className="w-4 h-4 shrink-0" />
+                    <span className={isActive ? 'inline-block text-xs font-bold tracking-wide' : 'hidden'}>
+                      {item.name}
+                    </span>
                   </button>
                 );
               })}
