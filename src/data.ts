@@ -779,6 +779,10 @@ export const INITIAL_PROMOTIONAL_BANNERS = [
     isActive: true,
     startAt: '',
     endAt: '',
+    bannerWidth: 585,
+    bannerHeight: 282,
+    aspectRatioPreset: '585x282' as const,
+    objectFit: 'contain' as const,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   },
@@ -794,6 +798,10 @@ export const INITIAL_PROMOTIONAL_BANNERS = [
     isActive: true,
     startAt: '',
     endAt: '',
+    bannerWidth: 585,
+    bannerHeight: 282,
+    aspectRatioPreset: '585x282' as const,
+    objectFit: 'contain' as const,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   },

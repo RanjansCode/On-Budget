@@ -167,6 +167,10 @@ export interface PromotionalBanner {
   isActive: boolean;
   startAt?: string;
   endAt?: string;
+  bannerWidth?: number;
+  bannerHeight?: number;
+  aspectRatioPreset?: '585x282' | '1771x835' | '16x9' | 'custom';
+  objectFit?: 'contain' | 'cover';
   createdAt: string;
   updatedAt: string;
 }

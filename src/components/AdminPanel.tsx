@@ -647,7 +647,8 @@ export default function AdminPanel({
                                   <img
                                     src={b.imageUrl}
                                     alt={b.name}
-                                    className="w-full h-full object-cover"
+                                    className="w-full h-full"
+                                    style={{ objectFit: b.objectFit || 'contain' }}
                                     onError={(e) => {
                                       (e.target as HTMLImageElement).src =
                                         'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=600&auto=format&fit=crop&q=80';
@@ -669,8 +670,11 @@ export default function AdminPanel({
                                   <h4 className="font-bold text-white text-xs truncate">{b.name}</h4>
                                   {b.title && <p className="text-[11px] text-emerald-400 font-medium truncate">Title: {b.title}</p>}
                                   {b.subtitle && <p className="text-[10px] text-neutral-400 truncate">{b.subtitle}</p>}
-                                  <div className="flex items-center gap-2 pt-0.5">
-                                    <span className="text-[10px] bg-neutral-800 text-neutral-300 font-mono px-1.5 py-0.5 rounded border border-neutral-700 truncate max-w-[180px]">
+                                  <div className="flex items-center gap-1.5 pt-0.5 flex-wrap">
+                                    <span className="text-[10px] bg-neutral-800 text-neutral-300 font-mono px-1.5 py-0.5 rounded border border-neutral-700">
+                                      📐 {b.bannerWidth || 585} × {b.bannerHeight || 282}
+                                    </span>
+                                    <span className="text-[10px] bg-neutral-800 text-neutral-300 font-mono px-1.5 py-0.5 rounded border border-neutral-700 truncate max-w-[150px]">
                                       🔗 {b.destinationUrl || 'None'}
                                     </span>
                                     {b.buttonText && (
@@ -3015,25 +3019,59 @@ function PromotionalBannerFormModal({
   const [startAt, setStartAt] = useState(banner?.startAt || '');
   const [endAt, setEndAt] = useState(banner?.endAt || '');
 
+  // Aspect ratio & object fit settings
+  const [bannerWidth, setBannerWidth] = useState<number>(banner?.bannerWidth || 585);
+  const [bannerHeight, setBannerHeight] = useState<number>(banner?.bannerHeight || 282);
+  const [aspectRatioPreset, setAspectRatioPreset] = useState<'585x282' | '1771x835' | '16x9' | 'custom'>(
+    banner?.aspectRatioPreset ||
+      (banner?.bannerWidth === 1771 && banner?.bannerHeight === 835
+        ? '1771x835'
+        : banner?.bannerWidth === 16 && banner?.bannerHeight === 9
+        ? '16x9'
+        : '585x282')
+  );
+  const [objectFit, setObjectFit] = useState<'contain' | 'cover'>(banner?.objectFit || 'contain');
+
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [uploadProgressText, setUploadProgressText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadedImgDims, setUploadedImgDims] = useState<{ width: number; height: number } | null>(null);
   const [aspectWarning, setAspectWarning] = useState<string>('');
 
+  // Handle Preset Changes
+  const handlePresetChange = (preset: '585x282' | '1771x835' | '16x9' | 'custom') => {
+    setAspectRatioPreset(preset);
+    if (preset === '585x282') {
+      setBannerWidth(585);
+      setBannerHeight(282);
+    } else if (preset === '1771x835') {
+      setBannerWidth(1771);
+      setBannerHeight(835);
+    } else if (preset === '16x9') {
+      setBannerWidth(16);
+      setBannerHeight(9);
+    }
+  };
+
+  // Inspect image dimensions and check aspect ratio
   useEffect(() => {
     if (!imageUrl || !imageUrl.trim()) {
+      setUploadedImgDims(null);
       setAspectWarning('');
       return;
     }
     const img = new window.Image();
     img.onload = () => {
       if (img.width && img.height) {
-        const ratio = img.width / img.height;
-        const targetRatio = 1771 / 835; // ~2.120958
-        const diff = Math.abs(ratio - targetRatio);
-        if (diff > 0.15) {
+        setUploadedImgDims({ width: img.width, height: img.height });
+        const imgRatio = img.width / img.height;
+        const targetW = bannerWidth && bannerWidth > 0 ? bannerWidth : 585;
+        const targetH = bannerHeight && bannerHeight > 0 ? bannerHeight : 282;
+        const targetRatio = targetW / targetH;
+        const diff = Math.abs(imgRatio - targetRatio);
+        if (diff > 0.08) {
           setAspectWarning(
-            'Recommended banner size: 1771 × 835 px (2.12:1). Your image has a different aspect ratio and may not display correctly.'
+            'Image aspect ratio differs from the selected banner ratio. The image may have empty space or require cropping depending on the selected display mode.'
           );
         } else {
           setAspectWarning('');
@@ -3041,10 +3079,11 @@ function PromotionalBannerFormModal({
       }
     };
     img.onerror = () => {
+      setUploadedImgDims(null);
       setAspectWarning('');
     };
     img.src = imageUrl;
-  }, [imageUrl]);
+  }, [imageUrl, bannerWidth, bannerHeight]);
 
   const presetBanners = [
     'https://images.unsplash.com/photo-1593784991095-a205069470b6?w=1200&auto=format&fit=crop&q=80',
@@ -3115,6 +3154,10 @@ function PromotionalBannerFormModal({
         isActive,
         startAt,
         endAt,
+        bannerWidth: Number(bannerWidth) || 585,
+        bannerHeight: Number(bannerHeight) || 282,
+        aspectRatioPreset,
+        objectFit,
         createdAt: banner?.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       });
@@ -3126,6 +3169,8 @@ function PromotionalBannerFormModal({
       setIsSubmitting(false);
     }
   };
+
+  const currentRatioNum = (bannerWidth && bannerHeight && bannerHeight > 0) ? (bannerWidth / bannerHeight) : (585 / 282);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs overflow-y-auto">
@@ -3142,7 +3187,7 @@ function PromotionalBannerFormModal({
               {banner ? 'Edit Promotional Banner' : 'Add Promotional Banner'}
             </h3>
             <p className="text-[11px] text-neutral-400 mt-0.5">
-              Configure banner visuals, scheduling, destination links, and CTA overlay.
+              Configure banner visuals, size ratio, scheduling, destination links, and CTA overlay.
             </p>
           </div>
           <button
@@ -3190,11 +3235,154 @@ function PromotionalBannerFormModal({
             </div>
           </div>
 
+          {/* Banner Size / Aspect Ratio & Object Fit Controls */}
+          <div className="p-3.5 bg-neutral-950/60 border border-neutral-800 rounded-2xl space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-neutral-800 pb-2">
+              <div>
+                <h4 className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5 font-display">
+                  <SlidersHorizontal className="w-3.5 h-3.5" />
+                  <span>Banner Size / Aspect Ratio</span>
+                </h4>
+                <p className="text-[10px] text-neutral-400 mt-0.5">
+                  Select predefined display ratio or set custom width and height.
+                </p>
+              </div>
+              <div className="text-[10px] font-mono text-neutral-400 bg-neutral-900 border border-neutral-800 px-2.5 py-1 rounded-lg shrink-0">
+                Current: <strong className="text-white">{bannerWidth || 585} : {bannerHeight || 282}</strong> ({currentRatioNum.toFixed(2)}:1)
+              </div>
+            </div>
+
+            {/* Presets */}
+            <div className="space-y-1.5">
+              <label className="block text-[11px] font-bold text-neutral-300">
+                Preset Options
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {[
+                  { id: '585x282', label: 'Default / Wide', ratio: '585 × 282 (2.07:1)' },
+                  { id: '1771x835', label: 'Ultra Wide', ratio: '1771 × 835 (2.12:1)' },
+                  { id: '16x9', label: 'Standard Wide', ratio: '16 : 9 (1.78:1)' },
+                  { id: 'custom', label: 'Custom', ratio: 'Enter W × H' },
+                ].map((preset) => (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    onClick={() => handlePresetChange(preset.id as any)}
+                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                      aspectRatioPreset === preset.id
+                        ? 'bg-emerald-500/10 border-emerald-500/60 text-emerald-400 font-bold shadow-xs'
+                        : 'bg-neutral-900 border-neutral-800 text-neutral-300 hover:border-neutral-700'
+                    }`}
+                  >
+                    <div className="text-xs font-bold">{preset.label}</div>
+                    <div className="text-[10px] text-neutral-400 mt-0.5 font-mono">{preset.ratio}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Custom Width & Height Inputs */}
+            {aspectRatioPreset === 'custom' && (
+              <div className="grid grid-cols-2 gap-3 p-3 bg-neutral-900/80 border border-neutral-800 rounded-xl">
+                <div>
+                  <label className="block text-[10px] font-bold text-neutral-400 mb-1">
+                    Width
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    required
+                    value={bannerWidth || ''}
+                    onChange={(e) => setBannerWidth(Math.max(1, Number(e.target.value)))}
+                    placeholder="e.g. 1200"
+                    className="w-full bg-neutral-950 border border-neutral-800 focus:border-emerald-500 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-neutral-400 mb-1">
+                    Height
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    required
+                    value={bannerHeight || ''}
+                    onChange={(e) => setBannerHeight(Math.max(1, Number(e.target.value)))}
+                    placeholder="e.g. 500"
+                    className="w-full bg-neutral-950 border border-neutral-800 focus:border-emerald-500 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none font-mono"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Object Fit & Dimension Status */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              <div>
+                <label className="block text-[11px] font-bold text-neutral-300 mb-1">
+                  Object Fit Mode
+                </label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setObjectFit('contain')}
+                    className={`flex-1 py-1.5 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                      objectFit === 'contain'
+                        ? 'bg-emerald-500/10 border-emerald-500/60 text-emerald-400'
+                        : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:text-white'
+                    }`}
+                  >
+                    Contain (Default)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setObjectFit('cover')}
+                    className={`flex-1 py-1.5 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                      objectFit === 'cover'
+                        ? 'bg-emerald-500/10 border-emerald-500/60 text-emerald-400'
+                        : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:text-white'
+                    }`}
+                  >
+                    Cover (Crop)
+                  </button>
+                </div>
+              </div>
+
+              {/* Dimension Status Box */}
+              <div className="flex flex-col justify-center bg-neutral-900/60 border border-neutral-800/80 rounded-xl p-2.5">
+                <span className="text-[10px] text-neutral-400 font-bold mb-0.5">Image Dimension Check:</span>
+                <div className="text-[11px] font-mono">
+                  {uploadedImgDims ? (
+                    <span className="text-neutral-200">
+                      Uploaded image: <strong>{uploadedImgDims.width} × {uploadedImgDims.height} px</strong>
+                    </span>
+                  ) : (
+                    <span className="text-neutral-500 italic">Measuring image...</span>
+                  )}
+                </div>
+                {uploadedImgDims && (
+                  <div className="mt-1">
+                    {Math.abs((uploadedImgDims.width / uploadedImgDims.height) - currentRatioNum) <= 0.08 ? (
+                      <span className="text-emerald-400 font-bold text-[10px] flex items-center gap-1">
+                        <Check className="w-3.5 h-3.5" />
+                        <span>✓ Perfect aspect ratio</span>
+                      </span>
+                    ) : (
+                      <span className="text-amber-400 font-bold text-[10px] flex items-center gap-1">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        <span>Ratio difference detected</span>
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
           {/* Image URL & File Upload */}
           <div className="space-y-2">
             <div className="flex justify-between items-center">
               <label className="block text-[11px] font-bold text-neutral-300">
-                Banner Image * (Landscape Aspect Ratio Recommended)
+                Banner Image *
               </label>
               <label className={`text-[10px] px-2.5 py-1 rounded-lg border flex items-center gap-1 font-bold ${
                 isUploadingImage
@@ -3254,7 +3442,7 @@ function PromotionalBannerFormModal({
           </div>
 
           {/* Banner Card Text Overlay Fields */}
-          <div className="p-3 bg-neutral-950/60 border border-neutral-850 rounded-2xl space-y-3">
+          <div className="p-3 bg-neutral-950/60 border border-neutral-800 rounded-2xl space-y-3">
             <h4 className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5" />
               Overlay Copy & Call To Action (Optional)
@@ -3378,18 +3566,29 @@ function PromotionalBannerFormModal({
 
           {/* Live Card Preview Box */}
           <div className="space-y-1.5 pt-2">
-            <label className="block text-[11px] font-bold text-neutral-400">
-              Live Banner Preview Card (1771 × 835 ratio)
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="block text-[11px] font-bold text-neutral-400">
+                Live Banner Preview Card ({bannerWidth || 585} × {bannerHeight || 282} ratio)
+              </label>
+              <span className="text-[10px] font-mono text-emerald-400 uppercase font-bold">
+                Fit: {objectFit}
+              </span>
+            </div>
             <div
-              className="relative w-full rounded-2xl overflow-hidden bg-slate-950 border border-neutral-700 shadow-md"
-              style={{ aspectRatio: '1771 / 835' }}
+              className="relative w-full rounded-2xl overflow-hidden bg-slate-950 border border-neutral-700 shadow-md flex items-center justify-center transition-all duration-300"
+              style={{ aspectRatio: `${bannerWidth || 585} / ${bannerHeight || 282}` }}
             >
               <img
                 src={imageUrl}
                 alt="preview"
-                className="w-full h-auto object-contain object-center"
-                style={{ width: '100%', height: 'auto', aspectRatio: '1771 / 835', objectFit: 'contain' }}
+                className="w-full h-full transition-all duration-300"
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  aspectRatio: `${bannerWidth || 585} / ${bannerHeight || 282}`,
+                  objectFit: objectFit,
+                  objectPosition: 'center',
+                }}
                 onError={(e) => {
                   (e.target as HTMLImageElement).src =
                     'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=1800&auto=format&fit=crop&q=80';
@@ -3408,6 +3607,9 @@ function PromotionalBannerFormModal({
                   </div>
                 </div>
               )}
+            </div>
+            <div className="text-[10px] font-mono text-neutral-400 text-center pt-1">
+              Current banner ratio: <strong>{bannerWidth || 585} : {bannerHeight || 282}</strong> (Aspect ratio: {currentRatioNum.toFixed(2)}:1)
             </div>
           </div>
 

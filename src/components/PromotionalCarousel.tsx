@@ -147,6 +147,12 @@ export const PromotionalCarousel: React.FC<PromotionalCarouselProps> = ({
     return null;
   }
 
+  // Active banner dimensions for carousel container
+  const currentBanner = activeBanners[currentIndex] || activeBanners[0];
+  const activeW = currentBanner?.bannerWidth && currentBanner.bannerWidth > 0 ? currentBanner.bannerWidth : 585;
+  const activeH = currentBanner?.bannerHeight && currentBanner.bannerHeight > 0 ? currentBanner.bannerHeight : 282;
+  const activeAspectRatio = `${activeW} / ${activeH}`;
+
   return (
     <section
       aria-label="Promotional Offers Carousel"
@@ -158,75 +164,91 @@ export const PromotionalCarousel: React.FC<PromotionalCarouselProps> = ({
       onTouchEnd={handleTouchEnd}
     >
       {/* Container wrapper with rounded corners & subtle border */}
-      <div className="relative w-full overflow-hidden rounded-2xl sm:rounded-3xl bg-slate-950 border border-slate-200/60 dark:border-slate-800/80 shadow-md">
+      <div
+        className="relative w-full overflow-hidden rounded-2xl sm:rounded-3xl bg-slate-950 border border-slate-200/60 dark:border-slate-800/80 shadow-md transition-all duration-300"
+        style={{ aspectRatio: activeAspectRatio }}
+      >
         
         {/* Carousel Inner Track */}
         <div
-          className="flex transition-transform duration-500 ease-out w-full"
+          className="flex transition-transform duration-500 ease-out w-full h-full"
           style={{ transform: `translateX(-${currentIndex * 100}%)` }}
         >
-          {activeBanners.map((banner, index) => (
-            <div
-              key={banner.id || index}
-              onClick={() => handleBannerClick(banner)}
-              className="w-full shrink-0 relative cursor-pointer overflow-hidden bg-slate-950"
-              style={{ aspectRatio: '1771 / 835' }}
-            >
-              {/* Background Poster Image */}
-              <img
-                src={getOptimizedImageUrl(banner.imageUrl, 1800)}
-                alt={banner.name || banner.title || 'Promotional Offer'}
-                className="w-full h-auto object-contain object-center transition-transform duration-700 group-hover/carousel:scale-[1.01]"
-                style={{ width: '100%', height: 'auto', aspectRatio: '1771 / 835', objectFit: 'contain' }}
-                loading={index === 0 ? 'eager' : 'lazy'}
-                fetchPriority={index === 0 ? 'high' : 'auto'}
-                decoding={index === 0 ? 'sync' : 'async'}
-                onError={(e) => {
-                  // Fallback for broken images
-                  (e.target as HTMLImageElement).src =
-                    'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=1800&auto=format&fit=crop&q=80';
-                }}
-              />
+          {activeBanners.map((banner, index) => {
+            const bw = banner.bannerWidth && banner.bannerWidth > 0 ? banner.bannerWidth : 585;
+            const bh = banner.bannerHeight && banner.bannerHeight > 0 ? banner.bannerHeight : 282;
+            const fit = banner.objectFit || 'contain';
+            const slideAspectRatio = `${bw} / ${bh}`;
 
-              {/* Optional Text Overlay (Only rendered if title, subtitle, or buttonText exist) */}
-              {(banner.title || banner.subtitle || banner.buttonText) && (
-                <div className="absolute inset-0 bg-gradient-to-r from-slate-950/85 via-slate-950/40 to-transparent flex items-center p-3 sm:p-6 md:p-8 pointer-events-none">
-                  <div className="max-w-xl space-y-1 sm:space-y-2 text-white pointer-events-auto">
-                    
-                    {/* Optional Title */}
-                    {banner.title && (
-                      <h3 className="text-xs sm:text-xl md:text-2xl font-black font-display text-white tracking-tight leading-tight drop-shadow-md">
-                        {banner.title}
-                      </h3>
-                    )}
+            return (
+              <div
+                key={banner.id || index}
+                onClick={() => handleBannerClick(banner)}
+                className="w-full h-full shrink-0 relative cursor-pointer overflow-hidden bg-slate-950 flex items-center justify-center"
+                style={{ aspectRatio: slideAspectRatio }}
+              >
+                {/* Background Poster Image */}
+                <img
+                  src={getOptimizedImageUrl(banner.imageUrl, 1800)}
+                  alt={banner.name || banner.title || 'Promotional Offer'}
+                  className="w-full h-full transition-transform duration-700 group-hover/carousel:scale-[1.01]"
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    aspectRatio: slideAspectRatio,
+                    objectFit: fit,
+                    objectPosition: 'center',
+                  }}
+                  loading={index === 0 ? 'eager' : 'lazy'}
+                  fetchPriority={index === 0 ? 'high' : 'auto'}
+                  decoding={index === 0 ? 'sync' : 'async'}
+                  onError={(e) => {
+                    // Fallback for broken images
+                    (e.target as HTMLImageElement).src =
+                      'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=1800&auto=format&fit=crop&q=80';
+                  }}
+                />
 
-                    {/* Optional Subtitle */}
-                    {banner.subtitle && (
-                      <p className="text-[10px] sm:text-xs md:text-sm font-medium text-slate-200 line-clamp-2 drop-shadow-sm">
-                        {banner.subtitle}
-                      </p>
-                    )}
+                {/* Optional Text Overlay (Only rendered if title, subtitle, or buttonText exist) */}
+                {(banner.title || banner.subtitle || banner.buttonText) && (
+                  <div className="absolute inset-0 bg-gradient-to-r from-slate-950/85 via-slate-950/40 to-transparent flex items-center p-3 sm:p-6 md:p-8 pointer-events-none">
+                    <div className="max-w-xl space-y-1 sm:space-y-2 text-white pointer-events-auto">
+                      
+                      {/* Optional Title */}
+                      {banner.title && (
+                        <h3 className="text-xs sm:text-xl md:text-2xl font-black font-display text-white tracking-tight leading-tight drop-shadow-md">
+                          {banner.title}
+                        </h3>
+                      )}
 
-                    {/* Optional CTA Button */}
-                    {banner.buttonText && (
-                      <div className="pt-1">
-                        <span className="inline-flex items-center gap-1 sm:gap-2 px-2.5 sm:px-4 py-1 sm:py-2 bg-[#FF5A00] hover:bg-[#E04F00] text-white text-[10px] sm:text-xs font-black rounded-lg sm:rounded-xl shadow-lg transition-all font-display">
-                          <span>{banner.buttonText}</span>
-                          <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                        </span>
-                      </div>
-                    )}
+                      {/* Optional Subtitle */}
+                      {banner.subtitle && (
+                        <p className="text-[10px] sm:text-xs md:text-sm font-medium text-slate-200 line-clamp-2 drop-shadow-sm">
+                          {banner.subtitle}
+                        </p>
+                      )}
+
+                      {/* Optional CTA Button */}
+                      {banner.buttonText && (
+                        <div className="pt-1">
+                          <span className="inline-flex items-center gap-1 sm:gap-2 px-2.5 sm:px-4 py-1 sm:py-2 bg-[#FF5A00] hover:bg-[#E04F00] text-white text-[10px] sm:text-xs font-black rounded-lg sm:rounded-xl shadow-lg transition-all font-display">
+                            <span>{banner.buttonText}</span>
+                            <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* Top-Right Badge (e.g. "SPECIAL OFFER") */}
-              <div className="absolute top-3 right-3 sm:top-4 sm:right-4 bg-black/60 backdrop-blur-md border border-white/10 px-2.5 py-1 rounded-full text-[9px] sm:text-[10px] font-bold text-white tracking-widest uppercase flex items-center gap-1 shadow-sm">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#FF5A00] animate-ping" />
-                Featured Offer
+                {/* Top-Right Badge (e.g. "SPECIAL OFFER") */}
+                <div className="absolute top-3 right-3 sm:top-4 sm:right-4 bg-black/60 backdrop-blur-md border border-white/10 px-2.5 py-1 rounded-full text-[9px] sm:text-[10px] font-bold text-white tracking-widest uppercase flex items-center gap-1 shadow-sm">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#FF5A00] animate-ping" />
+                  Featured Offer
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* Previous / Next Arrow Controls (Shown if > 1 active slide) */}
