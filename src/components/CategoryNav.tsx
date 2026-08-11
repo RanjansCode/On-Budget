@@ -141,9 +141,7 @@ export default function CategoryNav({
               key={cat.id}
               onClick={() => handleCategoryClick(cat)}
               aria-pressed={active}
-              className={`group/item flex ${
-                isPageScrolled ? 'flex-row' : 'flex-col'
-              } items-center justify-center min-w-[68px] sm:min-w-[84px] md:min-w-[92px] py-1 px-1.5 sm:px-2 rounded-xl transition-all duration-200 cursor-pointer shrink-0 border border-transparent focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF5A00] ${
+              className={`group/item flex flex-col items-center justify-center min-w-[68px] sm:min-w-[84px] md:min-w-[92px] py-1 px-1.5 sm:px-2 rounded-xl transition-all duration-200 cursor-pointer shrink-0 border border-transparent focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF5A00] ${
                 active
                   ? 'text-[#FF5A00]'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -155,8 +153,8 @@ export default function CategoryNav({
               <div
                 className={`flex items-center justify-center overflow-hidden rounded-xl transition-all duration-200 ${
                   isPageScrolled
-                    ? 'w-0 h-0 opacity-0 scale-0 m-0 p-0'
-                    : 'w-9 h-9 sm:w-10 sm:h-10 opacity-100 scale-100'
+                    ? 'w-0 h-0 max-w-0 max-h-0 opacity-0 scale-0 m-0 p-0'
+                    : 'w-9 h-9 sm:w-10 sm:h-10 opacity-100 scale-100 mb-1'
                 } ${
                   active
                     ? 'bg-[#FF5A00]/10 text-[#FF5A00] scale-105'
@@ -172,11 +170,7 @@ export default function CategoryNav({
               {/* Category Name
                   ALWAYS VISIBLE */}
               <span
-                className={`${
-                  isPageScrolled
-                    ? 'mt-0 ml-1.5 sm:ml-2'
-                    : 'mt-1 ml-0'
-                } text-[10px] sm:text-[12px] md:text-[13px] text-center whitespace-nowrap tracking-tight leading-tight max-w-[110px] sm:max-w-[130px] truncate transition-all duration-200 ${
+                className={`text-[10px] sm:text-[12px] md:text-[13px] text-center whitespace-nowrap tracking-tight leading-tight max-w-[110px] sm:max-w-[130px] truncate transition-all duration-200 ${
                   active
                     ? 'font-extrabold text-[#FF5A00]'
                     : 'font-medium text-slate-700 dark:text-slate-300 group-hover/item:text-slate-900 dark:group-hover/item:text-white'
@@ -189,9 +183,7 @@ export default function CategoryNav({
               <div
                 className={`h-0.5 rounded-full transition-all duration-200 ${
                   active
-                    ? isPageScrolled
-                      ? 'w-6 sm:w-8 bg-[#FF5A00] ml-1.5 sm:ml-2'
-                      : 'w-6 sm:w-8 bg-[#FF5A00] mt-1'
+                    ? 'w-6 sm:w-8 bg-[#FF5A00] mt-0.5'
                     : 'w-0 bg-transparent'
                 }`}
               />
