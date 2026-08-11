@@ -54,7 +54,16 @@ const dbId = getEnvVar('VITE_FIREBASE_DATABASE_ID') || appletConfig.firestoreDat
 const db = dbId ? getFirestore(app, dbId) : getFirestore(app);
 
 const auth = getAuth(app);
-const storage = getStorage(app);
+
+// Initialize Firebase Storage with explicit bucket formatting and set reasonable retry limits (15s)
+// to prevent the SDK from retrying endlessly for 10 minutes when bucket is unreachable.
+const rawBucket = firebaseConfig.storageBucket;
+const storageBucketUrl = rawBucket ? (rawBucket.includes('://') ? rawBucket : `gs://${rawBucket}`) : undefined;
+const storage = storageBucketUrl ? getStorage(app, storageBucketUrl) : getStorage(app);
+
+// Configure maximum retry timeouts on Storage instance (15 seconds)
+storage.maxUploadRetryTime = 15000;
+storage.maxOperationRetryTime = 15000;
 
 export { app, db, auth, storage };
 export default app;

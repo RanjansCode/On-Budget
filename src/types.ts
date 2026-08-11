@@ -13,6 +13,17 @@ export interface PurchaseLink {
   url: string;
 }
 
+export interface RetailerOffer {
+  id: string;
+  retailerName: string;
+  productUrl: string;
+  originalPrice: number;
+  offerPrice: number;
+  discountPercent?: number | null;
+  isActive: boolean;
+  displayOrder: number;
+}
+
 export interface CreatorReview {
   rating: number; // 1-5 stars
   reviewText: string;
@@ -49,6 +60,7 @@ export interface Product {
   videos: string[]; // Product video clip
   affiliateLinks: AffiliateLink[];
   purchaseLinks?: PurchaseLink[];
+  retailerOffers?: RetailerOffer[];
   badges: {
     seenInReel: boolean;
     personallyTested: boolean;

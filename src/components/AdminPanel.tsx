@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -15,9 +15,11 @@ import {
   SlidersHorizontal, Search, Sparkles, Image, ArrowUp, ArrowDown, Calendar, Power, Megaphone,
   RefreshCw, AlertCircle
 } from 'lucide-react';
-import { Product, Category, Reel, AnalyticsData, PurchaseLink, PromotionalBanner } from '../types';
+import { Product, Category, Reel, AnalyticsData, PurchaseLink, PromotionalBanner, RetailerOffer } from '../types';
 import { validateSocialUrl, validatePurchaseUrl, formatUrl } from '../utils/validation';
 import { getPurchaseLinks } from '../utils/purchaseLinks';
+import { getNormalizedRetailerOffers, calculateDiscountPercent } from '../utils/retailerOffers';
+import PlatformLogo from './PlatformLogo';
 import { calculateDiscount } from '../utils/discount';
 import AdminLaunchMode from './AdminLaunchMode';
 import { LaunchSettings } from '../firebase/firestore';
@@ -1221,41 +1223,113 @@ function ProductFormModal({ product, categories, existingProducts = [], onClose,
       setUploadError(null);
     }
   };
-  // Purchase Links state initialization
-  const [purchaseLinks, setPurchaseLinks] = useState<PurchaseLink[]>(() => {
-    const loaded = getPurchaseLinks(product);
-    if (loaded.length > 0) return loaded;
-    return [{ name: 'Amazon', url: '' }];
+  // Retailer Offers state initialization (supports multi-retailer pricing)
+  const [retailerOffers, setRetailerOffers] = useState<RetailerOffer[]>(() => {
+    if (product) {
+      const norm = getNormalizedRetailerOffers(product, true);
+      if (norm.length > 0) return norm;
+    }
+    const defaultOrig = Number(product?.originalPrice) || Number(originalPrice) || 0;
+    const defaultCur = Number(product?.price) || Number(price) || 0;
+    return [
+      {
+        id: `offer-1-${Date.now()}`,
+        retailerName: 'Amazon',
+        productUrl: '',
+        originalPrice: defaultOrig,
+        offerPrice: defaultCur,
+        discountPercent: calculateDiscountPercent(defaultOrig, defaultCur),
+        isActive: true,
+        displayOrder: 0,
+      },
+    ];
   });
-  const [purchaseLinkErrors, setPurchaseLinkErrors] = useState<{ [index: number]: string }>({});
 
-  const handleAddPurchaseLink = () => {
-    setPurchaseLinks(prev => [...prev, { name: '', url: '' }]);
+  const [retailerOfferErrors, setRetailerOfferErrors] = useState<{
+    [index: number]: { name?: string; url?: string; price?: string; origPrice?: string };
+  }>({});
+
+  const handleAddRetailerOffer = (presetName = '') => {
+    setRetailerOffers(prev => [
+      ...prev,
+      {
+        id: `offer-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+        retailerName: presetName,
+        productUrl: '',
+        originalPrice: Number(originalPrice) || Number(price) || 0,
+        offerPrice: Number(price) || 0,
+        discountPercent: calculateDiscountPercent(Number(originalPrice) || 0, Number(price) || 0),
+        isActive: true,
+        displayOrder: prev.length,
+      },
+    ]);
   };
 
-  const handleRemovePurchaseLink = (index: number) => {
-    setPurchaseLinks(prev => prev.filter((_, i) => i !== index));
-    setPurchaseLinkErrors(prev => {
+  const handleRemoveRetailerOffer = (index: number) => {
+    setRetailerOffers(prev => {
+      const updated = prev.filter((_, i) => i !== index);
+      return updated.map((offer, idx) => ({ ...offer, displayOrder: idx }));
+    });
+    setRetailerOfferErrors(prev => {
       const copy = { ...prev };
       delete copy[index];
       return copy;
     });
   };
 
-  const handlePurchaseLinkChange = (index: number, field: 'name' | 'url', value: string) => {
-    setPurchaseLinks(prev => {
+  const handleToggleOfferActive = (index: number) => {
+    setRetailerOffers(prev => {
       const copy = [...prev];
-      copy[index] = { ...copy[index], [field]: value };
+      copy[index] = { ...copy[index], isActive: !copy[index].isActive };
+      return copy;
+    });
+  };
+
+  const handleMoveOffer = (index: number, direction: 'up' | 'down') => {
+    setRetailerOffers(prev => {
+      if (
+        (direction === 'up' && index === 0) ||
+        (direction === 'down' && index === prev.length - 1)
+      ) {
+        return prev;
+      }
+      const targetIndex = direction === 'up' ? index - 1 : index + 1;
+      const copy = [...prev];
+      const temp = copy[index];
+      copy[index] = copy[targetIndex];
+      copy[targetIndex] = temp;
+      return copy.map((o, idx) => ({ ...o, displayOrder: idx }));
+    });
+  };
+
+  const handleOfferFieldChange = (
+    index: number,
+    field: keyof RetailerOffer,
+    value: any
+  ) => {
+    setRetailerOffers(prev => {
+      const copy = [...prev];
+      const item = { ...copy[index], [field]: value };
+
+      if (field === 'originalPrice' || field === 'offerPrice') {
+        const orig = Number(field === 'originalPrice' ? value : item.originalPrice) || 0;
+        const cur = Number(field === 'offerPrice' ? value : item.offerPrice) || 0;
+        item.discountPercent = calculateDiscountPercent(orig, cur);
+      }
+
+      copy[index] = item;
       return copy;
     });
 
-    if (field === 'url') {
-      const valResult = validatePurchaseUrl(value);
-      setPurchaseLinkErrors(prev => ({
-        ...prev,
-        [index]: value.trim() ? (valResult.isValid ? '' : valResult.errorMessage || 'Invalid URL') : ''
-      }));
-    }
+    // Clear field error on edit
+    setRetailerOfferErrors(prev => {
+      if (!prev[index]) return prev;
+      const copy = { ...prev };
+      if (copy[index]) {
+        delete copy[index][field as 'name' | 'url' | 'price' | 'origPrice'];
+      }
+      return copy;
+    });
   };
 
   // Photo / Video Links
@@ -1431,45 +1505,95 @@ function ProductFormModal({ product, categories, existingProducts = [], onClose,
     parsedRating = Math.round(parsedRating * 10) / 10;
     setReviewRatingError(null);
 
-    // Validate Purchase Links
-    let hasPurchaseLinkError = false;
-    const newLinkErrors: { [index: number]: string } = {};
-    const validPurchaseLinks: PurchaseLink[] = [];
+    // Validate Retailer Offers
+    let hasOfferError = false;
+    const newOfferErrors: typeof retailerOfferErrors = {};
+    const validRetailerOffers: RetailerOffer[] = [];
 
-    purchaseLinks.forEach((link, idx) => {
-      const trimmedName = link.name.trim();
-      const trimmedUrl = link.url.trim();
+    retailerOffers.forEach((offer, idx) => {
+      const trimmedName = (offer.retailerName || '').trim();
+      const trimmedUrl = (offer.productUrl || '').trim();
+      const origPrice = Number(offer.originalPrice) || 0;
+      const curPrice = Number(offer.offerPrice) || 0;
 
-      if (trimmedName || trimmedUrl) {
+      if (trimmedName || trimmedUrl || curPrice > 0 || origPrice > 0) {
+        const fieldErrs: { name?: string; url?: string; price?: string; origPrice?: string } = {};
+
         if (!trimmedName) {
-          newLinkErrors[idx] = 'Platform Name is required.';
-          hasPurchaseLinkError = true;
+          fieldErrs.name = 'Retailer Name is required.';
+          hasOfferError = true;
         }
-        const valResult = validatePurchaseUrl(trimmedUrl);
-        if (!valResult.isValid) {
-          newLinkErrors[idx] = valResult.errorMessage || 'Invalid URL format.';
-          hasPurchaseLinkError = true;
+
+        if (!trimmedUrl) {
+          fieldErrs.url = 'Product URL is required.';
+          hasOfferError = true;
         } else {
-          validPurchaseLinks.push({
-            name: trimmedName,
-            url: formatUrl(trimmedUrl)
+          const valResult = validatePurchaseUrl(trimmedUrl);
+          if (!valResult.isValid) {
+            fieldErrs.url = valResult.errorMessage || 'Invalid HTTP/HTTPS URL format.';
+            hasOfferError = true;
+          }
+        }
+
+        if (curPrice <= 0) {
+          fieldErrs.price = 'Offer price must be greater than ₹0.';
+          hasOfferError = true;
+        }
+
+        if (origPrice > 0 && origPrice < curPrice) {
+          fieldErrs.origPrice = 'MRP should be ≥ Offer price.';
+          hasOfferError = true;
+        }
+
+        if (Object.keys(fieldErrs).length > 0) {
+          newOfferErrors[idx] = fieldErrs;
+        } else {
+          validRetailerOffers.push({
+            id: offer.id || `offer-${idx}-${Date.now()}`,
+            retailerName: trimmedName,
+            productUrl: formatUrl(trimmedUrl),
+            originalPrice: origPrice || curPrice,
+            offerPrice: curPrice,
+            discountPercent: calculateDiscountPercent(origPrice || curPrice, curPrice),
+            isActive: offer.isActive !== false,
+            displayOrder: idx,
           });
         }
       }
     });
 
-    if (hasPurchaseLinkError) {
-      setPurchaseLinkErrors(newLinkErrors);
+    if (hasOfferError) {
+      setRetailerOfferErrors(newOfferErrors);
       return;
     }
-    setPurchaseLinkErrors({});
+    setRetailerOfferErrors({});
 
-    const discountPercentage = calculateDiscount(Number(originalPrice), Number(price)).percentage;
+    // Determine overall Best Price and MRP across active retailer offers
+    const activeValidOffers = validRetailerOffers.filter(o => o.isActive);
+    let bestOfferPrice = Number(price) || 0;
+    let bestOriginalPrice = Number(originalPrice) || bestOfferPrice;
 
-    // Backward compatibility: build affiliateLinks array from purchaseLinks
+    if (activeValidOffers.length > 0) {
+      let lowestOffer = activeValidOffers[0];
+      for (let i = 1; i < activeValidOffers.length; i++) {
+        if (activeValidOffers[i].offerPrice < lowestOffer.offerPrice) {
+          lowestOffer = activeValidOffers[i];
+        }
+      }
+      bestOfferPrice = lowestOffer.offerPrice;
+      bestOriginalPrice = lowestOffer.originalPrice;
+    }
+
+    const calculatedBestDiscount = calculateDiscountPercent(bestOriginalPrice, bestOfferPrice);
+
+    // Backward compatibility: build purchaseLinks and affiliateLinks arrays
+    const validPurchaseLinks: PurchaseLink[] = validRetailerOffers.map(o => ({
+      name: o.retailerName,
+      url: o.productUrl,
+    }));
     const affiliateLinks: Product['affiliateLinks'] = validPurchaseLinks.map(l => ({
       platform: l.name,
-      url: l.url
+      url: l.url,
     }));
 
     // Build product spec objects
@@ -1484,9 +1608,10 @@ function ProductFormModal({ product, categories, existingProducts = [], onClose,
     const newProduct: Product = {
       id,
       title,
-      price: Number(price),
-      originalPrice: Number(originalPrice),
-      discount: discountPercentage,
+      price: bestOfferPrice,
+      originalPrice: bestOriginalPrice,
+      discount: calculatedBestDiscount,
+      retailerOffers: validRetailerOffers,
       description,
       whyIRecommend,
       brand,
@@ -1805,80 +1930,209 @@ function ProductFormModal({ product, categories, existingProducts = [], onClose,
             </div>
           </div>
 
-          {/* Section 2: Purchase Links & Badges */}
+          {/* Section 2: Retailer Offers & Purchase Links */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between border-b border-neutral-800 pb-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-neutral-800 pb-2.5 gap-2">
               <div>
-                <h4 className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">
-                  Purchase Links
+                <h4 className="text-xs font-extrabold text-emerald-400 uppercase tracking-widest flex items-center gap-1.5 font-display">
+                  <span>Retailer Offers & Pricing Links</span>
                 </h4>
                 <p className="text-[11px] text-neutral-400 mt-0.5">
-                  Add custom purchase links for various platforms (Amazon, Flipkart, Meesho, Myntra, Croma, etc.)
+                  Set prices & affiliate links for Amazon, Meesho, Flipkart, Myntra, etc. The lowest active offer automatically sets the product's Best Price.
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={handleAddPurchaseLink}
-                className="flex items-center gap-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold px-3 py-1.5 rounded-xl transition-all cursor-pointer shadow-xs"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Add Another Platform</span>
-              </button>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => handleAddRetailerOffer()}
+                  className="flex items-center gap-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold px-3 py-1.5 rounded-xl transition-all cursor-pointer shadow-xs"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Add Retailer</span>
+                </button>
+              </div>
             </div>
 
+            {/* Quick Add Preset Retailers */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+              <span className="text-[10px] font-bold text-neutral-500 shrink-0">Quick Presets:</span>
+              {['Amazon', 'Meesho', 'Flipkart', 'Myntra', 'Croma', 'Ajio', 'Nykaa'].map(preset => {
+                const exists = retailerOffers.some(o => o.retailerName.toLowerCase() === preset.toLowerCase());
+                return (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => handleAddRetailerOffer(preset)}
+                    className={`px-2.5 py-1 text-[10px] font-bold rounded-lg border transition-all cursor-pointer shrink-0 flex items-center gap-1 ${
+                      exists
+                        ? 'bg-neutral-800/80 text-neutral-400 border-neutral-700/80 opacity-70'
+                        : 'bg-neutral-900 hover:bg-neutral-800 text-neutral-200 border-neutral-700/60 hover:border-emerald-500/50'
+                    }`}
+                  >
+                    <Plus className="w-2.5 h-2.5 text-emerald-400" />
+                    <span>{preset}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Retailer Offer List */}
             <div className="space-y-3">
-              {purchaseLinks.map((link, idx) => (
-                <div key={idx} className="bg-neutral-950 p-3.5 rounded-2xl border border-neutral-850 space-y-2">
-                  <div className="flex items-center gap-3">
-                    <div className="w-1/3 min-w-[130px]">
-                      <label className="block text-[10px] font-bold text-neutral-400 mb-1">
-                        Platform Name
-                      </label>
-                      <input
-                        type="text"
-                        list="popular-platforms-list"
-                        value={link.name}
-                        onChange={e => handlePurchaseLinkChange(idx, 'name', e.target.value)}
-                        placeholder="e.g. Amazon, Flipkart"
-                        className="w-full bg-neutral-900 border border-neutral-800 focus:border-emerald-500 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
-                      />
+              {retailerOffers.map((offer, idx) => {
+                const isFirst = idx === 0;
+                const isLast = idx === retailerOffers.length - 1;
+                const errs = retailerOfferErrors[idx] || {};
+                const disc = calculateDiscountPercent(Number(offer.originalPrice) || 0, Number(offer.offerPrice) || 0);
+
+                return (
+                  <div
+                    key={offer.id || idx}
+                    className={`p-3.5 rounded-2xl border transition-all space-y-3 ${
+                      offer.isActive
+                        ? 'bg-neutral-950 border-neutral-800 hover:border-neutral-700'
+                        : 'bg-neutral-950/50 border-neutral-900 opacity-60'
+                    }`}
+                  >
+                    {/* Header Row: Retailer Icon/Name, Active Toggle, Order Actions, Delete */}
+                    <div className="flex items-center justify-between gap-2 border-b border-neutral-900 pb-2">
+                      <div className="flex items-center gap-2">
+                        <PlatformLogo platformName={offer.retailerName || 'Offer'} className="w-4 h-4 shrink-0" />
+                        <span className="text-xs font-extrabold text-white">
+                          {offer.retailerName || `Retailer #${idx + 1}`}
+                        </span>
+                        {disc > 0 && offer.isActive && (
+                          <span className="text-[10px] font-black bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-md">
+                            {disc}% OFF
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {/* Active Toggle Button */}
+                        <button
+                          type="button"
+                          onClick={() => handleToggleOfferActive(idx)}
+                          className={`text-[10px] font-bold px-2.5 py-1 rounded-lg border transition-all cursor-pointer flex items-center gap-1 ${
+                            offer.isActive
+                              ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20'
+                              : 'bg-neutral-800 text-neutral-400 border-neutral-700 hover:bg-neutral-700'
+                          }`}
+                          title={offer.isActive ? "Deactivate Offer" : "Activate Offer"}
+                        >
+                          <Power className="w-3 h-3" />
+                          <span>{offer.isActive ? 'Active' : 'Inactive'}</span>
+                        </button>
+
+                        {/* Move Up/Down */}
+                        <div className="flex items-center border border-neutral-800 rounded-lg overflow-hidden bg-neutral-900">
+                          <button
+                            type="button"
+                            onClick={() => handleMoveOffer(idx, 'up')}
+                            disabled={isFirst}
+                            className="p-1 text-neutral-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-neutral-800 transition-colors"
+                            title="Move Up"
+                          >
+                            <ArrowUp className="w-3 h-3" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleMoveOffer(idx, 'down')}
+                            disabled={isLast}
+                            className="p-1 text-neutral-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-neutral-800 transition-colors"
+                            title="Move Down"
+                          >
+                            <ArrowDown className="w-3 h-3" />
+                          </button>
+                        </div>
+
+                        {/* Delete Button */}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveRetailerOffer(idx)}
+                          className="p-1.5 text-neutral-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer border border-transparent hover:border-red-500/20"
+                          title="Delete Retailer Offer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
 
-                    <div className="flex-1">
-                      <label className="block text-[10px] font-bold text-neutral-400 mb-1">
-                        Platform URL
-                      </label>
-                      <input
-                        type="url"
-                        value={link.url}
-                        onChange={e => handlePurchaseLinkChange(idx, 'url', e.target.value)}
-                        placeholder="https://..."
-                        className={`w-full bg-neutral-900 border ${
-                          purchaseLinkErrors[idx] ? 'border-red-500 focus:border-red-400' : 'border-neutral-800 focus:border-emerald-500'
-                        } rounded-xl px-3 py-2 text-xs text-white focus:outline-none transition-colors`}
-                      />
-                    </div>
+                    {/* Input Grid: Name, URL, Original Price, Offer Price */}
+                    <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                      {/* Name */}
+                      <div className="sm:col-span-3">
+                        <label className="block text-[10px] font-bold text-neutral-400 mb-1">
+                          Retailer Name <span className="text-red-400">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          list="popular-platforms-list"
+                          value={offer.retailerName}
+                          onChange={e => handleOfferFieldChange(idx, 'retailerName', e.target.value)}
+                          placeholder="e.g. Amazon, Meesho"
+                          className={`w-full bg-neutral-900 border ${
+                            errs.name ? 'border-red-500 focus:border-red-400' : 'border-neutral-800 focus:border-emerald-500'
+                          } rounded-xl px-3 py-2 text-xs text-white focus:outline-none transition-colors`}
+                        />
+                        {errs.name && <p className="text-[10px] text-red-400 mt-0.5 font-medium">{errs.name}</p>}
+                      </div>
 
-                    <div className="pt-5 shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => handleRemovePurchaseLink(idx)}
-                        disabled={purchaseLinks.length === 1 && idx === 0 && !link.name && !link.url}
-                        className="p-2 text-neutral-500 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-colors cursor-pointer border border-transparent hover:border-red-500/20 disabled:opacity-30 disabled:cursor-not-allowed"
-                        title="Delete purchase link"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      {/* URL */}
+                      <div className="sm:col-span-5">
+                        <label className="block text-[10px] font-bold text-neutral-400 mb-1">
+                          Product Buy URL <span className="text-red-400">*</span>
+                        </label>
+                        <input
+                          type="url"
+                          value={offer.productUrl}
+                          onChange={e => handleOfferFieldChange(idx, 'productUrl', e.target.value)}
+                          placeholder="https://www.amazon.in/dp/..."
+                          className={`w-full bg-neutral-900 border ${
+                            errs.url ? 'border-red-500 focus:border-red-400' : 'border-neutral-800 focus:border-emerald-500'
+                          } rounded-xl px-3 py-2 text-xs text-white focus:outline-none transition-colors`}
+                        />
+                        {errs.url && <p className="text-[10px] text-red-400 mt-0.5 font-medium">{errs.url}</p>}
+                      </div>
+
+                      {/* Original Price / MRP */}
+                      <div className="sm:col-span-2">
+                        <label className="block text-[10px] font-bold text-neutral-400 mb-1">
+                          Original Price (₹)
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={offer.originalPrice || ''}
+                          onChange={e => handleOfferFieldChange(idx, 'originalPrice', e.target.value === '' ? 0 : Number(e.target.value))}
+                          placeholder="MRP"
+                          className={`w-full bg-neutral-900 border ${
+                            errs.origPrice ? 'border-red-500' : 'border-neutral-800 focus:border-emerald-500'
+                          } rounded-xl px-3 py-2 text-xs text-white focus:outline-none transition-colors`}
+                        />
+                        {errs.origPrice && <p className="text-[10px] text-red-400 mt-0.5 font-medium">{errs.origPrice}</p>}
+                      </div>
+
+                      {/* Offer Price */}
+                      <div className="sm:col-span-2">
+                        <label className="block text-[10px] font-bold text-emerald-400 mb-1">
+                          Offer Price (₹) <span className="text-red-400">*</span>
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={offer.offerPrice || ''}
+                          onChange={e => handleOfferFieldChange(idx, 'offerPrice', e.target.value === '' ? 0 : Number(e.target.value))}
+                          placeholder="Sale Price"
+                          className={`w-full bg-neutral-900 border ${
+                            errs.price ? 'border-red-500' : 'border-emerald-500/50 focus:border-emerald-400'
+                          } rounded-xl px-3 py-2 text-xs text-white font-bold focus:outline-none transition-colors`}
+                        />
+                        {errs.price && <p className="text-[10px] text-red-400 mt-0.5 font-medium">{errs.price}</p>}
+                      </div>
                     </div>
                   </div>
-
-                  {purchaseLinkErrors[idx] && (
-                    <p className="text-[10px] text-red-400 font-semibold pl-1">
-                      {purchaseLinkErrors[idx]}
-                    </p>
-                  )}
-                </div>
-              ))}
+                );
+              })}
 
               <datalist id="popular-platforms-list">
                 <option value="Amazon" />
@@ -2764,6 +3018,33 @@ function PromotionalBannerFormModal({
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [uploadProgressText, setUploadProgressText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [aspectWarning, setAspectWarning] = useState<string>('');
+
+  useEffect(() => {
+    if (!imageUrl || !imageUrl.trim()) {
+      setAspectWarning('');
+      return;
+    }
+    const img = new window.Image();
+    img.onload = () => {
+      if (img.width && img.height) {
+        const ratio = img.width / img.height;
+        const targetRatio = 1771 / 835; // ~2.120958
+        const diff = Math.abs(ratio - targetRatio);
+        if (diff > 0.15) {
+          setAspectWarning(
+            'Recommended banner size: 1771 × 835 px (2.12:1). Your image has a different aspect ratio and may not display correctly.'
+          );
+        } else {
+          setAspectWarning('');
+        }
+      }
+    };
+    img.onerror = () => {
+      setAspectWarning('');
+    };
+    img.src = imageUrl;
+  }, [imageUrl]);
 
   const presetBanners = [
     'https://images.unsplash.com/photo-1593784991095-a205069470b6?w=1200&auto=format&fit=crop&q=80',
@@ -2775,21 +3056,27 @@ function PromotionalBannerFormModal({
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 10 * 1024 * 1024) {
-      alert('File size exceeds 10MB limit. Please choose a smaller image.');
+
+    if (!file.type.startsWith('image/')) {
+      alert('Please select a valid image file (JPG, PNG, WebP, etc.).');
+      e.target.value = '';
       return;
     }
 
     setIsUploadingImage(true);
-    setUploadProgressText('Uploading image to Firebase Storage...');
+    setUploadProgressText('Optimizing image & preparing upload...');
 
     try {
-      const downloadUrl = await uploadFileToStorage(file, 'banner-images');
+      const downloadUrl = await uploadFileToStorage(file, 'banner-images', (_percent, statusText) => {
+        setUploadProgressText(statusText);
+      });
       setImageUrl(downloadUrl);
-      setUploadProgressText('');
+      setUploadProgressText('Image uploaded successfully!');
+      setTimeout(() => setUploadProgressText(''), 2500);
     } catch (err: any) {
       console.error('Banner image upload error:', err);
-      alert(`Image upload failed: ${err?.message || 'Failed to upload image to storage'}. You can also paste an image URL directly.`);
+      const errMsg = err?.message || 'Poster image upload failed. Please check your connection and try again.';
+      alert(`${errMsg}\n\nNote: You can also paste an image URL directly into the field below.`);
       setUploadProgressText('');
     } finally {
       setIsUploadingImage(false);
@@ -2942,6 +3229,13 @@ function PromotionalBannerFormModal({
               className="w-full bg-neutral-950 border border-neutral-800 focus:border-emerald-500 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
             />
 
+            {aspectWarning && (
+              <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-400 text-[11px] flex items-start gap-2 font-medium">
+                <AlertCircle className="w-4 h-4 shrink-0 text-amber-400 mt-0.5" />
+                <span>{aspectWarning}</span>
+              </div>
+            )}
+
             {/* Presets */}
             <div className="flex items-center gap-2 overflow-x-auto pt-1">
               <span className="text-[10px] text-neutral-500 shrink-0 font-bold">Presets:</span>
@@ -3085,29 +3379,35 @@ function PromotionalBannerFormModal({
           {/* Live Card Preview Box */}
           <div className="space-y-1.5 pt-2">
             <label className="block text-[11px] font-bold text-neutral-400">
-              Live Banner Preview Card
+              Live Banner Preview Card (1771 × 835 ratio)
             </label>
-            <div className="relative w-full aspect-[21/9] rounded-2xl overflow-hidden bg-slate-950 border border-neutral-700 shadow-md">
+            <div
+              className="relative w-full rounded-2xl overflow-hidden bg-slate-950 border border-neutral-700 shadow-md"
+              style={{ aspectRatio: '1771 / 835' }}
+            >
               <img
                 src={imageUrl}
                 alt="preview"
-                className="w-full h-full object-cover"
+                className="w-full h-auto object-contain object-center"
+                style={{ width: '100%', height: 'auto', aspectRatio: '1771 / 835', objectFit: 'contain' }}
                 onError={(e) => {
                   (e.target as HTMLImageElement).src =
-                    'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=1200&auto=format&fit=crop&q=80';
+                    'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=1800&auto=format&fit=crop&q=80';
                 }}
               />
-              <div className="absolute inset-0 bg-gradient-to-r from-slate-950/90 via-slate-950/40 to-transparent flex items-center p-4 sm:p-6">
-                <div className="space-y-1 text-white">
-                  {title && <h3 className="text-sm sm:text-lg font-black font-display">{title}</h3>}
-                  {subtitle && <p className="text-[10px] sm:text-xs text-slate-200">{subtitle}</p>}
-                  {buttonText && (
-                    <span className="inline-block px-3 py-1 bg-[#FF5A00] text-white text-[10px] font-bold rounded-lg mt-1 font-display">
-                      {buttonText}
-                    </span>
-                  )}
+              {(title || subtitle || buttonText) && (
+                <div className="absolute inset-0 bg-gradient-to-r from-slate-950/90 via-slate-950/40 to-transparent flex items-center p-3 sm:p-5 pointer-events-none">
+                  <div className="space-y-1 text-white">
+                    {title && <h3 className="text-xs sm:text-base font-black font-display">{title}</h3>}
+                    {subtitle && <p className="text-[10px] sm:text-xs text-slate-200">{subtitle}</p>}
+                    {buttonText && (
+                      <span className="inline-block px-2.5 py-1 bg-[#FF5A00] text-white text-[9px] sm:text-[10px] font-bold rounded-lg mt-0.5 font-display">
+                        {buttonText}
+                      </span>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
 

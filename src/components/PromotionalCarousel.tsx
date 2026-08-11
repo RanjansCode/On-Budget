@@ -169,52 +169,56 @@ export const PromotionalCarousel: React.FC<PromotionalCarouselProps> = ({
             <div
               key={banner.id || index}
               onClick={() => handleBannerClick(banner)}
-              className="w-full shrink-0 relative cursor-pointer overflow-hidden aspect-[21/9] sm:aspect-[24/9] md:aspect-[28/9]"
+              className="w-full shrink-0 relative cursor-pointer overflow-hidden bg-slate-950"
+              style={{ aspectRatio: '1771 / 835' }}
             >
-              {/* Background Image */}
+              {/* Background Poster Image */}
               <img
-                src={getOptimizedImageUrl(banner.imageUrl, 1200)}
-                alt={banner.name || 'Promotional Offer'}
-                className="w-full h-full object-cover object-center transition-transform duration-700 group-hover/carousel:scale-[1.01]"
+                src={getOptimizedImageUrl(banner.imageUrl, 1800)}
+                alt={banner.name || banner.title || 'Promotional Offer'}
+                className="w-full h-auto object-contain object-center transition-transform duration-700 group-hover/carousel:scale-[1.01]"
+                style={{ width: '100%', height: 'auto', aspectRatio: '1771 / 835', objectFit: 'contain' }}
                 loading={index === 0 ? 'eager' : 'lazy'}
                 fetchPriority={index === 0 ? 'high' : 'auto'}
                 decoding={index === 0 ? 'sync' : 'async'}
                 onError={(e) => {
                   // Fallback for broken images
                   (e.target as HTMLImageElement).src =
-                    'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=1200&auto=format&fit=crop&q=80';
+                    'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=1800&auto=format&fit=crop&q=80';
                 }}
               />
 
-              {/* Gradient Overlay for Text Visibility */}
-              <div className="absolute inset-0 bg-gradient-to-r from-slate-950/90 via-slate-950/50 to-transparent md:via-slate-950/30 flex items-center p-4 sm:p-8 md:p-12">
-                <div className="max-w-xl space-y-1.5 sm:space-y-3 text-white">
-                  
-                  {/* Optional Title */}
-                  {banner.title && (
-                    <h3 className="text-sm sm:text-2xl md:text-3xl font-black font-display text-white tracking-tight leading-tight drop-shadow-md">
-                      {banner.title}
-                    </h3>
-                  )}
+              {/* Optional Text Overlay (Only rendered if title, subtitle, or buttonText exist) */}
+              {(banner.title || banner.subtitle || banner.buttonText) && (
+                <div className="absolute inset-0 bg-gradient-to-r from-slate-950/85 via-slate-950/40 to-transparent flex items-center p-3 sm:p-6 md:p-8 pointer-events-none">
+                  <div className="max-w-xl space-y-1 sm:space-y-2 text-white pointer-events-auto">
+                    
+                    {/* Optional Title */}
+                    {banner.title && (
+                      <h3 className="text-xs sm:text-xl md:text-2xl font-black font-display text-white tracking-tight leading-tight drop-shadow-md">
+                        {banner.title}
+                      </h3>
+                    )}
 
-                  {/* Optional Subtitle */}
-                  {banner.subtitle && (
-                    <p className="text-xs sm:text-sm md:text-base font-medium text-slate-200 line-clamp-2 drop-shadow-sm">
-                      {banner.subtitle}
-                    </p>
-                  )}
+                    {/* Optional Subtitle */}
+                    {banner.subtitle && (
+                      <p className="text-[10px] sm:text-xs md:text-sm font-medium text-slate-200 line-clamp-2 drop-shadow-sm">
+                        {banner.subtitle}
+                      </p>
+                    )}
 
-                  {/* Optional CTA Button */}
-                  {banner.buttonText && (
-                    <div className="pt-1 sm:pt-2">
-                      <span className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-1.5 sm:py-2.5 bg-[#FF5A00] hover:bg-[#E04F00] text-white text-xs sm:text-sm font-black rounded-xl sm:rounded-2xl shadow-lg transition-all transform active:scale-95 group-hover/carousel:bg-[#E04F00] font-display">
-                        <span>{banner.buttonText}</span>
-                        <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                      </span>
-                    </div>
-                  )}
+                    {/* Optional CTA Button */}
+                    {banner.buttonText && (
+                      <div className="pt-1">
+                        <span className="inline-flex items-center gap-1 sm:gap-2 px-2.5 sm:px-4 py-1 sm:py-2 bg-[#FF5A00] hover:bg-[#E04F00] text-white text-[10px] sm:text-xs font-black rounded-lg sm:rounded-xl shadow-lg transition-all font-display">
+                          <span>{banner.buttonText}</span>
+                          <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Top-Right Badge (e.g. "SPECIAL OFFER") */}
               <div className="absolute top-3 right-3 sm:top-4 sm:right-4 bg-black/60 backdrop-blur-md border border-white/10 px-2.5 py-1 rounded-full text-[9px] sm:text-[10px] font-bold text-white tracking-widest uppercase flex items-center gap-1 shadow-sm">

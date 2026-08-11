@@ -11,6 +11,7 @@ import SocialLinksModal from './SocialLinksModal';
 import PlatformLogo from './PlatformLogo';
 import ImageLightboxModal from './ImageLightboxModal';
 import { getPurchaseLinks } from '../utils/purchaseLinks';
+import { getNormalizedRetailerOffers, getProductBestPrice, calculateDiscountPercent } from '../utils/retailerOffers';
 import { formatUrl } from '../utils/validation';
 import { formatCurrencyPrice, detectUserCurrency } from '../utils/currency';
 import { calculateDiscount } from '../utils/discount';
@@ -475,80 +476,146 @@ export default function ProductDetail({
             {product.description}
           </p>
 
-          {/* Pricing Card & Multiple Affiliate Links */}
-          <div className="p-5 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-3xl space-y-4 shadow-xs">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-              <div>
-                <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase block tracking-wider font-display">Personally Curated Savings Price</span>
-                <div className="flex items-baseline gap-2.5 mt-1">
-                  <span className="text-2xl font-black text-slate-950 dark:text-white">
-                    {formatCurrencyPrice(product.price, activeCurrencyCode).formatted}
-                  </span>
-                  {product.originalPrice > product.price && (
-                    <span className="text-xs text-slate-400 dark:text-slate-500 line-through">
-                      {formatCurrencyPrice(product.originalPrice, activeCurrencyCode).formatted}
-                    </span>
-                  )}
-                  {activeCurrencyCode !== 'INR' && (
-                    <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
-                      (Base Price: ₹{product.price})
-                    </span>
-                  )}
+          {/* Pricing Card & Retailer Offers */}
+          {(() => {
+            const bestInfo = getProductBestPrice(product);
+            const activeOffers = getNormalizedRetailerOffers(product, false);
+
+            return (
+              <div className="p-5 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-3xl space-y-4 shadow-xs">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-[#FF5A00] font-black uppercase tracking-wider font-display bg-[#FF5A00]/10 px-2 py-0.5 rounded-md">
+                        Best Price
+                      </span>
+                      {bestInfo.retailerName && (
+                        <span className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">
+                          via {bestInfo.retailerName}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-baseline gap-2.5 mt-1.5">
+                      <span className="text-2xl sm:text-3xl font-black text-slate-950 dark:text-white font-display">
+                        {formatCurrencyPrice(bestInfo.bestPrice, activeCurrencyCode).formatted}
+                      </span>
+                      {bestInfo.originalPrice > bestInfo.bestPrice && (
+                        <span className="text-xs sm:text-sm text-slate-400 dark:text-slate-500 line-through">
+                          {formatCurrencyPrice(bestInfo.originalPrice, activeCurrencyCode).formatted}
+                        </span>
+                      )}
+                      {bestInfo.discountPercent > 0 && (
+                        <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/60 dark:border-emerald-800/60 px-2 py-0.5 rounded-lg">
+                          {bestInfo.discountPercent}% OFF
+                        </span>
+                      )}
+                    </div>
+
+                    {bestInfo.amountSaved > 0 && (
+                      <p className="mt-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 font-display">
+                        <span>You Save {formatCurrencyPrice(bestInfo.amountSaved, activeCurrencyCode).formatted} ({bestInfo.discountPercent}% OFF)</span>
+                      </p>
+                    )}
+
+                    {bestInfo.retailerName && activeOffers.length > 1 && (
+                      <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400 italic">
+                        Lowest price available on <strong>{bestInfo.retailerName}</strong>
+                      </p>
+                    )}
+                  </div>
                 </div>
 
-                {/* You Save ₹X (Only rupee saving displayed here, no duplicate %) */}
-                {discountInfo.hasDiscount && (
-                  <div className="mt-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 font-display">
-                    <span>You Save {formatCurrencyPrice(discountInfo.amountSaved, activeCurrencyCode).formatted}</span>
+                {/* Multiple Retailer Offers / Purchase Links */}
+                {activeOffers.length > 0 && (
+                  <div className="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider font-display">
+                        Purchase Links & Verified Retailers:
+                      </span>
+                      {activeOffers.length > 1 && (
+                        <span className="text-[10px] text-slate-400 font-medium">
+                          {activeOffers.length} Stores Available
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      {activeOffers.map((offer, idx) => {
+                        const finalUrl = formatUrl(offer.productUrl);
+                        const isBestOffer = offer.offerPrice === bestInfo.bestPrice && offer.offerPrice > 0;
+                        const formattedOfferPrice = formatCurrencyPrice(offer.offerPrice, activeCurrencyCode);
+                        const formattedOrigPrice = formatCurrencyPrice(offer.originalPrice, activeCurrencyCode);
+                        const disc = offer.discountPercent || calculateDiscountPercent(offer.originalPrice, offer.offerPrice);
+
+                        return (
+                          <button
+                            key={offer.id || `${offer.retailerName}-${idx}`}
+                            type="button"
+                            onClick={() => {
+                              if (offer.retailerName) {
+                                onTrackAffiliateClick(product.id, offer.retailerName);
+                              }
+                              if (finalUrl) {
+                                window.open(finalUrl, "_blank", "noopener,noreferrer");
+                              }
+                            }}
+                            className={`flex flex-col justify-between p-3.5 rounded-2xl border transition-all text-left cursor-pointer group relative ${
+                              isBestOffer
+                                ? 'bg-emerald-500/5 dark:bg-emerald-950/20 border-emerald-500/30 hover:border-emerald-500/60 shadow-xs'
+                                : 'bg-slate-50 dark:bg-slate-950 hover:bg-slate-100/60 dark:hover:bg-slate-800/40 border-slate-200/50 dark:border-slate-800 hover:border-[#FF5A00]/40'
+                            }`}
+                          >
+                            {/* Top row: Retailer Logo & Name + Best Price / Discount badge */}
+                            <div className="flex items-center justify-between gap-2 mb-2">
+                              <span className="flex items-center gap-2">
+                                <PlatformLogo platformName={offer.retailerName} className="w-5 h-5 shrink-0" />
+                                <span className="text-xs font-extrabold text-slate-900 dark:text-white group-hover:text-[#FF5A00] transition-colors">
+                                  {offer.retailerName}
+                                </span>
+                              </span>
+
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                {isBestOffer && (
+                                  <span className="text-[9px] font-black bg-emerald-500 text-white px-2 py-0.5 rounded-full uppercase tracking-tight shadow-2xs">
+                                    Best Price
+                                  </span>
+                                )}
+                                {disc > 0 && (
+                                  <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-100/60 dark:bg-emerald-900/40 px-1.5 py-0.5 rounded-md">
+                                    {disc}% OFF
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Bottom row: Price display + Buy Button */}
+                            <div className="flex items-center justify-between gap-2 mt-1 pt-2 border-t border-slate-200/40 dark:border-slate-800/60">
+                              <div className="flex items-baseline gap-1.5">
+                                <span className="text-base font-extrabold text-slate-950 dark:text-white">
+                                  {formattedOfferPrice.formatted}
+                                </span>
+                                {offer.originalPrice > offer.offerPrice && (
+                                  <span className="text-[11px] text-slate-400 dark:text-slate-500 line-through">
+                                    {formattedOrigPrice.formatted}
+                                  </span>
+                                )}
+                              </div>
+
+                              <span className="flex items-center gap-1 text-xs font-bold text-[#FF5A00] group-hover:translate-x-0.5 transition-transform shrink-0">
+                                <span>Buy on {offer.retailerName}</span>
+                                <ExternalLink className="w-3.5 h-3.5" />
+                              </span>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
               </div>
-            </div>
-
-            {/* Multiple Purchase Platform Links */}
-            {(() => {
-              const purchaseLinks = getPurchaseLinks(product);
-              if (purchaseLinks.length === 0) return null;
-              return (
-                <div className="space-y-2.5 pt-3 border-t border-slate-100 dark:border-slate-800">
-                  <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase block tracking-wider font-display">
-                    Purchase Links & Verified Retailers:
-                  </span>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    {purchaseLinks.map((link, idx) => {
-                      const finalUrl = formatUrl(link.url);
-                      return (
-                        <button
-                          key={`${link.name}-${idx}`}
-                          type="button"
-                          onClick={() => {
-                            if (link.name) {
-                              onTrackAffiliateClick(product.id, link.name);
-                            }
-                            if (finalUrl) {
-                              window.open(finalUrl, "_blank", "noopener,noreferrer");
-                            }
-                          }}
-                          className="flex items-center justify-between p-3.5 bg-slate-50 dark:bg-slate-950 hover:bg-slate-100/60 dark:hover:bg-slate-800/40 border border-slate-200/50 dark:border-slate-800 hover:border-[#FF5A00]/40 dark:hover:border-[#FF5A00]/40 text-slate-800 dark:text-slate-100 rounded-2xl transition-all font-semibold text-xs group shadow-2xs text-left cursor-pointer"
-                        >
-                          <span className="flex items-center gap-2">
-                            <PlatformLogo platformName={link.name} className="w-5 h-5 shrink-0" />
-                            <span>
-                              Buy on <strong className="text-slate-900 dark:text-white group-hover:text-[#FF5A00] transition-colors">{link.name}</strong>
-                            </span>
-                          </span>
-                          <span className="flex items-center gap-1 text-[10px] text-slate-400 group-hover:text-[#FF5A00] font-bold transition-all shrink-0">
-                            <span>Deal</span>
-                            <ExternalLink className="w-3 h-3" />
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })()}
-          </div>
+            );
+          })()}
 
           {/* Creator notes block */}
           <div className="p-4 bg-[#FF5A00]/5 border border-[#FF5A00]/10 rounded-2xl space-y-1.5">

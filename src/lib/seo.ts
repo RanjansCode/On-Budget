@@ -441,21 +441,51 @@ export function updateDocumentSEO({
  * Supports: /product/:slug, /products/:slug, /p/:slug
  * Handles trailing slashes, URL parameters, decoding, etc.
  */
-export function extractProductSlugFromPath(pathname: string): string | null {
-  if (!pathname) return null;
-  // Clean trailing slashes and spaces
-  const cleanPath = pathname.trim().replace(/\/+$/, '');
+export function extractProductSlugFromPath(pathname?: string): string | null {
+  if (typeof window === 'undefined') return null;
+  const currentPath = pathname || window.location.pathname;
+
+  // 1. Check URL query search params e.g. ?product=slug or ?p=slug or ?id=id
+  try {
+    const searchParams = new URLSearchParams(window.location.search);
+    const querySlug = searchParams.get('product') || searchParams.get('p') || searchParams.get('id');
+    if (querySlug && querySlug.trim()) {
+      return decodeURIComponent(querySlug.trim());
+    }
+  } catch {
+    // Ignore URL search params parse errors
+  }
+
+  // 2. Check hash fragments e.g. #product/slug or #/product/slug or #p/slug
+  const hash = window.location.hash || '';
+  if (hash.includes('product/') || hash.includes('p/')) {
+    const parts = hash.split(/product\/|p\//);
+    if (parts[1]) {
+      const rawHashSlug = parts[1].split('?')[0].split('&')[0].trim();
+      if (rawHashSlug) {
+        try {
+          return decodeURIComponent(rawHashSlug);
+        } catch {
+          return rawHashSlug;
+        }
+      }
+    }
+  }
+
+  // 3. Clean path string (strip query params and hashes if passed in pathname)
+  let cleanPath = currentPath.split('?')[0].split('#')[0].trim().replace(/\/+$/, '');
 
   const prefixes = ['/product/', '/products/', '/p/'];
   for (const prefix of prefixes) {
     if (cleanPath.startsWith(prefix)) {
-      const rawSlug = cleanPath.slice(prefix.length).trim();
+      let rawSlug = cleanPath.slice(prefix.length).trim();
       if (rawSlug) {
         try {
-          return decodeURIComponent(rawSlug);
+          rawSlug = decodeURIComponent(rawSlug);
         } catch {
-          return rawSlug;
+          // Keep raw if decode fails
         }
+        return rawSlug;
       }
     }
   }

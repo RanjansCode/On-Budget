@@ -62,6 +62,7 @@ import { onSnapshot, doc } from 'firebase/firestore';
 
 const HomeRecommendationSections = React.lazy(() => import('./components/HomeRecommendationSections'));
 import SmartSearchFilters, { SmartFilterState, SortOption } from './components/SmartSearchFilters';
+import { getProductBestPrice, getNormalizedRetailerOffers } from './utils/retailerOffers';
 import { smartSearchProducts } from './lib/searchEngine';
 import Navbar from './components/Navbar';
 import CategoryNav from './components/CategoryNav';
@@ -971,24 +972,27 @@ export default function App() {
     // Step 4: Marketplace Filter
     if (filterState.marketplace) {
       const mp = filterState.marketplace.toLowerCase();
-      matched = matched.filter(p =>
-        (p.affiliateLinks && p.affiliateLinks.some(l => l.platform.toLowerCase().includes(mp))) ||
-        (p.purchaseLinks && p.purchaseLinks.some(l => l.name.toLowerCase().includes(mp)))
-      );
+      matched = matched.filter(p => {
+        const activeOffers = getNormalizedRetailerOffers(p, false);
+        if (activeOffers.length > 0) {
+          return activeOffers.some(o => o.retailerName.toLowerCase().includes(mp));
+        }
+        return (
+          (p.affiliateLinks && p.affiliateLinks.some(l => l.platform.toLowerCase().includes(mp))) ||
+          (p.purchaseLinks && p.purchaseLinks.some(l => l.name.toLowerCase().includes(mp)))
+        );
+      });
     }
 
-    // Step 5: Price Range
+    // Step 5: Price Range (based on Best Price)
     const maxPrice = filterState.priceRange !== null ? filterState.priceRange : selectedPriceRange;
     if (maxPrice !== null) {
-      matched = matched.filter(p => p.price <= maxPrice);
+      matched = matched.filter(p => getProductBestPrice(p).bestPrice <= maxPrice);
     }
 
     // Step 6: Min Discount
     if (filterState.minDiscount > 0) {
-      matched = matched.filter(p => {
-        const disc = calculateDiscount(p.originalPrice, p.price).percentage;
-        return disc >= filterState.minDiscount;
-      });
+      matched = matched.filter(p => getProductBestPrice(p).discountPercent >= filterState.minDiscount);
     }
 
     // Step 7: Min Rating
@@ -1008,9 +1012,9 @@ export default function App() {
       const s = sortOption as string;
       if (s === 'popular') return b.rating - a.rating;
       if (s === 'latest' || s === 'newest') return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-      if (s === 'low-price') return a.price - b.price;
-      if (s === 'high-price') return b.price - a.price;
-      if (s === 'discount') return calculateDiscount(b.originalPrice, b.price).percentage - calculateDiscount(a.originalPrice, a.price).percentage;
+      if (s === 'low-price') return getProductBestPrice(a).bestPrice - getProductBestPrice(b).bestPrice;
+      if (s === 'high-price') return getProductBestPrice(b).bestPrice - getProductBestPrice(a).bestPrice;
+      if (s === 'discount') return getProductBestPrice(b).discountPercent - getProductBestPrice(a).discountPercent;
       if (s === 'rating') return b.rating - a.rating;
       if (s === 'trending') return (b.badges.trending ? 1 : 0) - (a.badges.trending ? 1 : 0);
       return 0;

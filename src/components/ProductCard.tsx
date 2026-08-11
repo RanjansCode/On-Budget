@@ -4,7 +4,7 @@ import { Heart, Sparkles, Star, Film, CheckCircle, Maximize2 } from 'lucide-reac
 import { Product } from '../types';
 import ImageLightboxModal from './ImageLightboxModal';
 import { formatCurrencyPrice, detectUserCurrency } from '../utils/currency';
-import { calculateDiscount } from '../utils/discount';
+import { getProductBestPrice } from '../utils/retailerOffers';
 import ImageSkeleton from './ImageSkeleton';
 import ProductShareButton from './ProductShareButton';
 import { getProductMainImage, getProductImages } from '../utils/imageUtils';
@@ -29,7 +29,7 @@ function ProductCard({
   currentCurrency: propCurrency,
   priority = false,
 }: ProductCardProps) {
-  const { title, price, originalPrice, brand, badges } = product;
+  const { title, brand, badges } = product;
   const productImages = getProductImages(product);
   const mainImage = getProductMainImage(product);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
@@ -51,8 +51,10 @@ function ProductCard({
     return () => window.removeEventListener('onbudget_currency_changed', handleCurrencyChange);
   }, [propCurrency]);
 
-  const { percentage, hasDiscount } = calculateDiscount(originalPrice, price);
-  const formattedMainPrice = formatCurrencyPrice(price, activeCurrencyCode);
+  const bestPriceInfo = getProductBestPrice(product);
+  const { bestPrice, originalPrice, discountPercent, retailerName } = bestPriceInfo;
+  const hasDiscount = discountPercent > 0;
+  const formattedMainPrice = formatCurrencyPrice(bestPrice, activeCurrencyCode);
   const formattedOrigPrice = formatCurrencyPrice(originalPrice, activeCurrencyCode);
 
   return (
@@ -114,7 +116,7 @@ function ProductCard({
           {/* Perfect Circular Discount Badge */}
           {hasDiscount && (
             <div className="absolute top-2.5 left-2.5 z-20 w-11 h-11 sm:w-13 sm:h-13 bg-[#FF5A00] text-white rounded-full flex flex-col items-center justify-center text-center shadow-md border border-white/20 select-none font-display pointer-events-none shrink-0">
-              <span className="text-[11px] sm:text-xs font-black leading-none">{percentage}%</span>
+              <span className="text-[11px] sm:text-xs font-black leading-none">{discountPercent}%</span>
               <span className="text-[7px] sm:text-[8px] font-extrabold uppercase tracking-tight leading-none mt-0.5">OFF</span>
             </div>
           )}
@@ -175,17 +177,21 @@ function ProductCard({
                 <span className="text-sm font-black text-slate-950 dark:text-white">
                   {formattedMainPrice.formatted}
                 </span>
-                {originalPrice > price && (
+                {originalPrice > bestPrice && (
                   <span className="text-[10px] text-slate-400 dark:text-slate-500 line-through">
                     {formattedOrigPrice.formatted}
                   </span>
                 )}
               </div>
-              {activeCurrencyCode !== 'INR' && (
-                <span className="text-[9px] text-slate-400 dark:text-slate-500 font-medium">
-                  Base: ₹{price}
+              {retailerName ? (
+                <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400">
+                  Best price on {retailerName}
                 </span>
-              )}
+              ) : activeCurrencyCode !== 'INR' ? (
+                <span className="text-[9px] text-slate-400 dark:text-slate-500 font-medium">
+                  Base: ₹{bestPrice}
+                </span>
+              ) : null}
             </div>
 
             <button
