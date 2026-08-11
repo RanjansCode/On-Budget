@@ -10,6 +10,7 @@ export default defineConfig(() => {
       alias: {
         '@': path.resolve(__dirname, '.'),
       },
+      dedupe: ['react', 'react-dom'],
     },
     server: {
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
@@ -23,17 +24,6 @@ export default defineConfig(() => {
       minify: 'esbuild' as const,
       cssCodeSplit: true,
       chunkSizeWarningLimit: 1000,
-      rollupOptions: {
-        output: {
-          manualChunks: {
-            'react-vendor': ['react', 'react-dom'],
-            'motion-vendor': ['motion/react'],
-            'lucide-icons': ['lucide-react'],
-            'firebase-vendor': ['firebase/app', 'firebase/auth', 'firebase/firestore'],
-            'recharts-vendor': ['recharts'],
-          },
-        },
-      },
     },
   };
 });

@@ -14,6 +14,8 @@ import { INITIAL_PRODUCTS, INITIAL_CATEGORIES, INITIAL_REELS, INITIAL_PROMOTIONA
 import {
   slugify,
   getProductSlug,
+  extractProductSlugFromPath,
+  findProductByIdentifier,
   updateDocumentSEO,
   generateOrganizationSchema,
   generateWebSiteSchema
@@ -155,14 +157,7 @@ export default function App() {
   });
   const [selectedProductId, setSelectedProductId] = useState<string | null>(() => {
     if (typeof window === 'undefined') return null;
-    const path = window.location.pathname;
-    if (path.startsWith('/product/')) {
-      return decodeURIComponent(path.replace('/product/', '').trim()) || null;
-    }
-    if (path.startsWith('/p/')) {
-      return decodeURIComponent(path.replace('/p/', '').trim()) || null;
-    }
-    return null;
+    return extractProductSlugFromPath(window.location.pathname);
   });
   const [showAccessDenied, setShowAccessDenied] = useState(false);
   const [authModalOpenRequested, setAuthModalOpenRequested] = useState(false);
@@ -426,13 +421,20 @@ export default function App() {
       (currentUser.email && ADMIN_EMAILS.includes(currentUser.email))
     ));
 
-    if (pathname.startsWith('/product/') || pathname.startsWith('/p/')) {
-      const prodId = pathname.startsWith('/product/')
-        ? decodeURIComponent(pathname.replace('/product/', '').trim())
-        : decodeURIComponent(pathname.replace('/p/', '').trim());
-      if (prodId) {
-        setSelectedProductId(prodId);
-        setActiveTab('home');
+    const productSlugFromUrl = extractProductSlugFromPath(pathname);
+
+    if (productSlugFromUrl) {
+      setSelectedProductId(productSlugFromUrl);
+      setActiveTab('home');
+
+      // Normalize URL in browser address bar to canonical format /product/:slug
+      const matched = findProductByIdentifier(productSlugFromUrl, products);
+      if (matched) {
+        const canonicalSlug = getProductSlug(matched);
+        const canonicalPath = `/product/${canonicalSlug}`;
+        if (pathname !== canonicalPath) {
+          window.history.replaceState({}, '', canonicalPath);
+        }
       }
     } else if (pathname.startsWith('/admin')) {
       if (!currentUser) {
@@ -450,7 +452,7 @@ export default function App() {
       window.history.replaceState({}, '', '/');
       setActiveTab('home');
     }
-  }, [authLoading, currentUser]);
+  }, [authLoading, currentUser, products]);
 
   // Handle browser back/forward buttons (Popstate events)
   useEffect(() => {
@@ -460,16 +462,11 @@ export default function App() {
         (currentUser.email && ADMIN_EMAILS.includes(currentUser.email))
       ));
 
-      if (pathname.startsWith('/product/') || pathname.startsWith('/p/')) {
-        const prodId = pathname.startsWith('/product/')
-          ? decodeURIComponent(pathname.replace('/product/', '').trim())
-          : decodeURIComponent(pathname.replace('/p/', '').trim());
-        if (prodId) {
-          setSelectedProductId(prodId);
-          setActiveTab('home');
-        } else {
-          setSelectedProductId(null);
-        }
+      const productSlugFromUrl = extractProductSlugFromPath(pathname);
+
+      if (productSlugFromUrl) {
+        setSelectedProductId(productSlugFromUrl);
+        setActiveTab('home');
       } else if (pathname.startsWith('/admin')) {
         if (!currentUser) {
           window.history.replaceState({}, '', '/');
@@ -650,17 +647,12 @@ export default function App() {
   };
 
   const handleOpenProduct = async (productIdOrSlug: string) => {
-    const targetProduct = products.find(p =>
-      p.id === productIdOrSlug ||
-      (p.seoSlug && p.seoSlug.toLowerCase() === productIdOrSlug.toLowerCase()) ||
-      p.id.toLowerCase() === productIdOrSlug.toLowerCase() ||
-      slugify(p.title) === productIdOrSlug.toLowerCase()
-    );
+    const targetProduct = findProductByIdentifier(productIdOrSlug, products);
 
     const actualId = targetProduct ? targetProduct.id : productIdOrSlug;
     const actualSlug = targetProduct ? getProductSlug(targetProduct) : productIdOrSlug;
 
-    setSelectedProductId(actualId);
+    setSelectedProductId(actualSlug);
     setActiveTab('home');
 
     const targetPath = `/product/${actualSlug}`;
@@ -1118,12 +1110,7 @@ export default function App() {
             
             {/* DETAIL VIEW ROUTING */}
             {selectedProductId ? (() => {
-              const matchedProduct = products.find(
-                p => p.id === selectedProductId ||
-                     (p.seoSlug && p.seoSlug.toLowerCase() === selectedProductId.toLowerCase()) ||
-                     p.id.toLowerCase() === selectedProductId.toLowerCase() ||
-                     slugify(p.title) === selectedProductId.toLowerCase()
-              );
+              const matchedProduct = findProductByIdentifier(selectedProductId, products);
 
               if (isDetailLoading) {
                 return <ProductDetailsSkeleton />;
@@ -1137,7 +1124,7 @@ export default function App() {
                       reels={reels}
                       onBack={() => {
                         setSelectedProductId(null);
-                        if (window.location.pathname.startsWith('/product/') || window.location.pathname.startsWith('/p/')) {
+                        if (extractProductSlugFromPath(window.location.pathname)) {
                           window.history.pushState({}, '', '/');
                         }
                       }}

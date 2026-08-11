@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X, Copy, Check, Mail, Share2, Package } from 'lucide-react';
 import { Product } from '../types';
 import { useToast } from './Toast';
+import { getProductSlug } from '../lib/seo';
 
 interface ShareModalProps {
   isOpen: boolean;
@@ -23,7 +24,8 @@ export default function ShareModal({ isOpen, onClose, product, onShareTrack }: S
   }
 
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
-  const shareUrl = `${origin}/product/${product.id}`;
+  const slug = getProductSlug(product);
+  const shareUrl = `${origin}/product/${slug}`;
   const shareTitle = product.title;
 
   // Keyboard accessibility: ESC key to close

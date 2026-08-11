@@ -435,3 +435,57 @@ export function updateDocumentSEO({
     document.head.appendChild(script);
   });
 }
+
+/**
+ * Extracts a product ID or slug from any product URL path
+ * Supports: /product/:slug, /products/:slug, /p/:slug
+ * Handles trailing slashes, URL parameters, decoding, etc.
+ */
+export function extractProductSlugFromPath(pathname: string): string | null {
+  if (!pathname) return null;
+  // Clean trailing slashes and spaces
+  const cleanPath = pathname.trim().replace(/\/+$/, '');
+
+  const prefixes = ['/product/', '/products/', '/p/'];
+  for (const prefix of prefixes) {
+    if (cleanPath.startsWith(prefix)) {
+      const rawSlug = cleanPath.slice(prefix.length).trim();
+      if (rawSlug) {
+        try {
+          return decodeURIComponent(rawSlug);
+        } catch {
+          return rawSlug;
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Finds a product in the given products array matching an ID, seoSlug, or title-slug.
+ */
+export function findProductByIdentifier(identifier: string | null | undefined, products: Product[]): Product | null {
+  if (!identifier || !products || products.length === 0) return null;
+  const target = identifier.trim().toLowerCase().replace(/\/+$/, '');
+
+  // 1. Exact match on ID or seoSlug
+  const exact = products.find(p =>
+    p.id.toLowerCase() === target ||
+    (p.seoSlug && p.seoSlug.trim().toLowerCase() === target)
+  );
+  if (exact) return exact;
+
+  // 2. Match on slugified seoSlug or slugified title
+  const slugMatch = products.find(p => {
+    const pSlug = p.seoSlug ? slugify(p.seoSlug) : '';
+    const pTitleSlug = slugify(p.title);
+    return (pSlug && pSlug === target) || (pTitleSlug && pTitleSlug === target);
+  });
+  if (slugMatch) return slugMatch;
+
+  // 3. Fallback partial match if target contains ID
+  const fallback = products.find(p => p.id.toLowerCase() === target || target.includes(p.id.toLowerCase()));
+  return fallback || null;
+}

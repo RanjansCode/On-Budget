@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Share2 } from 'lucide-react';
 import { Product } from '../types';
 import ShareModal from './ShareModal';
+import { getProductSlug } from '../lib/seo';
 
 interface ProductShareButtonProps {
   product: Product;
@@ -22,7 +23,8 @@ export default function ProductShareButton({
     e.stopPropagation();
 
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
-    const productUrl = `${origin}/product/${product.id}`;
+    const slug = getProductSlug(product);
+    const productUrl = `${origin}/product/${slug}`;
     const shareTitle = product.title;
     const shareText = product.seoDescription || product.description || `Check out ${product.title} on In Our Budget!`;
 
