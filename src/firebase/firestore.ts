@@ -710,6 +710,15 @@ export async function fetchPromotionalBannersFromFirestore(): Promise<Promotiona
 
 export async function addPromotionalBannerToFirestore(banner: PromotionalBanner) {
   try {
+    // If promotional_banners collection is empty in Firestore, seed INITIAL_PROMOTIONAL_BANNERS first
+    const bannersSnapshot = await getDocs(collection(db, 'promotional_banners'));
+    if (bannersSnapshot.empty) {
+      for (const initBanner of INITIAL_PROMOTIONAL_BANNERS) {
+        if (initBanner.id !== banner.id) {
+          await setDoc(doc(db, 'promotional_banners', initBanner.id), cleanData(initBanner));
+        }
+      }
+    }
     await setDoc(doc(db, 'promotional_banners', banner.id), cleanData(banner));
     delete MEMORY_CACHE['promotional_banners'];
     localStorage.removeItem('onbudget_cache_promotional_banners');

@@ -743,24 +743,67 @@ export default function App() {
   };
 
   const handleAddPromotionalBanner = async (banner: PromotionalBanner) => {
-    setPromotionalBanners(prev => [...prev, banner]);
-    await addPromotionalBannerToFirestore(banner);
+    try {
+      await addPromotionalBannerToFirestore(banner);
+      setPromotionalBanners(prev => {
+        const exists = prev.some(b => b.id === banner.id);
+        if (exists) return prev.map(b => (b.id === banner.id ? banner : b));
+        return [...prev, banner];
+      });
+      // Refresh list from Firestore to guarantee state matches persisted database records
+      const freshBanners = await fetchPromotionalBannersFromFirestore();
+      if (freshBanners && freshBanners.length > 0) {
+        setPromotionalBanners(freshBanners);
+      }
+      toast.success('Promotional banner saved successfully!');
+    } catch (err: any) {
+      console.error('Failed to add promotional banner:', err);
+      toast.error('Failed to save promotional banner: ' + (err?.message || 'Database write error'));
+      throw err;
+    }
   };
 
   const handleUpdatePromotionalBanner = async (banner: PromotionalBanner) => {
-    setPromotionalBanners(prev => prev.map(b => (b.id === banner.id ? banner : b)));
-    await updatePromotionalBannerInFirestore(banner);
+    try {
+      await updatePromotionalBannerInFirestore(banner);
+      setPromotionalBanners(prev => prev.map(b => (b.id === banner.id ? banner : b)));
+      const freshBanners = await fetchPromotionalBannersFromFirestore();
+      if (freshBanners && freshBanners.length > 0) {
+        setPromotionalBanners(freshBanners);
+      }
+      toast.success('Promotional banner updated successfully!');
+    } catch (err: any) {
+      console.error('Failed to update promotional banner:', err);
+      toast.error('Failed to update promotional banner: ' + (err?.message || 'Database write error'));
+      throw err;
+    }
   };
 
   const handleDeletePromotionalBanner = async (bannerId: string) => {
-    setPromotionalBanners(prev => prev.filter(b => b.id !== bannerId));
-    await deletePromotionalBannerFromFirestore(bannerId);
+    try {
+      await deletePromotionalBannerFromFirestore(bannerId);
+      setPromotionalBanners(prev => prev.filter(b => b.id !== bannerId));
+      const freshBanners = await fetchPromotionalBannersFromFirestore();
+      if (freshBanners) {
+        setPromotionalBanners(freshBanners);
+      }
+      toast.success('Promotional banner deleted!');
+    } catch (err: any) {
+      console.error('Failed to delete promotional banner:', err);
+      toast.error('Failed to delete promotional banner: ' + (err?.message || 'Database operation error'));
+      throw err;
+    }
   };
 
   const handleReorderPromotionalBanners = async (banners: PromotionalBanner[]) => {
-    const updated = banners.map((b, idx) => ({ ...b, displayOrder: idx + 1 }));
-    setPromotionalBanners(updated);
-    await reorderPromotionalBannersInFirestore(updated);
+    try {
+      const updated = banners.map((b, idx) => ({ ...b, displayOrder: idx + 1 }));
+      setPromotionalBanners(updated);
+      await reorderPromotionalBannersInFirestore(updated);
+    } catch (err: any) {
+      console.error('Failed to reorder promotional banners:', err);
+      toast.error('Failed to reorder promotional banners');
+    }
   };
 
   const handleMarkNotificationsRead = async () => {

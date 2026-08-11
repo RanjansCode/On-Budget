@@ -2735,7 +2735,7 @@ interface PromotionalBannerFormModalProps {
   products: Product[];
   displayOrderDefault: number;
   onClose: () => void;
-  onSave: (banner: PromotionalBanner) => void;
+  onSave: (banner: PromotionalBanner) => Promise<void> | void;
 }
 
 function PromotionalBannerFormModal({
@@ -2761,6 +2761,10 @@ function PromotionalBannerFormModal({
   const [startAt, setStartAt] = useState(banner?.startAt || '');
   const [endAt, setEndAt] = useState(banner?.endAt || '');
 
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [uploadProgressText, setUploadProgressText] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const presetBanners = [
     'https://images.unsplash.com/photo-1593784991095-a205069470b6?w=1200&auto=format&fit=crop&q=80',
     'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=1200&auto=format&fit=crop&q=80',
@@ -2768,24 +2772,35 @@ function PromotionalBannerFormModal({
     'https://images.unsplash.com/photo-1526738549149-8e07eca6c147?w=1200&auto=format&fit=crop&q=80',
   ];
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      alert('File size exceeds 5MB limit. Please choose a smaller image.');
+    if (file.size > 10 * 1024 * 1024) {
+      alert('File size exceeds 10MB limit. Please choose a smaller image.');
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') {
-        setImageUrl(reader.result);
-      }
-    };
-    reader.readAsDataURL(file);
+
+    setIsUploadingImage(true);
+    setUploadProgressText('Uploading image to Firebase Storage...');
+
+    try {
+      const downloadUrl = await uploadFileToStorage(file, 'banner-images');
+      setImageUrl(downloadUrl);
+      setUploadProgressText('');
+    } catch (err: any) {
+      console.error('Banner image upload error:', err);
+      alert(`Image upload failed: ${err?.message || 'Failed to upload image to storage'}. You can also paste an image URL directly.`);
+      setUploadProgressText('');
+    } finally {
+      setIsUploadingImage(false);
+      e.target.value = '';
+    }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+
     if (!name.trim()) {
       alert('Please enter a Banner Internal Name.');
       return;
@@ -2794,22 +2809,35 @@ function PromotionalBannerFormModal({
       alert('Please provide a Banner Image URL or upload an image.');
       return;
     }
+    if (isUploadingImage) {
+      alert('Please wait until image upload completes.');
+      return;
+    }
 
-    onSave({
-      id,
-      name: name.trim(),
-      imageUrl: imageUrl.trim(),
-      title: title.trim(),
-      subtitle: subtitle.trim(),
-      buttonText: buttonText.trim(),
-      destinationUrl: destinationUrl.trim(),
-      displayOrder: Number(displayOrder) || 1,
-      isActive,
-      startAt,
-      endAt,
-      createdAt: banner?.createdAt || new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    });
+    setIsSubmitting(true);
+    try {
+      await onSave({
+        id,
+        name: name.trim(),
+        imageUrl: imageUrl.trim(),
+        title: title.trim(),
+        subtitle: subtitle.trim(),
+        buttonText: buttonText.trim(),
+        destinationUrl: destinationUrl.trim(),
+        displayOrder: Number(displayOrder) || 1,
+        isActive,
+        startAt,
+        endAt,
+        createdAt: banner?.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+      onClose();
+    } catch (err: any) {
+      console.error('Failed to save promotional banner:', err);
+      alert(`Failed to save promotional banner: ${err?.message || String(err)}`);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -2881,17 +2909,29 @@ function PromotionalBannerFormModal({
               <label className="block text-[11px] font-bold text-neutral-300">
                 Banner Image * (Landscape Aspect Ratio Recommended)
               </label>
-              <label className="text-[10px] bg-neutral-800 hover:bg-neutral-700 text-neutral-200 px-2.5 py-1 rounded-lg border border-neutral-700 cursor-pointer inline-flex items-center gap-1 font-bold">
-                <Upload className="w-3 h-3" />
-                <span>Upload Local File</span>
+              <label className={`text-[10px] px-2.5 py-1 rounded-lg border flex items-center gap-1 font-bold ${
+                isUploadingImage
+                  ? 'bg-neutral-900 text-neutral-500 border-neutral-800 cursor-not-allowed'
+                  : 'bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border-neutral-700 cursor-pointer'
+              }`}>
+                {isUploadingImage ? <RefreshCw className="w-3 h-3 animate-spin text-emerald-400" /> : <Upload className="w-3 h-3" />}
+                <span>{isUploadingImage ? 'Uploading...' : 'Upload Local File'}</span>
                 <input
                   type="file"
                   accept="image/*"
+                  disabled={isUploadingImage}
                   onChange={handleFileUpload}
                   className="hidden"
                 />
               </label>
             </div>
+
+            {uploadProgressText && (
+              <p className="text-[11px] text-emerald-400 flex items-center gap-1.5 animate-pulse font-medium">
+                <RefreshCw className="w-3 h-3 animate-spin" />
+                {uploadProgressText}
+              </p>
+            )}
 
             <input
               type="url"
@@ -3075,16 +3115,25 @@ function PromotionalBannerFormModal({
           <div className="pt-3 border-t border-neutral-800 flex justify-end gap-2">
             <button
               type="button"
+              disabled={isSubmitting || isUploadingImage}
               onClick={onClose}
-              className="bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-semibold px-4 py-2.5 rounded-xl transition-colors"
+              className="bg-neutral-800 hover:bg-neutral-700 disabled:opacity-50 text-neutral-300 text-xs font-semibold px-4 py-2.5 rounded-xl transition-colors cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold px-6 py-2.5 rounded-xl shadow-md transition-colors"
+              disabled={isSubmitting || isUploadingImage}
+              className="bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white text-xs font-bold px-6 py-2.5 rounded-xl shadow-md transition-colors flex items-center gap-2 cursor-pointer"
             >
-              Save Banner
+              {isSubmitting || isUploadingImage ? (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  <span>{isSubmitting ? 'Saving Banner...' : 'Uploading Image...'}</span>
+                </>
+              ) : (
+                <span>Save Banner</span>
+              )}
             </button>
           </div>
         </form>
