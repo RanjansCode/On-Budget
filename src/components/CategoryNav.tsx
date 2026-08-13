@@ -135,16 +135,23 @@ export default function CategoryNav({
       >
         {categories.map((cat) => {
           const active = isCategoryActive(cat);
+          const catUrl = cat.id === 'all-categories' ? '/' : `/category/${cat.id}`;
 
           return (
-            <button
+            <a
               key={cat.id}
-              onClick={() => handleCategoryClick(cat)}
-              aria-pressed={active}
+              href={catUrl}
+              onClick={(e) => {
+                if (!e.ctrlKey && !e.metaKey && !e.shiftKey) {
+                  e.preventDefault();
+                  handleCategoryClick(cat);
+                }
+              }}
+              aria-current={active ? 'page' : undefined}
               className={`group/item flex flex-col items-center justify-center min-w-[68px] sm:min-w-[84px] md:min-w-[92px] py-1 px-1.5 sm:px-2 rounded-xl transition-all duration-200 cursor-pointer shrink-0 border border-transparent focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF5A00] ${
                 active
                   ? 'text-[#FF5A00]'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  : 'text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               {/* Icon Container
@@ -158,7 +165,7 @@ export default function CategoryNav({
                 } ${
                   active
                     ? 'bg-[#FF5A00]/10 text-[#FF5A00] scale-105'
-                    : 'bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-400 group-hover/item:bg-slate-100 dark:group-hover/item:bg-slate-800 group-hover/item:text-slate-900 dark:group-hover/item:text-white'
+                    : 'bg-slate-50 dark:bg-slate-800/60 text-slate-700 dark:text-slate-300 group-hover/item:bg-slate-100 dark:group-hover/item:bg-slate-800 group-hover/item:text-slate-900 dark:group-hover/item:text-white'
                 }`}
               >
                 <CategoryIcon
@@ -173,7 +180,7 @@ export default function CategoryNav({
                 className={`text-[10px] sm:text-[12px] md:text-[13px] text-center whitespace-nowrap tracking-tight leading-tight max-w-[110px] sm:max-w-[130px] truncate transition-all duration-200 ${
                   active
                     ? 'font-extrabold text-[#FF5A00]'
-                    : 'font-medium text-slate-700 dark:text-slate-300 group-hover/item:text-slate-900 dark:group-hover/item:text-white'
+                    : 'font-medium text-slate-800 dark:text-slate-200 group-hover/item:text-slate-900 dark:group-hover/item:text-white'
                 }`}
               >
                 {cat.name}
@@ -187,7 +194,7 @@ export default function CategoryNav({
                     : 'w-0 bg-transparent'
                 }`}
               />
-            </button>
+            </a>
           );
         })}
       </div>
