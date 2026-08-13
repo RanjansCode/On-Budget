@@ -8,6 +8,7 @@ import { getProductBestPrice } from '../utils/retailerOffers';
 import ImageSkeleton from './ImageSkeleton';
 import ProductShareButton from './ProductShareButton';
 import { getProductMainImage, getProductImages } from '../utils/imageUtils';
+import PlatformLogo from './PlatformLogo';
 
 interface ProductCardProps {
   key?: string;
@@ -184,8 +185,9 @@ function ProductCard({
                 )}
               </div>
               {retailerName ? (
-                <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400">
-                  Best price on {retailerName}
+                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                  <PlatformLogo platformName={retailerName} className="h-3.5 w-auto max-w-[50px] object-contain shrink-0" />
+                  <span>Best price on {retailerName}</span>
                 </span>
               ) : activeCurrencyCode !== 'INR' ? (
                 <span className="text-[9px] text-slate-400 dark:text-slate-500 font-medium">

@@ -95,5 +95,11 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isAdmin();
     }
+
+    // Retailers: anyone can read active/master retailers, admin can manage/write
+    match /retailers/{retailerId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
   }
 }

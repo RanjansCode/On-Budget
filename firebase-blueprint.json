@@ -99,6 +99,16 @@
         "createdAt": "string",
         "updatedAt": "string"
       }
+    },
+    "retailers": {
+      "schema": {
+        "id": "string",
+        "name": "string",
+        "logoUrl": "string",
+        "status": "string",
+        "createdAt": "string",
+        "updatedAt": "string"
+      }
     }
   }
 }

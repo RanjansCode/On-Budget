@@ -13,13 +13,14 @@ import {
   ShieldAlert, LayoutDashboard, ShoppingBag, FolderOpen, Film, Plus, Edit2, Trash2,
   TrendingUp, MousePointer, Share2, DollarSign, Upload, Info, Check, Eye, HelpCircle, Save, X,
   SlidersHorizontal, Search, Sparkles, Image, ArrowUp, ArrowDown, Calendar, Power, Megaphone,
-  RefreshCw, AlertCircle
+  RefreshCw, AlertCircle, Store
 } from 'lucide-react';
-import { Product, Category, Reel, AnalyticsData, PurchaseLink, PromotionalBanner, RetailerOffer } from '../types';
+import { Product, Category, Reel, AnalyticsData, PurchaseLink, PromotionalBanner, RetailerOffer, Retailer } from '../types';
 import { validateSocialUrl, validatePurchaseUrl, formatUrl } from '../utils/validation';
 import { getPurchaseLinks } from '../utils/purchaseLinks';
 import { getNormalizedRetailerOffers, calculateDiscountPercent } from '../utils/retailerOffers';
 import PlatformLogo from './PlatformLogo';
+import RetailerLogo from './RetailerLogo';
 import { calculateDiscount } from '../utils/discount';
 import AdminLaunchMode from './AdminLaunchMode';
 import { LaunchSettings } from '../firebase/firestore';
@@ -36,6 +37,7 @@ interface AdminPanelProps {
   categories: Category[];
   reels: Reel[];
   promotionalBanners: PromotionalBanner[];
+  retailers?: Retailer[];
   analytics: AnalyticsData;
   isLoading?: boolean;
   onAddProduct: (product: Product) => void;
@@ -51,6 +53,9 @@ interface AdminPanelProps {
   onUpdatePromotionalBanner: (banner: PromotionalBanner) => void;
   onDeletePromotionalBanner: (bannerId: string) => void;
   onReorderPromotionalBanners: (banners: PromotionalBanner[]) => void;
+  onAddRetailer?: (retailer: Retailer) => void;
+  onUpdateRetailer?: (retailer: Retailer) => void;
+  onDeleteRetailer?: (retailerId: string) => void;
   launchSettings: LaunchSettings;
   onSaveLaunchSettings: (settings: LaunchSettings) => Promise<void>;
 }
@@ -60,6 +65,7 @@ export default function AdminPanel({
   categories,
   reels,
   promotionalBanners = [],
+  retailers = [],
   analytics,
   onAddProduct,
   onUpdateProduct,
@@ -74,11 +80,14 @@ export default function AdminPanel({
   onUpdatePromotionalBanner,
   onDeletePromotionalBanner,
   onReorderPromotionalBanners,
+  onAddRetailer,
+  onUpdateRetailer,
+  onDeleteRetailer,
   launchSettings,
   onSaveLaunchSettings,
   isLoading = false,
 }: AdminPanelProps) {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'products' | 'categories' | 'banners' | 'launch' | 'search'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'products' | 'categories' | 'banners' | 'launch' | 'search' | 'retailers'>('dashboard');
   const [searchAnalyticsData, setSearchAnalyticsData] = useState<any>(null);
   const [loadingSearchAnalytics, setLoadingSearchAnalytics] = useState(false);
 
@@ -102,6 +111,10 @@ export default function AdminPanel({
   const [editingBanner, setEditingBanner] = useState<PromotionalBanner | null>(null);
   const [previewingBanner, setPreviewingBanner] = useState<PromotionalBanner | null>(null);
   const [deleteConfirmBannerId, setDeleteConfirmBannerId] = useState<string | null>(null);
+
+  const [retailerFormOpen, setRetailerFormOpen] = useState(false);
+  const [editingRetailer, setEditingRetailer] = useState<Retailer | null>(null);
+  const [deleteConfirmRetailerId, setDeleteConfirmRetailerId] = useState<string | null>(null);
 
   // Image Presets for premium catalog creation
   const imagePresets = [
@@ -232,6 +245,17 @@ export default function AdminPanel({
         >
           <Search className="w-4 h-4" />
           Search Analytics
+        </button>
+        <button
+          onClick={() => setActiveTab('retailers')}
+          className={`flex items-center gap-2 text-xs font-bold pb-3 px-4 border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+            activeTab === 'retailers'
+              ? 'border-emerald-500 text-emerald-400'
+              : 'border-transparent text-neutral-400 hover:text-white'
+          }`}
+        >
+          <Store className="w-4 h-4" />
+          Retailers ({retailers.length})
         </button>
       </div>
 
@@ -983,6 +1007,75 @@ export default function AdminPanel({
             </div>
           </div>
         )}
+
+        {/* TAB 7: MASTER RETAILERS MANAGER */}
+        {activeTab === 'retailers' && (
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-neutral-900 border border-neutral-800 p-5 rounded-2xl">
+              <div>
+                <h3 className="text-base font-extrabold text-white font-display flex items-center gap-2">
+                  <Store className="w-5 h-5 text-[#FF5A00]" />
+                  Master Retailer Platform Registry ({retailers.length})
+                </h3>
+                <p className="text-xs text-neutral-400 mt-1">
+                  Manage master retailer brand profiles, logos, and platform statuses. Changes sync automatically across all product offer deals.
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setEditingRetailer(null);
+                  setRetailerFormOpen(true);
+                }}
+                className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer shrink-0"
+              >
+                <Plus className="w-4 h-4" /> Add Master Retailer
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {retailers.map(r => (
+                <div key={r.id} className="bg-neutral-900 border border-neutral-800 rounded-2xl p-4 space-y-3 relative group hover:border-neutral-700 transition-all shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <span className={`text-[9px] font-extrabold uppercase px-2.5 py-0.5 rounded-full ${
+                      r.status === 'active' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-neutral-800 text-neutral-400'
+                    }`}>
+                      {r.status}
+                    </span>
+                    <div className="flex items-center gap-1 opacity-90 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => {
+                          setEditingRetailer(r);
+                          setRetailerFormOpen(true);
+                        }}
+                        className="p-1.5 text-neutral-400 hover:text-white bg-neutral-800 hover:bg-neutral-700 rounded-lg transition-colors cursor-pointer"
+                        title="Edit Retailer"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => setDeleteConfirmRetailerId(r.id)}
+                        className="p-1.5 text-red-400 hover:text-red-300 bg-neutral-800 hover:bg-red-950/40 rounded-lg transition-colors cursor-pointer"
+                        title="Delete Retailer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 pt-1">
+                    <div className="w-12 h-12 bg-neutral-950 border border-neutral-800 rounded-xl p-2 flex items-center justify-center shrink-0">
+                      <RetailerLogo retailerName={r.name} logoUrl={r.logoUrl} className="h-6 w-auto max-w-full" />
+                    </div>
+                    <div className="min-w-0">
+                      <h4 className="text-sm font-bold text-white truncate font-display">{r.name}</h4>
+                      <p className="text-[10px] text-neutral-500 font-mono truncate">ID: {r.id}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* MODAL: PRODUCT FORM */}
@@ -1089,6 +1182,67 @@ export default function AdminPanel({
                   className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl cursor-pointer shadow-md"
                 >
                   Delete Banner
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* MODAL: RETAILER FORM */}
+      <AnimatePresence>
+        {retailerFormOpen && (
+          <RetailerFormModal
+            retailer={editingRetailer}
+            onClose={() => setRetailerFormOpen(false)}
+            onSave={(r) => {
+              if (editingRetailer) {
+                onUpdateRetailer?.(r);
+              } else {
+                onAddRetailer?.(r);
+              }
+              setRetailerFormOpen(false);
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* MODAL: DELETE RETAILER CONFIRMATION */}
+      <AnimatePresence>
+        {deleteConfirmRetailerId && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-sm bg-neutral-900 border border-neutral-800 rounded-2xl p-6 text-center space-y-4 shadow-2xl"
+            >
+              <div className="w-12 h-12 bg-red-950/50 text-red-400 border border-red-900/60 rounded-full flex items-center justify-center mx-auto">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white">Delete Master Retailer?</h3>
+                <p className="text-xs text-neutral-400 mt-1">
+                  Are you sure you want to remove this master retailer? This action cannot be undone.
+                </p>
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button
+                  onClick={() => setDeleteConfirmRetailerId(null)}
+                  className="flex-1 px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-bold rounded-xl cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    if (deleteConfirmRetailerId) {
+                      onDeleteRetailer?.(deleteConfirmRetailerId);
+                      setDeleteConfirmRetailerId(null);
+                    }
+                  }}
+                  className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl cursor-pointer shadow-md"
+                >
+                  Delete Retailer
                 </button>
               </div>
             </motion.div>
@@ -1967,14 +2121,15 @@ function ProductFormModal({ product, categories, existingProducts = [], onClose,
                     key={preset}
                     type="button"
                     onClick={() => handleAddRetailerOffer(preset)}
-                    className={`px-2.5 py-1 text-[10px] font-bold rounded-lg border transition-all cursor-pointer shrink-0 flex items-center gap-1 ${
+                    className={`px-2.5 py-1 text-[10px] font-bold rounded-lg border transition-all cursor-pointer shrink-0 flex items-center gap-1.5 ${
                       exists
                         ? 'bg-neutral-800/80 text-neutral-400 border-neutral-700/80 opacity-70'
                         : 'bg-neutral-900 hover:bg-neutral-800 text-neutral-200 border-neutral-700/60 hover:border-emerald-500/50'
                     }`}
                   >
-                    <Plus className="w-2.5 h-2.5 text-emerald-400" />
+                    <PlatformLogo platformName={preset} className="h-3.5 w-auto max-w-[50px] object-contain shrink-0" />
                     <span>{preset}</span>
+                    <Plus className="w-2.5 h-2.5 text-emerald-400 shrink-0" />
                   </button>
                 );
               })}
@@ -2000,7 +2155,7 @@ function ProductFormModal({ product, categories, existingProducts = [], onClose,
                     {/* Header Row: Retailer Icon/Name, Active Toggle, Order Actions, Delete */}
                     <div className="flex items-center justify-between gap-2 border-b border-neutral-900 pb-2">
                       <div className="flex items-center gap-2">
-                        <PlatformLogo platformName={offer.retailerName || 'Offer'} className="w-4 h-4 shrink-0" />
+                        <PlatformLogo platformName={offer.retailerName || 'Offer'} className="h-5 w-auto max-w-[75px] object-contain shrink-0" />
                         <span className="text-xs font-extrabold text-white">
                           {offer.retailerName || `Retailer #${idx + 1}`}
                         </span>
@@ -3694,6 +3849,178 @@ function PromotionalBannerPreviewModal({ banner, onClose }: PromotionalBannerPre
             Close Preview
           </button>
         </div>
+      </motion.div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------
+// COMPONENT: RetailerFormModal
+// ---------------------------------------------------------
+interface RetailerFormModalProps {
+  retailer: Retailer | null;
+  onClose: () => void;
+  onSave: (retailer: Retailer) => void;
+}
+
+function RetailerFormModal({ retailer, onClose, onSave }: RetailerFormModalProps) {
+  const [id, setId] = useState(retailer?.id || '');
+  const [name, setName] = useState(retailer?.name || '');
+  const [logoUrl, setLogoUrl] = useState(retailer?.logoUrl || '');
+  const [status, setStatus] = useState<'active' | 'disabled'>(retailer?.status || 'active');
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  const handleNameChange = (val: string) => {
+    setName(val);
+    if (!retailer) {
+      const slug = val.toLowerCase().replace(/[^a-z0-9]/g, '');
+      setId(slug);
+      if (!logoUrl || logoUrl.startsWith('/assets/retailers/')) {
+        setLogoUrl(`/assets/retailers/${slug}.svg`);
+      }
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setUploadError('Please select a valid image file');
+      return;
+    }
+    setIsUploading(true);
+    setUploadError(null);
+    try {
+      const url = await uploadFileToStorage(file, 'retailer-logos');
+      setLogoUrl(url);
+    } catch (err: any) {
+      setUploadError('Failed to upload logo: ' + (err?.message || 'Storage error'));
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+    const finalId = id.trim().toLowerCase().replace(/[^a-z0-9]/g, '') || `ret-${Date.now()}`;
+    onSave({
+      id: finalId,
+      name: name.trim(),
+      logoUrl: logoUrl.trim() || '/assets/retailers/default.svg',
+      status,
+      updatedAt: new Date().toISOString(),
+      createdAt: retailer?.createdAt || new Date().toISOString(),
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="w-full max-w-md bg-neutral-900 border border-neutral-800 rounded-3xl shadow-2xl p-6 text-neutral-300 space-y-4"
+      >
+        <div className="flex justify-between items-center pb-2 border-b border-neutral-800">
+          <div>
+            <h3 className="text-sm font-bold text-white uppercase tracking-wider font-display flex items-center gap-2">
+              <Store className="w-4 h-4 text-[#FF5A00]" />
+              {retailer ? 'Edit Master Retailer' : 'Add New Master Retailer'}
+            </h3>
+            <p className="text-xs text-neutral-400">Configure brand profile & official logo asset.</p>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-xl text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors cursor-pointer">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+          <div>
+            <label className="block text-neutral-400 font-semibold mb-1">Retailer Display Name *</label>
+            <input
+              type="text"
+              required
+              placeholder="e.g. Reliance Digital"
+              value={name}
+              onChange={(e) => handleNameChange(e.target.value)}
+              className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3 py-2 text-white placeholder-neutral-600 focus:outline-none focus:border-[#FF5A00]"
+            />
+          </div>
+
+          <div>
+            <label className="block text-neutral-400 font-semibold mb-1">Retailer ID / Slug (Unique Key)</label>
+            <input
+              type="text"
+              required
+              disabled={!!retailer}
+              placeholder="e.g. reliancedigital"
+              value={id}
+              onChange={(e) => setId(e.target.value.toLowerCase().replace(/[^a-z0-9]/g, ''))}
+              className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3 py-2 text-white placeholder-neutral-600 focus:outline-none focus:border-[#FF5A00] font-mono text-[11px] disabled:opacity-50"
+            />
+          </div>
+
+          <div>
+            <label className="block text-neutral-400 font-semibold mb-1">Retailer Logo Asset / Image URL</label>
+            <div className="space-y-2">
+              <input
+                type="text"
+                placeholder="/assets/retailers/reliancedigital.svg or Firebase Storage URL"
+                value={logoUrl}
+                onChange={(e) => setLogoUrl(e.target.value)}
+                className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3 py-2 text-white placeholder-neutral-600 focus:outline-none focus:border-[#FF5A00]"
+              />
+
+              <div className="flex items-center gap-3">
+                <label className="bg-neutral-800 hover:bg-neutral-700 text-neutral-200 px-3 py-1.5 rounded-xl cursor-pointer text-[11px] font-bold flex items-center gap-1.5 transition-colors">
+                  <Upload className="w-3.5 h-3.5 text-[#FF5A00]" />
+                  Upload Custom Logo
+                  <input type="file" accept="image/*" onChange={handleFileUpload} className="hidden" />
+                </label>
+                {isUploading && <span className="text-[11px] text-amber-400 font-semibold">Uploading...</span>}
+              </div>
+              {uploadError && <p className="text-[11px] text-red-400">{uploadError}</p>}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-neutral-400 font-semibold mb-1">Live Logo Preview</label>
+            <div className="w-full h-16 bg-neutral-950 border border-neutral-800 rounded-xl p-3 flex items-center justify-center">
+              <RetailerLogo retailerName={name || 'Preview'} logoUrl={logoUrl} className="h-8 w-auto max-w-full" />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-neutral-400 font-semibold mb-1">Platform Status</label>
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value as 'active' | 'disabled')}
+              className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-[#FF5A00]"
+            >
+              <option value="active">Active (Visible in Deal Picks)</option>
+              <option value="disabled">Disabled (Hidden)</option>
+            </select>
+          </div>
+
+          <div className="pt-2 border-t border-neutral-800 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-semibold px-4 py-2.5 rounded-xl cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isUploading || !name.trim()}
+              className="bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white text-xs font-bold px-6 py-2.5 rounded-xl shadow-md transition-colors cursor-pointer"
+            >
+              Save Retailer
+            </button>
+          </div>
+        </form>
       </motion.div>
     </div>
   );

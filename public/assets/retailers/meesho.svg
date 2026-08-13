@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 32" fill="none">
+  <rect width="28" height="28" x="2" y="2" rx="7" fill="#F43397"/>
+  <path d="M9 22V10l3.8 4.8L16.6 10v12h-2.5v-7.2l-3.3 4.2h-.4L7.1 14.8V22H9z" fill="#FFFFFF"/>
+  <text x="36" y="21" fill="#F43397" font-family="system-ui, -apple-system, sans-serif" font-weight="800" font-size="16" letter-spacing="-0.5">meesho</text>
+</svg>

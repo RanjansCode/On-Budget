@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 110 32" fill="none">
+  <path d="M4 23.5L10 8.5l5.5 10.5L21 8.5l6 15" stroke="#FF3F6C" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M15.5 19L21 8.5" stroke="#F16522" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="32" y="22" fill="#282C3F" font-family="system-ui, -apple-system, sans-serif" font-weight="800" font-size="16" letter-spacing="-0.3">Myntra</text>
+</svg>

@@ -14,9 +14,9 @@ import {
 
 import { db } from './config';
 import { auth } from './auth';
-import { Product, Category, Reel, NotificationItem, ADMIN_EMAILS, UserProfile, AnalyticsData, PromotionalBanner } from '../types';
+import { Product, Category, Reel, NotificationItem, ADMIN_EMAILS, UserProfile, AnalyticsData, PromotionalBanner, Retailer } from '../types';
 import { User } from 'firebase/auth';
-import { INITIAL_PRODUCTS, INITIAL_CATEGORIES, INITIAL_REELS, INITIAL_PROMOTIONAL_BANNERS } from '../data';
+import { INITIAL_PRODUCTS, INITIAL_CATEGORIES, INITIAL_REELS, INITIAL_PROMOTIONAL_BANNERS, INITIAL_RETAILERS } from '../data';
 
 // --- FIRESTORE ERROR HANDLING ---
 export enum OperationType {
@@ -170,6 +170,15 @@ export async function seedDatabaseIfEmpty() {
           await setDoc(doc(db, 'promotional_banners', banner.id), cleanData(banner));
         } catch (err) {
           handleFirestoreError(err, OperationType.WRITE, `promotional_banners/${banner.id}`);
+        }
+      }
+
+      // 6. Seed Master Retailers
+      for (const retailer of INITIAL_RETAILERS) {
+        try {
+          await setDoc(doc(db, 'retailers', retailer.id), cleanData(retailer));
+        } catch (err) {
+          handleFirestoreError(err, OperationType.WRITE, `retailers/${retailer.id}`);
         }
       }
 
@@ -759,6 +768,70 @@ export async function reorderPromotionalBannersInFirestore(banners: PromotionalB
     localStorage.removeItem('onbudget_cache_promotional_banners');
   } catch (err) {
     handleFirestoreError(err, OperationType.UPDATE, 'promotional_banners');
+  }
+}
+
+// --- RETAILERS API ---
+export async function fetchRetailersFromFirestore(): Promise<Retailer[]> {
+  const cached = getCachedData<Retailer[]>('retailers');
+  if (cached && cached.length > 0) return cached;
+
+  try {
+    const snapshot = await getDocs(collection(db, 'retailers'));
+    const items: Retailer[] = [];
+    snapshot.forEach((docSnap) => {
+      items.push(docSnap.data() as Retailer);
+    });
+
+    if (items.length > 0) {
+      setCachedData('retailers', items);
+      return items;
+    }
+    
+    // If empty in Firestore, return defaults
+    return INITIAL_RETAILERS;
+  } catch (err) {
+    console.warn('Firestore fetch retailers fallback to initial retailers:', err);
+    return INITIAL_RETAILERS;
+  }
+}
+
+export async function addRetailerToFirestore(retailer: Retailer) {
+  try {
+    // If collection is empty in Firestore, seed defaults first so all preset retailers persist
+    const snapshot = await getDocs(collection(db, 'retailers'));
+    if (snapshot.empty) {
+      for (const initRet of INITIAL_RETAILERS) {
+        if (initRet.id !== retailer.id) {
+          await setDoc(doc(db, 'retailers', initRet.id), cleanData(initRet));
+        }
+      }
+    }
+    await setDoc(doc(db, 'retailers', retailer.id), cleanData(retailer));
+    delete MEMORY_CACHE['retailers'];
+    localStorage.removeItem('onbudget_cache_retailers');
+  } catch (err) {
+    handleFirestoreError(err, OperationType.CREATE, `retailers/${retailer.id}`);
+  }
+}
+
+export async function updateRetailerInFirestore(retailer: Retailer) {
+  try {
+    await setDoc(doc(db, 'retailers', retailer.id), cleanData(retailer));
+    delete MEMORY_CACHE['retailers'];
+    localStorage.removeItem('onbudget_cache_retailers');
+  } catch (err) {
+    handleFirestoreError(err, OperationType.UPDATE, `retailers/${retailer.id}`);
+  }
+}
+
+export async function deleteRetailerFromFirestore(retailerId: string) {
+  try {
+    await deleteDoc(doc(db, 'retailers', retailerId));
+    delete MEMORY_CACHE['retailers'];
+    localStorage.removeItem('onbudget_cache_retailers');
+  } catch (err) {
+    handleFirestoreError(err, OperationType.DELETE, `retailers/${retailerId}`);
   }
 }
 

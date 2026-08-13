@@ -13,9 +13,20 @@ export interface PurchaseLink {
   url: string;
 }
 
+export interface Retailer {
+  id: string; // Slug/ID like "amazon", "meesho", "flipkart"
+  name: string; // Display Name like "Amazon", "Meesho"
+  logoUrl: string; // Asset path or storage/base64 URL
+  status: 'active' | 'disabled';
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface RetailerOffer {
   id: string;
+  retailerId?: string;
   retailerName: string;
+  retailerLogoUrl?: string;
   productUrl: string;
   originalPrice: number;
   offerPrice: number;

@@ -41,6 +41,10 @@ export {
   updatePromotionalBannerInFirestore,
   deletePromotionalBannerFromFirestore,
   reorderPromotionalBannersInFirestore,
+  fetchRetailersFromFirestore,
+  addRetailerToFirestore,
+  updateRetailerInFirestore,
+  deleteRetailerFromFirestore,
 } from '../firebase/firestore';
 
 export type { LaunchSettings } from '../firebase/firestore';

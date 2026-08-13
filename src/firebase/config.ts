@@ -55,15 +55,15 @@ const db = dbId ? getFirestore(app, dbId) : getFirestore(app);
 
 const auth = getAuth(app);
 
-// Initialize Firebase Storage with explicit bucket formatting and set reasonable retry limits (15s)
-// to prevent the SDK from retrying endlessly for 10 minutes when bucket is unreachable.
+// Initialize Firebase Storage with explicit bucket formatting and set reasonable retry limits (5s)
+// to prevent the SDK from retrying endlessly when bucket is unreachable.
 const rawBucket = firebaseConfig.storageBucket;
 const storageBucketUrl = rawBucket ? (rawBucket.includes('://') ? rawBucket : `gs://${rawBucket}`) : undefined;
 const storage = storageBucketUrl ? getStorage(app, storageBucketUrl) : getStorage(app);
 
-// Configure maximum retry timeouts on Storage instance (15 seconds)
-storage.maxUploadRetryTime = 15000;
-storage.maxOperationRetryTime = 15000;
+// Configure maximum retry timeouts on Storage instance (5 seconds)
+storage.maxUploadRetryTime = 5000;
+storage.maxOperationRetryTime = 5000;
 
 export { app, db, auth, storage };
 export default app;

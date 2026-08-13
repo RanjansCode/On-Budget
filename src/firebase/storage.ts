@@ -13,8 +13,21 @@ export interface UploadProgressCallback {
 }
 
 /**
+ * Converts a file/blob to a Base64 Data URL as a fail-safe fallback when cloud storage is unreachable.
+ */
+async function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = (err) => reject(err);
+    reader.readAsDataURL(file);
+  });
+}
+
+/**
  * Uploads a file to Firebase Storage under a designated directory/path.
  * Automatically optimizes/compresses images before uploading and reports real-time progress.
+ * If Firebase Storage is uninitialized or unreachable, seamlessly falls back to inline Base64 Data URL.
  */
 export async function uploadFileToStorage(
   file: File,
@@ -25,7 +38,7 @@ export async function uploadFileToStorage(
     throw new Error('No file selected for upload.');
   }
 
-  // 1. Optimize / compress large poster images automatically in the browser
+  // 1. Optimize / compress large images automatically in the browser
   onProgress?.(5, 'Optimizing image for upload...');
   let fileToUpload = file;
   try {
@@ -105,13 +118,24 @@ export async function uploadFileToStorage(
         try {
           onProgress?.(15, 'Retrying with fallback storage bucket endpoint...');
           const altStorage = getStorage(app, `gs://${altBucket}`);
-          altStorage.maxUploadRetryTime = 10000;
-          altStorage.maxOperationRetryTime = 10000;
+          altStorage.maxUploadRetryTime = 4000;
+          altStorage.maxOperationRetryTime = 4000;
           return await performUpload(altStorage);
         } catch (altErr) {
-          console.error('Fallback storage bucket upload failed:', altErr);
+          console.warn('Fallback storage bucket upload failed:', altErr);
         }
       }
+    }
+
+    // Fallback to compressed Data URL if cloud storage is unreachable/uninitialized
+    try {
+      console.warn('Firebase Storage upload unavailable/failed. Falling back to inline Data URL.');
+      onProgress?.(90, 'Storage bucket offline. Converting to optimized inline Data URL...');
+      const dataUrl = await fileToDataUrl(fileToUpload);
+      onProgress?.(100, 'Upload complete (via fallback data URL)!');
+      return dataUrl;
+    } catch (fallbackErr) {
+      console.error('Data URL fallback failed:', fallbackErr);
     }
 
     // Produce clean human-readable error

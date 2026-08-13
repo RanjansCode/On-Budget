@@ -3,7 +3,20 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Category, Product, Reel } from './types';
+import { Category, Product, Reel, Retailer } from './types';
+
+export const INITIAL_RETAILERS: Retailer[] = [
+  { id: 'amazon', name: 'Amazon', logoUrl: '/assets/retailers/amazon.svg', status: 'active', createdAt: new Date().toISOString() },
+  { id: 'meesho', name: 'Meesho', logoUrl: '/assets/retailers/meesho.svg', status: 'active', createdAt: new Date().toISOString() },
+  { id: 'flipkart', name: 'Flipkart', logoUrl: '/assets/retailers/flipkart.svg', status: 'active', createdAt: new Date().toISOString() },
+  { id: 'myntra', name: 'Myntra', logoUrl: '/assets/retailers/myntra.svg', status: 'active', createdAt: new Date().toISOString() },
+  { id: 'ajio', name: 'Ajio', logoUrl: '/assets/retailers/ajio.svg', status: 'active', createdAt: new Date().toISOString() },
+  { id: 'croma', name: 'Croma', logoUrl: '/assets/retailers/croma.svg', status: 'active', createdAt: new Date().toISOString() },
+  { id: 'reliancedigital', name: 'Reliance Digital', logoUrl: '/assets/retailers/reliancedigital.svg', status: 'active', createdAt: new Date().toISOString() },
+  { id: 'tatacliq', name: 'Tata CLiQ', logoUrl: '/assets/retailers/tatacliq.svg', status: 'active', createdAt: new Date().toISOString() },
+  { id: 'nykaa', name: 'Nykaa', logoUrl: '/assets/retailers/nykaa.svg', status: 'active', createdAt: new Date().toISOString() },
+  { id: 'snapdeal', name: 'Snapdeal', logoUrl: '/assets/retailers/snapdeal.svg', status: 'active', createdAt: new Date().toISOString() },
+];
 
 export const INITIAL_CATEGORIES: Category[] = [
   { id: 'all-categories', name: 'All Categories', icon: 'LayoutGrid' },

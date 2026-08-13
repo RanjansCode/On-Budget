@@ -8,9 +8,10 @@ import {
 } from 'lucide-react';
 
 import {
-  Product, Category, Reel, AnalyticsData, NotificationItem, ADMIN_EMAILS, PromotionalBanner
+  Product, Category, Reel, AnalyticsData, NotificationItem, ADMIN_EMAILS, PromotionalBanner, Retailer
 } from './types';
-import { INITIAL_PRODUCTS, INITIAL_CATEGORIES, INITIAL_REELS, INITIAL_PROMOTIONAL_BANNERS } from './data';
+import { INITIAL_PRODUCTS, INITIAL_CATEGORIES, INITIAL_REELS, INITIAL_PROMOTIONAL_BANNERS, INITIAL_RETAILERS } from './data';
+import { registerMasterRetailers } from './utils/retailerLogos';
 import {
   slugify,
   getProductSlug,
@@ -43,6 +44,10 @@ import {
   updatePromotionalBannerInFirestore,
   deletePromotionalBannerFromFirestore,
   reorderPromotionalBannersInFirestore,
+  fetchRetailersFromFirestore,
+  addRetailerToFirestore,
+  updateRetailerInFirestore,
+  deleteRetailerFromFirestore,
   fetchWishlistFromFirestore,
   saveWishlistToFirestore,
   fetchNotificationsFromFirestore,
@@ -74,6 +79,7 @@ const AdminPanel = React.lazy(() => import('./components/AdminPanel'));
 const LaunchModeOverlay = React.lazy(() => import('./components/LaunchModeOverlay'));
 const SocialLinksModal = React.lazy(() => import('./components/SocialLinksModal'));
 import ScrollToTop from './components/ScrollToTop';
+import PWAInstallPrompt from './components/PWAInstallPrompt';
 import { useToast } from './components/Toast';
 import { LocationCurrencyBanner } from './components/CurrencySwitcher';
 import { calculateDiscount } from './utils/discount';
@@ -104,6 +110,7 @@ export default function App() {
   const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);
   const [reels, setReels] = useState<Reel[]>(INITIAL_REELS);
   const [promotionalBanners, setPromotionalBanners] = useState<PromotionalBanner[]>(INITIAL_PROMOTIONAL_BANNERS);
+  const [retailers, setRetailers] = useState<Retailer[]>(INITIAL_RETAILERS);
   const [wishlist, setWishlist] = useState<string[]>([]);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [visibleCatalogCount, setVisibleCatalogCount] = useState(12);
@@ -226,17 +233,24 @@ export default function App() {
         // Seed initial collections if empty
         seedDatabaseIfEmpty().catch(() => {});
 
-        // Stage 1: Critical Explore Data (Products, Categories, Promotional Banners)
-        const [cloudProducts, cloudCategories, cloudBanners] = await Promise.all([
+        // Stage 1: Critical Explore Data (Products, Categories, Promotional Banners, Retailers)
+        const [cloudProducts, cloudCategories, cloudBanners, cloudRetailers] = await Promise.all([
           fetchProductsFromFirestore(),
           fetchCategoriesFromFirestore(),
-          fetchPromotionalBannersFromFirestore()
+          fetchPromotionalBannersFromFirestore(),
+          fetchRetailersFromFirestore()
         ]);
 
         if (isMounted) {
           if (cloudProducts && cloudProducts.length > 0) setProducts(cloudProducts);
           if (cloudCategories && cloudCategories.length > 0) setCategories(cloudCategories);
           if (cloudBanners && cloudBanners.length > 0) setPromotionalBanners(cloudBanners);
+          if (cloudRetailers && cloudRetailers.length > 0) {
+            setRetailers(cloudRetailers);
+            registerMasterRetailers(cloudRetailers);
+          } else {
+            registerMasterRetailers(INITIAL_RETAILERS);
+          }
         }
 
         // Stage 2: Non-critical background data (Notifications)
@@ -804,6 +818,52 @@ export default function App() {
     } catch (err: any) {
       console.error('Failed to reorder promotional banners:', err);
       toast.error('Failed to reorder promotional banners');
+    }
+  };
+
+  const handleAddRetailer = async (newRetailer: Retailer) => {
+    try {
+      setRetailers(prev => {
+        const updated = [...prev.filter(r => r.id !== newRetailer.id), newRetailer];
+        registerMasterRetailers(updated);
+        return updated;
+      });
+      await addRetailerToFirestore(newRetailer);
+      toast.success(`${newRetailer.name} retailer saved successfully!`);
+    } catch (err: any) {
+      console.error('Failed to save retailer:', err);
+      toast.error('Failed to save retailer: ' + (err?.message || 'Database error'));
+    }
+  };
+
+  const handleUpdateRetailer = async (updatedRetailer: Retailer) => {
+    try {
+      setRetailers(prev => {
+        const updated = prev.map(r => r.id === updatedRetailer.id ? updatedRetailer : r);
+        registerMasterRetailers(updated);
+        return updated;
+      });
+      await updateRetailerInFirestore(updatedRetailer);
+      toast.success(`${updatedRetailer.name} retailer updated successfully!`);
+    } catch (err: any) {
+      console.error('Failed to update retailer:', err);
+      toast.error('Failed to update retailer: ' + (err?.message || 'Database error'));
+    }
+  };
+
+  const handleDeleteRetailer = async (retailerId: string) => {
+    try {
+      const retailerToDelete = retailers.find(r => r.id === retailerId);
+      setRetailers(prev => {
+        const updated = prev.filter(r => r.id !== retailerId);
+        registerMasterRetailers(updated);
+        return updated;
+      });
+      await deleteRetailerFromFirestore(retailerId);
+      toast.success(`${retailerToDelete?.name || 'Retailer'} deleted successfully!`);
+    } catch (err: any) {
+      console.error('Failed to delete retailer:', err);
+      toast.error('Failed to delete retailer: ' + (err?.message || 'Database error'));
     }
   };
 
@@ -1516,6 +1576,7 @@ export default function App() {
                       categories={categories}
                       reels={reels}
                       promotionalBanners={promotionalBanners}
+                      retailers={retailers}
                       analytics={analytics}
                       isLoading={isTabLoading}
                       onAddProduct={handleAddProduct}
@@ -1531,6 +1592,9 @@ export default function App() {
                       onUpdatePromotionalBanner={handleUpdatePromotionalBanner}
                       onDeletePromotionalBanner={handleDeletePromotionalBanner}
                       onReorderPromotionalBanners={handleReorderPromotionalBanners}
+                      onAddRetailer={handleAddRetailer}
+                      onUpdateRetailer={handleUpdateRetailer}
+                      onDeleteRetailer={handleDeleteRetailer}
                       launchSettings={launchSettings}
                       onSaveLaunchSettings={handleSaveLaunchSettings}
                     />
@@ -1776,6 +1840,9 @@ export default function App() {
 
       {/* Floating Scroll to Top button */}
       <ScrollToTop />
+
+      {/* PWA Install & Update Manager */}
+      <PWAInstallPrompt />
 
     </div>
   );

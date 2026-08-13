@@ -1,4 +1,7 @@
 User-agent: *
 Allow: /
+Disallow: /admin
+Disallow: /admin/*
+Disallow: /login
 
 Sitemap: https://inourbudget.vercel.app/sitemap.xml
