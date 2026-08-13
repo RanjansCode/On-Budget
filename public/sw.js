@@ -1,9 +1,8 @@
-const CACHE_NAME = 'in-our-budget-v1';
+const CACHE_NAME = 'inourbudget-pwa-v3';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/manifest.webmanifest',
-  '/manifest.json',
   '/offline.html',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
