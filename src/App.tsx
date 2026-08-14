@@ -1817,7 +1817,7 @@ export default function App() {
 
       {/* Launch Mode Landing Overlay */}
       <AnimatePresence>
-        {launchSettings.enabled && !isAdmin && (
+        {launchSettings.enabled && (
           <React.Suspense fallback={null}>
             <LaunchModeOverlay
               settings={launchSettings}
