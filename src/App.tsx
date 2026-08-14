@@ -521,7 +521,7 @@ export default function App() {
         title: 'In Our Budget – Find the Best Products at the Right Price',
         description: 'Discover and compare products on In Our Budget. Find useful products, explore categories, save your favorites, and shop smarter within your budget.',
         canonicalUrl: 'https://inourbudget.vercel.app/',
-        imageUrl: `${domain}/src/assets/images/in_our_budget_logo_1784107312483.jpg`,
+        imageUrl: `${domain}/src/assets/images/square_logo.png`,
         ogType: 'website',
         jsonLdSchemas: [orgSchema, websiteSchema]
       });
