@@ -18,6 +18,7 @@ import { syncUserProfile } from '../firebase/firestore';
 import { updateProfile, User as FirebaseUser } from 'firebase/auth';
 import { useToast } from './Toast';
 import inOurBudgetLogo from '../assets/images/in_our_budget_logo_1784107312483.jpg';
+import squareLogo from '../assets/images/square_logo.png';
 import CurrencySwitcher from './CurrencySwitcher';
 import CategoryIcon from './CategoryIcon';
 import {
@@ -432,7 +433,7 @@ function Navbar({
                 <img
                   src={inOurBudgetLogo}
                   alt="In Our Budget Logo"
-                  className="h-7 sm:h-9 md:h-10 w-auto object-contain max-w-full hover:scale-102 transition-transform duration-200"
+                  className="h-14 object-contain"
                   referrerPolicy="no-referrer"
                 />
               </div>
@@ -1299,18 +1300,18 @@ function Navbar({
               <div className="space-y-6">
                 {/* Modal Header */}
                 <div className="text-center">
-                  <div className="inline-flex mb-3 bg-white p-1 rounded-2xl shadow-sm border border-slate-100">
+                  <div className="flex justify-center mb-4">
                     <img
                       src={inOurBudgetLogo}
                       alt="In Our Budget"
-                      className="w-14 h-14 object-contain"
+                      className="h-14 object-contain"
                       referrerPolicy="no-referrer"
                     />
                   </div>
                   <h3 className="text-lg font-bold text-slate-950 dark:text-white font-display">
                     {authMode === 'signin' ? 'Welcome back' : 'Create your account'}
                   </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                     Save your wishlist, follow dynamic pricing, and submit real reviews.
                   </p>
                 </div>

@@ -1,5 +1,5 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
+import { initializeFirestore, getFirestore, Firestore } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { getStorage } from 'firebase/storage';
 import appletConfig from '../../firebase-applet-config.json';
@@ -51,7 +51,20 @@ const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
 // Support custom/named database ID from applet config
 const dbId = getEnvVar('VITE_FIREBASE_DATABASE_ID') || appletConfig.firestoreDatabaseId;
-const db = dbId ? getFirestore(app, dbId) : getFirestore(app);
+let db: Firestore;
+try {
+  db = initializeFirestore(
+    app,
+    {
+      experimentalAutoDetectLongPolling: true,
+      ignoreUndefinedProperties: true,
+    },
+    dbId || undefined
+  );
+} catch (e) {
+  // If Firestore is already initialized on this app instance
+  db = dbId ? getFirestore(app, dbId) : getFirestore(app);
+}
 
 const auth = getAuth(app);
 
