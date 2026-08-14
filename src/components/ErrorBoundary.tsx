@@ -32,18 +32,18 @@ export class ErrorBoundary extends Component<Props, State> {
   public override render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-slate-900 text-slate-100 flex items-center justify-center p-4">
-          <div className="max-w-md w-full bg-slate-800 border border-slate-700 rounded-3xl p-6 text-center shadow-xl space-y-4">
+        <div className="min-h-screen bg-white text-slate-100 flex items-center justify-center p-4">
+          <div className="max-w-md w-full bg-white border border-slate-200 rounded-3xl p-6 text-center shadow-xl space-y-4">
             <div className="w-12 h-12 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-2xl flex items-center justify-center mx-auto">
               <AlertCircle className="w-6 h-6" />
             </div>
-            <h2 className="text-lg font-black text-white font-display">Something went wrong</h2>
-            <p className="text-xs text-slate-300 leading-relaxed">
+            <h2 className="text-lg font-black text-black font-display">Something went wrong</h2>
+            <p className="text-xs text-[#040506] leading-relaxed">
               We encountered a temporary rendering issue. Please refresh the page to restore the catalog.
             </p>
             <button
               onClick={this.handleReset}
-              className="w-full py-3 px-4 bg-[#FF5A00] hover:bg-[#E04F00] text-white font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 shadow-md shadow-[#FF5A00]/20"
+              className="w-full py-3 px-4 bg-[#FF5A00] hover:bg-[#E04F00] text-black font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 shadow-md shadow-[#FF5A00]/20"
             >
               <RefreshCw className="w-4 h-4" />
               Reload Page

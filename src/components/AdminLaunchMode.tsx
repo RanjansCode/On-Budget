@@ -7,6 +7,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Save, Clock, AlertTriangle, ShieldCheck, RefreshCw, Eye } from 'lucide-react';
 import { LaunchSettings } from '../firebase/firestore';
+import lunchLogo from '../assets/images/lunch_logo.png';
 
 interface AdminLaunchModeProps {
   launchSettings: LaunchSettings;
@@ -32,6 +33,7 @@ export default function AdminLaunchMode({
   const [launchDate, setLaunchDate] = useState(launchSettings.launchDate || '2026-08-01');
   const [launchTime, setLaunchTime] = useState(launchSettings.launchTime || '12:00');
   const [timezone, setTimezone] = useState(launchSettings.timezone || '+05:30');
+  const [partyPopperEnabled, setPartyPopperEnabled] = useState(launchSettings.partyPopperEnabled !== false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
@@ -41,6 +43,9 @@ export default function AdminLaunchMode({
     if (launchSettings.launchDate) setLaunchDate(launchSettings.launchDate);
     if (launchSettings.launchTime) setLaunchTime(launchSettings.launchTime);
     if (launchSettings.timezone) setTimezone(launchSettings.timezone);
+    if (launchSettings.partyPopperEnabled !== undefined) {
+      setPartyPopperEnabled(launchSettings.partyPopperEnabled !== false);
+    }
   }, [launchSettings]);
 
   // Timer states for preview countdown
@@ -95,6 +100,7 @@ export default function AdminLaunchMode({
         launchDate,
         launchTime,
         timezone,
+        partyPopperEnabled,
         updatedAt: new Date().toISOString(),
       });
       setSaveSuccess(true);
@@ -189,6 +195,34 @@ export default function AdminLaunchMode({
             </select>
           </div>
 
+          {/* Party Popper Celebration Toggle */}
+          <div className="p-4 bg-neutral-950 border border-neutral-850 rounded-xl flex items-center justify-between">
+            <div>
+              <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                🎉 Party Popper Celebration
+              </span>
+              <span className="text-[10px] text-neutral-500 block mt-0.5">
+                {partyPopperEnabled
+                  ? 'ON: 3-2-1 countdown sequence, dual confetti bursts & sound effects'
+                  : 'OFF: Immediately transitions to live website without celebration'}
+              </span>
+            </div>
+            <button
+              type="button"
+              id="party-popper-toggle-button"
+              onClick={() => setPartyPopperEnabled(!partyPopperEnabled)}
+              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                partyPopperEnabled ? 'bg-[#FF7A00]' : 'bg-neutral-800'
+              }`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                  partyPopperEnabled ? 'translate-x-5' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
+
           {/* Form action button */}
           <div className="pt-2 flex items-center justify-between gap-4">
             <div className="flex items-center gap-1.5">
@@ -255,7 +289,7 @@ export default function AdminLaunchMode({
             {/* Mock Logo */}
             <div className="flex justify-center">
               <img
-                src="/assets/images/lunch_logo.png"
+                src={lunchLogo}
                 alt="In Our Budget"
                 className="h-9 object-contain"
               />

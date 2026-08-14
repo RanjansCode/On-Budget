@@ -7,6 +7,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Sparkles, CheckCircle2, PartyPopper } from 'lucide-react';
 import { LaunchSettings } from '../firebase/firestore';
+import { playLaunchCelebrationSound } from '../utils/launchAudio';
+import lunchLogo from '../assets/images/lunch_logo.png';
 
 interface LaunchModeOverlayProps {
   settings: LaunchSettings;
@@ -235,41 +237,65 @@ export default function LaunchModeOverlay({
     animationFrameRef.current = requestAnimationFrame(render);
   }, []);
 
+  // Remove any obsolete legacy global flags on mount so they don't block new launches
+  useEffect(() => {
+    try {
+      localStorage.removeItem('onbudget_launch_completed');
+    } catch {}
+  }, []);
+
   // Launch Celebration Sequence: 3 -> 2 -> 1 -> We're Live! -> automatic live switch
   const startLiveLaunchSequence = useCallback(() => {
     clearAllTimeouts();
 
-    // Step 1: Number 3 (for exactly 1 second) + Left & Right Party Poppers
+    const targetTime = getTargetTimestamp();
+    const specificDoneKey = `onbudget_launch_done_${targetTime}_${launchDate}_${launchTime}`;
+    const isPopperEnabled = settings.partyPopperEnabled !== false;
+
+    // If Party Popper Celebration is disabled in launchSettings, transition directly to live state
+    if (!isPopperEnabled) {
+      try {
+        localStorage.setItem(specificDoneKey, 'true');
+      } catch {}
+      setPhase('completed');
+      onCountdownComplete();
+      return;
+    }
+
+    // Step 1: Number 3 (for exactly 1 second) + Left & Right Party Poppers + POP Sound
     setPhase('countdown_3');
     setActiveNumber(3);
     firePartyPoppers(1.0);
+    playLaunchCelebrationSound('normal');
 
-    // Step 2: Number 2 at 1000ms (for exactly 1 second) + Sustained Flutter
+    // Step 2: Number 2 at 1000ms (for exactly 1 second) + Sustained Flutter + POP Sound
     const t1 = setTimeout(() => {
       setPhase('countdown_2');
       setActiveNumber(2);
       firePartyPoppers(0.8);
+      playLaunchCelebrationSound('normal');
     }, 1000);
 
-    // Step 3: Number 1 at 2000ms (for exactly 1 second) + Extra Strong Finale Burst!
+    // Step 3: Number 1 at 2000ms (for exactly 1 second) + Extra Strong Finale Burst + Stronger POP Sound!
     const t2 = setTimeout(() => {
       setPhase('countdown_1');
       setActiveNumber(1);
       firePartyPoppers(1.4); // Stronger celebration for final countdown number
+      playLaunchCelebrationSound('strong');
     }, 2000);
 
-    // Step 4: "We're Live! 🎉" Screen at 3000ms (stays for approximately 3 seconds)
+    // Step 4: "We're Live! 🎉" Screen at 3000ms (stays for approximately 3 seconds) + Grand Celebration Sound
     const t3 = setTimeout(() => {
       setActiveNumber(null);
       setPhase('celebrate');
 
-      // Mark launch completion in localStorage to avoid replaying on refresh
+      // Mark launch completion for THIS specific launch session in localStorage
       try {
-        localStorage.setItem('onbudget_launch_completed', 'true');
-        localStorage.setItem(`onbudget_launch_done_${launchDate}_${launchTime}`, 'true');
+        localStorage.setItem(specificDoneKey, 'true');
       } catch {}
 
       firePartyPoppers(1.2);
+      playLaunchCelebrationSound('grand');
 
       // Step 5: After ~3 seconds of "We're Live!", automatically transition to normal website
       const t4 = setTimeout(() => {
@@ -281,10 +307,13 @@ export default function LaunchModeOverlay({
     }, 3000);
 
     timeoutsRef.current.push(t1, t2, t3);
-  }, [clearAllTimeouts, firePartyPoppers, launchDate, launchTime, onCountdownComplete]);
+  }, [clearAllTimeouts, firePartyPoppers, getTargetTimestamp, launchDate, launchTime, onCountdownComplete, settings.partyPopperEnabled]);
 
   // Main countdown timer listener
   useEffect(() => {
+    // Reset sequence trigger flag if target timestamp changed (New Launch Session)
+    sequenceTriggeredRef.current = false;
+
     function updateTimer() {
       if (sequenceTriggeredRef.current) return;
 
@@ -292,22 +321,31 @@ export default function LaunchModeOverlay({
       const now = Date.now();
       const totalMs = isNaN(targetTime) ? 0 : targetTime - now;
 
-      // Check if launch was already celebrated or completed previously
-      const specificDoneKey = `onbudget_launch_done_${launchDate}_${launchTime}`;
-      const isAlreadyCompleted =
-        localStorage.getItem('onbudget_launch_completed') === 'true' ||
-        localStorage.getItem(specificDoneKey) === 'true';
+      // Check if THIS specific launch was already completed previously
+      const specificDoneKey = `onbudget_launch_done_${targetTime}_${launchDate}_${launchTime}`;
+      const isAlreadyCompleted = localStorage.getItem(specificDoneKey) === 'true';
+
+      const isPopperEnabled = settings.partyPopperEnabled !== false;
 
       if (isNaN(targetTime) || totalMs <= 0) {
         setCountdown({ days: 0, hours: 0, minutes: 0, seconds: 0, totalMs: 0 });
 
-        // If user is refreshing after launch completion or opened page after expiry (> 4 seconds past)
+        // If user is refreshing after launch completion or opened page long after expiry (> 4 seconds past)
         if (isAlreadyCompleted || totalMs < -4000) {
           onCountdownComplete();
           return;
         }
 
-        // Trigger sequence exactly once
+        // If Party Popper Celebration is OFF: directly transition without celebration animation/sound
+        if (!isPopperEnabled) {
+          try {
+            localStorage.setItem(specificDoneKey, 'true');
+          } catch {}
+          onCountdownComplete();
+          return;
+        }
+
+        // If Party Popper Celebration is ON: trigger celebration sequence exactly once
         if (!sequenceTriggeredRef.current) {
           sequenceTriggeredRef.current = true;
           startLiveLaunchSequence();
@@ -330,7 +368,7 @@ export default function LaunchModeOverlay({
       clearInterval(interval);
       clearAllTimeouts();
     };
-  }, [getTargetTimestamp, launchDate, launchTime, onCountdownComplete, clearAllTimeouts, startLiveLaunchSequence]);
+  }, [getTargetTimestamp, launchDate, launchTime, settings.partyPopperEnabled, onCountdownComplete, clearAllTimeouts, startLiveLaunchSequence]);
 
   // Cleanup canvas & animation frame on unmount
   useEffect(() => {
@@ -484,7 +522,7 @@ export default function LaunchModeOverlay({
             {/* Brand Logo */}
             <div className="flex justify-center" id="launch-logo-container">
               <img
-                src="/assets/images/lunch_logo.png"
+                src={lunchLogo}
                 alt="In Our Budget"
                 className="h-12 sm:h-14 object-contain"
               />
@@ -616,7 +654,7 @@ export default function LaunchModeOverlay({
                 initial={{ scale: 0.8 }}
                 animate={{ scale: [0.8, 1.08, 1] }}
                 transition={{ duration: 0.6 }}
-                src="/assets/images/lunch_logo.png"
+                src={lunchLogo}
                 alt="In Our Budget"
                 className="h-14 sm:h-16 object-contain drop-shadow-[0_8px_20px_rgba(255,122,0,0.35)]"
               />

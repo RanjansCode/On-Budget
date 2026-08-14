@@ -652,6 +652,7 @@ export interface LaunchSettings {
   launchDate: string;
   launchTime: string;
   timezone: string;
+  partyPopperEnabled?: boolean;
   updatedAt: string;
 }
 
@@ -661,6 +662,7 @@ const DEFAULT_LAUNCH_SETTINGS: LaunchSettings = {
   launchDate: '2026-08-01',
   launchTime: '12:00',
   timezone: '+05:30',
+  partyPopperEnabled: true,
   updatedAt: new Date().toISOString()
 };
 

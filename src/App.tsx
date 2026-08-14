@@ -177,6 +177,7 @@ export default function App() {
     launchDate: '2026-08-01',
     launchTime: '12:00',
     timezone: '+05:30',
+    partyPopperEnabled: true,
     updatedAt: new Date().toISOString()
   });
 
