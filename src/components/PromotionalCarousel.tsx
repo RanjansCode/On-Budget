@@ -189,7 +189,7 @@ export const PromotionalCarousel: React.FC<PromotionalCarouselProps> = ({
               >
                 {/* Background Poster Image */}
                 <img
-                  src={getOptimizedImageUrl(banner.imageUrl, 1000)}
+                  src={getOptimizedImageUrl(banner.imageUrl, 1800)}
                   alt={banner.name || banner.title || 'Promotional Offer'}
                   className="w-full h-full transition-transform duration-700 group-hover/carousel:scale-[1.01]"
                   style={{
@@ -205,7 +205,7 @@ export const PromotionalCarousel: React.FC<PromotionalCarouselProps> = ({
                   onError={(e) => {
                     // Fallback for broken images
                     (e.target as HTMLImageElement).src =
-                      'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=1000&auto=format&fit=crop&q=80';
+                      'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=1800&auto=format&fit=crop&q=80';
                   }}
                 />
 

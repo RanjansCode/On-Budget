@@ -200,14 +200,13 @@ export default function SmartSearchFilters({
 
         {/* Sort Selector Dropdown */}
         <div className="flex items-center gap-2">
-          <label htmlFor="sort-products-select" className="text-[10px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 font-display">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 font-display">
             Sort By:
-          </label>
+          </span>
           <select
-            id="sort-products-select"
             value={sortOption}
             onChange={e => setSortOption(e.target.value as SortOption)}
-            className="bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 text-xs font-bold rounded-xl px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#FF5A00] cursor-pointer"
+            className="bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 text-xs font-bold rounded-xl px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#FF5A00] cursor-pointer"
           >
             <option value="popular">Most Popular</option>
             <option value="trending">Trending &amp; Viral</option>
@@ -226,14 +225,13 @@ export default function SmartSearchFilters({
           
           {/* 1. Category Filter */}
           <div className="space-y-1.5">
-            <label htmlFor="filter-category-select" className="text-[10px] font-extrabold uppercase tracking-wider text-slate-600 dark:text-slate-400 font-display block">
+            <label className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500 font-display block">
               Category
             </label>
             <select
-              id="filter-category-select"
               value={filterState.category}
               onChange={e => setFilterState(prev => ({ ...prev, category: e.target.value }))}
-              className="w-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-[#FF5A00]"
+              className="w-full bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-[#FF5A00]"
             >
               <option value="">All Categories</option>
               {categories.map(c => (
@@ -246,14 +244,13 @@ export default function SmartSearchFilters({
 
           {/* 2. Brand Filter */}
           <div className="space-y-1.5">
-            <label htmlFor="filter-brand-select" className="text-[10px] font-extrabold uppercase tracking-wider text-slate-600 dark:text-slate-400 font-display block">
+            <label className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500 font-display block">
               Brand
             </label>
             <select
-              id="filter-brand-select"
               value={filterState.brand}
               onChange={e => setFilterState(prev => ({ ...prev, brand: e.target.value }))}
-              className="w-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-[#FF5A00]"
+              className="w-full bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-[#FF5A00]"
             >
               <option value="">All Brands</option>
               {availableBrands.map(b => (

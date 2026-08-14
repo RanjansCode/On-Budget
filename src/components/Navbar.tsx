@@ -17,6 +17,7 @@ import {
 import { syncUserProfile } from '../firebase/firestore';
 import { updateProfile, User as FirebaseUser } from 'firebase/auth';
 import { useToast } from './Toast';
+import inOurBudgetLogo from '../assets/images/in_our_budget_logo_1784107312483.jpg';
 import CurrencySwitcher from './CurrencySwitcher';
 import CategoryIcon from './CategoryIcon';
 import {
@@ -419,28 +420,23 @@ function Navbar({
           <div className="flex justify-between items-center h-14 sm:h-16 gap-1.5 sm:gap-4 w-full max-w-full overflow-hidden">
             
             {/* LOGO */}
-            <a
-              href="/"
-              onClick={(e) => {
-                if (!e.ctrlKey && !e.metaKey && !e.shiftKey) {
-                  e.preventDefault();
-                  setActiveTab('home');
-                  setMobileMenuOpen(false);
-                }
+            <div
+              onClick={() => {
+                setActiveTab('home');
+                setMobileMenuOpen(false);
               }}
               className="flex items-center cursor-pointer shrink shrink-0 min-w-0 max-w-[110px] xs:max-w-[140px] sm:max-w-[180px] md:max-w-none"
               id="navbar-logo"
-              aria-label="In Our Budget Home Page"
             >
               <div className="bg-white p-0.5 sm:p-1 rounded-xl flex items-center justify-center border border-slate-100 dark:border-slate-800 shadow-2xs">
                 <img
-                  src="/logo.png"
-                  alt="In Our Budget"
+                  src={inOurBudgetLogo}
+                  alt="In Our Budget Logo"
                   className="h-7 sm:h-9 md:h-10 w-auto object-contain max-w-full hover:scale-102 transition-transform duration-200"
                   referrerPolicy="no-referrer"
                 />
               </div>
-            </a>
+            </div>
 
             {/* DESKTOP SEARCH */}
             <div ref={searchContainerRef} className="hidden md:flex flex-1 max-w-xl lg:max-w-2xl relative" id="navbar-search">
@@ -451,11 +447,7 @@ function Navbar({
                 }}
                 className="w-full relative flex items-center"
               >
-                <label htmlFor="navbar-desktop-search-input" className="sr-only">
-                  Search gadgets, brands, or budget price brackets
-                </label>
                 <input
-                  id="navbar-desktop-search-input"
                   type="text"
                   value={searchQuery}
                   onChange={e => {
@@ -466,7 +458,7 @@ function Navbar({
                     setShowSuggestions(true);
                   }}
                   placeholder="Search gadgets, brands, under ₹200..."
-                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus:border-[#FF5A00] dark:focus:border-[#FF5A00] focus:ring-1 focus:ring-[#FF5A00] rounded-full pl-5 pr-20 py-2 text-xs text-slate-800 dark:text-slate-100 focus:outline-none placeholder-slate-500 dark:placeholder-slate-400 transition-all"
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus:border-[#FF5A00] dark:focus:border-[#FF5A00] focus:ring-1 focus:ring-[#FF5A00] rounded-full pl-5 pr-20 py-2 text-xs text-slate-800 dark:text-slate-100 focus:outline-none placeholder-slate-400 dark:placeholder-slate-500 transition-all"
                 />
                 <div className="absolute right-3.5 flex items-center gap-1.5">
                   {searchQuery && (
@@ -872,12 +864,8 @@ function Navbar({
             }}
             className="relative flex items-center"
           >
-            <label htmlFor="navbar-mobile-search-input" className="sr-only">
-              Search gadgets, brands, or budget price brackets
-            </label>
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 pointer-events-none" />
             <input
-              id="navbar-mobile-search-input"
               type="text"
               value={searchQuery}
               onChange={e => {
@@ -888,7 +876,7 @@ function Navbar({
                 setShowSuggestions(true);
               }}
               placeholder="Search gadgets, brands, under ₹200..."
-              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800 focus:border-[#FF5A00] dark:focus:border-[#FF5A00] focus:ring-1 focus:ring-[#FF5A00] rounded-full pl-9 pr-20 py-2 text-xs text-slate-900 dark:text-slate-100 placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none transition-all"
+              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800 focus:border-[#FF5A00] dark:focus:border-[#FF5A00] focus:ring-1 focus:ring-[#FF5A00] rounded-full pl-9 pr-20 py-2 text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none transition-all"
             />
             <div className="absolute right-2.5 flex items-center gap-1">
               {searchQuery && (
@@ -1313,7 +1301,7 @@ function Navbar({
                 <div className="text-center">
                   <div className="inline-flex mb-3 bg-white p-1 rounded-2xl shadow-sm border border-slate-100">
                     <img
-                      src="/logo.png"
+                      src={inOurBudgetLogo}
                       alt="In Our Budget"
                       className="w-14 h-14 object-contain"
                       referrerPolicy="no-referrer"
@@ -1356,10 +1344,9 @@ function Navbar({
                 <form onSubmit={handleEmailAuth} className="space-y-4">
                   {authMode === 'signup' && (
                     <div className="space-y-1.5">
-                      <label htmlFor="auth-name-input" className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Your Name</label>
+                      <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Your Name</label>
                       <div className="relative">
                         <input
-                          id="auth-name-input"
                           type="text"
                           required
                           value={authName}
@@ -1373,10 +1360,9 @@ function Navbar({
                   )}
 
                   <div className="space-y-1.5">
-                    <label htmlFor="auth-email-input" className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Email Address</label>
+                    <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Email Address</label>
                     <div className="relative">
                       <input
-                        id="auth-email-input"
                         type="email"
                         required
                         value={authEmail}
@@ -1390,7 +1376,7 @@ function Navbar({
 
                   <div className="space-y-1.5">
                     <div className="flex justify-between items-center">
-                      <label htmlFor="auth-password-input" className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Password</label>
+                      <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Password</label>
                       {authMode === 'signin' && (
                         <button
                           type="button"
@@ -1408,7 +1394,6 @@ function Navbar({
                     </div>
                     <div className="relative">
                       <input
-                        id="auth-password-input"
                         type={showPassword ? 'text' : 'password'}
                         required
                         value={authPassword}
@@ -1555,12 +1540,11 @@ function Navbar({
 
               <form onSubmit={handleSendResetEmail} className="space-y-4">
                 <div className="space-y-1.5">
-                  <label htmlFor="reset-email-input" className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
+                  <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                     Registered Email
                   </label>
                   <div className="relative">
                     <input
-                      id="reset-email-input"
                       type="email"
                       value={resetEmail}
                       onChange={e => {

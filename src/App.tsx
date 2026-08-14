@@ -79,7 +79,6 @@ const AdminPanel = React.lazy(() => import('./components/AdminPanel'));
 const LaunchModeOverlay = React.lazy(() => import('./components/LaunchModeOverlay'));
 const SocialLinksModal = React.lazy(() => import('./components/SocialLinksModal'));
 import ScrollToTop from './components/ScrollToTop';
-import PWAInstallPrompt from './components/PWAInstallPrompt';
 import { useToast } from './components/Toast';
 import { LocationCurrencyBanner } from './components/CurrencySwitcher';
 import { calculateDiscount } from './utils/discount';
@@ -522,7 +521,7 @@ export default function App() {
         title: 'In Our Budget – Find the Best Products at the Right Price',
         description: 'Discover and compare products on In Our Budget. Find useful products, explore categories, save your favorites, and shop smarter within your budget.',
         canonicalUrl: 'https://inourbudget.vercel.app/',
-        imageUrl: `${domain}/logo.png`,
+        imageUrl: `${domain}/src/assets/images/in_our_budget_logo_1784107312483.jpg`,
         ogType: 'website',
         jsonLdSchemas: [orgSchema, websiteSchema]
       });
@@ -1626,11 +1625,7 @@ export default function App() {
               ) : (
                 <form onSubmit={handleNewsletterSubmit} className="space-y-2">
                   <div className="flex gap-2">
-                    <label htmlFor="newsletter-email-input" className="sr-only">
-                      Enter your email address to subscribe for daily budget deals
-                    </label>
                     <input
-                      id="newsletter-email-input"
                       type="email"
                       required
                       value={newsletterEmail}
@@ -1640,7 +1635,7 @@ export default function App() {
                       }}
                       disabled={isNewsletterSubmitting}
                       placeholder={t.newsPlaceholder}
-                      className="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:border-[#FF5A00] dark:focus:border-[#FF5A00] focus:ring-1 focus:ring-[#FF5A00] rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none placeholder-slate-500 dark:placeholder-slate-400 disabled:opacity-60"
+                      className="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:border-[#FF5A00] dark:focus:border-[#FF5A00] focus:ring-1 focus:ring-[#FF5A00] rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none placeholder-slate-400 dark:placeholder-slate-500 disabled:opacity-60"
                     />
                     <button
                       type="submit"
@@ -1844,9 +1839,6 @@ export default function App() {
 
       {/* Floating Scroll to Top button */}
       <ScrollToTop />
-
-      {/* PWA Install & Update Manager */}
-      <PWAInstallPrompt />
 
     </div>
   );

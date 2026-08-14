@@ -238,13 +238,11 @@ export default function ProductDetail({
         <div className="flex items-center gap-2">
           {/* Wishlist */}
           <button
-            type="button"
             onClick={() => onToggleWishlist(product.id)}
-            aria-label={isWishlisted ? `Remove ${product.title} from Wishlist` : `Save ${product.title} to Wishlist`}
             className={`p-2 bg-slate-50 dark:bg-slate-950 border rounded-xl cursor-pointer transition-all duration-200 ${
               isWishlisted
                 ? 'text-red-500 border-red-200 bg-red-50 dark:border-red-950/40 dark:bg-red-950/15'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border-slate-200 dark:border-slate-800'
+                : 'text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white border-slate-200 dark:border-slate-800'
             }`}
             title="Save to Wishlist"
           >
@@ -260,10 +258,8 @@ export default function ProductDetail({
 
           {/* Report Stock Issue */}
           <button
-            type="button"
             onClick={handleReport}
-            aria-label={`Report stock or pricing issue for ${product.title}`}
-            className="p-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-red-500 rounded-xl transition-all cursor-pointer relative"
+            className="p-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500 hover:text-red-500 rounded-xl transition-all cursor-pointer relative"
             title="Report Out of Stock"
           >
             <ShieldAlert className="w-4 h-4" />
@@ -351,7 +347,6 @@ export default function ProductDetail({
                 <button
                   type="button"
                   onClick={handlePrevImage}
-                  aria-label={`Previous image for ${product.title}`}
                   className="absolute left-3 top-1/2 -translate-y-1/2 z-20 p-2.5 rounded-full bg-slate-900/70 hover:bg-[#FF5A00] text-white transition-all backdrop-blur-xs cursor-pointer shadow-md opacity-85 hover:opacity-100 focus:outline-none"
                   title="Previous Image"
                 >
@@ -360,7 +355,6 @@ export default function ProductDetail({
                 <button
                   type="button"
                   onClick={handleNextImage}
-                  aria-label={`Next image for ${product.title}`}
                   className="absolute right-3 top-1/2 -translate-y-1/2 z-20 p-2.5 rounded-full bg-slate-900/70 hover:bg-[#FF5A00] text-white transition-all backdrop-blur-xs cursor-pointer shadow-md opacity-85 hover:opacity-100 focus:outline-none"
                   title="Next Image"
                 >
@@ -381,7 +375,6 @@ export default function ProductDetail({
               <button
                 type="button"
                 onClick={() => setIsLightboxOpen(true)}
-                aria-label={`Enlarge image for ${product.title}`}
                 className="absolute bottom-3.5 right-3.5 z-20 p-2 rounded-xl bg-slate-900/80 hover:bg-[#FF5A00] text-white transition-all backdrop-blur-md cursor-pointer border border-white/10 shadow-xs"
                 title="Expand Fullscreen Image"
               >
