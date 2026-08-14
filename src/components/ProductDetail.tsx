@@ -492,7 +492,7 @@ export default function ProductDetail({
                       {bestInfo.retailerName && (
                         <span className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold flex items-center gap-1.5">
                           <span>via</span>
-                          <PlatformLogo platformName={bestInfo.retailerName} className="h-4.5 w-auto max-w-[80px] object-contain shrink-0" />
+                          <PlatformLogo platformName={bestInfo.retailerName} retailerId={bestInfo.bestOffer?.retailerId} className="h-4.5 w-auto max-w-[80px] object-contain shrink-0" />
                           <span className="font-extrabold text-slate-800 dark:text-slate-200">{bestInfo.retailerName}</span>
                         </span>
                       )}
@@ -571,7 +571,7 @@ export default function ProductDetail({
                             {/* Top row: Retailer Logo & Name + Best Price / Discount badge */}
                             <div className="flex items-center justify-between gap-2 mb-2">
                               <span className="flex items-center gap-2">
-                                <PlatformLogo platformName={offer.retailerName} className="h-6 w-auto max-w-[100px] object-contain shrink-0" />
+                                <PlatformLogo platformName={offer.retailerName} retailerId={offer.retailerId} className="h-6 w-auto max-w-[100px] object-contain shrink-0" />
                                 <span className="text-xs font-extrabold text-slate-900 dark:text-white group-hover:text-[#FF5A00] transition-colors">
                                   {offer.retailerName}
                                 </span>

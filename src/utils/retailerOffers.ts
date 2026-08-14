@@ -1,4 +1,5 @@
 import { Product, RetailerOffer } from '../types';
+import { normalizeRetailerKey, getMasterRetailer } from './retailerLogos';
 
 /**
  * Calculates discount percentage safely based on original price (MRP) and offer price.
@@ -12,8 +13,8 @@ export function calculateDiscountPercent(originalPrice: number, offerPrice: numb
 
 /**
  * Returns a normalized array of RetailerOffer objects for any Product.
- * Handles backward compatibility seamlessly for legacy products that only have
- * single price/originalPrice or purchaseLinks/affiliateLinks.
+ * Master Retailer Registry is authoritative for names and logos.
+ * Handles backward compatibility seamlessly for legacy products.
  */
 export function getNormalizedRetailerOffers(
   product?: Partial<Product> | null,
@@ -27,10 +28,15 @@ export function getNormalizedRetailerOffers(
       const orig = Number(offer.originalPrice) || Number(offer.offerPrice) || Number(product.originalPrice) || Number(product.price) || 0;
       const cur = Number(offer.offerPrice) || Number(product.price) || 0;
       const computedDiscount = calculateDiscountPercent(orig, cur);
+      const name = (offer.retailerName || 'Retailer').trim();
+      const master = getMasterRetailer(offer.retailerId || name);
+      const resolvedId = offer.retailerId || master?.id || normalizeRetailerKey(name);
+      const resolvedName = master?.name || name;
 
       return {
         id: offer.id || `offer-${idx}-${Date.now()}`,
-        retailerName: (offer.retailerName || 'Retailer').trim(),
+        retailerId: resolvedId,
+        retailerName: resolvedName,
         productUrl: (offer.productUrl || '').trim(),
         originalPrice: orig,
         offerPrice: cur,
@@ -70,16 +76,21 @@ export function getNormalizedRetailerOffers(
   const baseDiscount = calculateDiscountPercent(baseOriginal, basePrice) || Number(product.discount) || 0;
 
   if (legacyLinks.length > 0) {
-    return legacyLinks.map((link, idx) => ({
-      id: `legacy-${idx}`,
-      retailerName: link.name,
-      productUrl: link.url,
-      originalPrice: baseOriginal,
-      offerPrice: basePrice,
-      discountPercent: baseDiscount,
-      isActive: true,
-      displayOrder: idx,
-    }));
+    return legacyLinks.map((link, idx) => {
+      const name = link.name || 'Store';
+      const master = getMasterRetailer(name);
+      return {
+        id: `legacy-${idx}`,
+        retailerId: master?.id || normalizeRetailerKey(name),
+        retailerName: master?.name || name,
+        productUrl: link.url,
+        originalPrice: baseOriginal,
+        offerPrice: basePrice,
+        discountPercent: baseDiscount,
+        isActive: true,
+        displayOrder: idx,
+      };
+    });
   }
 
   // 3. Fallback if product has no links at all but has a price
@@ -87,6 +98,7 @@ export function getNormalizedRetailerOffers(
     return [
       {
         id: 'legacy-default',
+        retailerId: 'store',
         retailerName: 'Verified Store',
         productUrl: '',
         originalPrice: baseOriginal,

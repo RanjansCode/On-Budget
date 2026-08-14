@@ -4,7 +4,7 @@ import {
   Sparkles, Search, MessageSquare, Heart, Bell, User, Layout, ArrowRight, ArrowLeft,
   Star, Laptop, Cpu, BookOpen, AlertCircle, Clock,
   Package, Check, Copy, Flame, ShieldAlert, Play, Send, ChevronRight,
-  SlidersHorizontal, CheckCircle2, Award, Zap, RefreshCw, LogOut, Loader2, Instagram
+  SlidersHorizontal, CheckCircle2, Award, RefreshCw, LogOut, Loader2, Instagram
 } from 'lucide-react';
 
 import {
@@ -1683,7 +1683,10 @@ export default function App() {
                   className="flex items-center gap-3 p-3.5 bg-slate-50 dark:bg-slate-900 hover:bg-slate-100/60 dark:hover:bg-slate-850/60 border border-slate-200/50 dark:border-slate-850 rounded-2xl transition-all group shadow-3xs"
                 >
                   <div className="w-8 h-8 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-xl flex items-center justify-center shrink-0">
-                    <Zap className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                    <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414-.074-.124-.272-.198-.57-.347z"/>
+                      <path d="M12 0C5.373 0 0 5.373 0 12c0 2.119.553 4.11 1.519 5.84L0 24l6.327-1.492A11.948 11.948 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.802 0-3.513-.473-5.003-1.302l-.358-.2-.375.088-3.327.784.802-3.238.093-.374-.213-.376A9.957 9.957 0 012 12c0-5.514 4.486-10 10-10s10 4.486 10 10-4.486 10-10 10z"/>
+                    </svg>
                   </div>
                   <div>
                     <h4 className="font-bold text-slate-950 dark:text-white group-hover:text-[#FF5A00] transition-colors font-display">{t.waTitle}</h4>

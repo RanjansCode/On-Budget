@@ -53,7 +53,7 @@ function ProductCard({
   }, [propCurrency]);
 
   const bestPriceInfo = getProductBestPrice(product);
-  const { bestPrice, originalPrice, discountPercent, retailerName } = bestPriceInfo;
+  const { bestPrice, originalPrice, discountPercent, retailerName, bestOffer } = bestPriceInfo;
   const hasDiscount = discountPercent > 0;
   const formattedMainPrice = formatCurrencyPrice(bestPrice, activeCurrencyCode);
   const formattedOrigPrice = formatCurrencyPrice(originalPrice, activeCurrencyCode);
@@ -186,7 +186,7 @@ function ProductCard({
               </div>
               {retailerName ? (
                 <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                  <PlatformLogo platformName={retailerName} className="h-3.5 w-auto max-w-[50px] object-contain shrink-0" />
+                  <PlatformLogo platformName={retailerName} retailerId={bestOffer?.retailerId} className="h-3.5 w-auto max-w-[50px] object-contain shrink-0" />
                   <span>Best price on {retailerName}</span>
                 </span>
               ) : activeCurrencyCode !== 'INR' ? (

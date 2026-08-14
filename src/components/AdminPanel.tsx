@@ -31,6 +31,8 @@ import CategoryIcon, { CATEGORY_ICON_OPTIONS } from './CategoryIcon';
 import { getBannerStatus, isBannerActive, PromotionalCarousel } from './PromotionalCarousel';
 import { uploadFileToStorage } from '../lib/firebase';
 import { getProductImages, getProductMainImage } from '../utils/imageUtils';
+import { INITIAL_RETAILERS } from '../data';
+import { normalizeRetailerKey, getMasterRetailer } from '../utils/retailerLogos';
 
 interface AdminPanelProps {
   products: Product[];
