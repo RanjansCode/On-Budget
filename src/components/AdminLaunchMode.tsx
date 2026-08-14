@@ -255,7 +255,7 @@ export default function AdminLaunchMode({
             {/* Mock Logo */}
             <div className="flex justify-center">
               <img
-                src="/lunch_logo.png.png"
+                src="/assets/images/lunch_logo.png"
                 alt="In Our Budget"
                 className="h-9 object-contain"
               />
