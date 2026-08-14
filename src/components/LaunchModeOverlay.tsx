@@ -84,7 +84,7 @@ export default function LaunchModeOverlay({
         {/* Brand Logo */}
         <div className="flex justify-center" id="launch-logo-container">
           <img
-            src="/lunch_logo.png.png"
+            src="/logo.png"
             alt="In Our Budget"
             className="h-12 sm:h-14 object-contain"
           />

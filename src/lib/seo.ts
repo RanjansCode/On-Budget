@@ -320,9 +320,9 @@ export function generateOrganizationSchema(domain: string = getDomain()) {
   return {
     '@context': 'https://schema.org',
     '@type': 'Organization',
-    name: 'On Budget',
+    name: 'In Our Budget',
     url: domain,
-    logo: `${domain}/icon.png`,
+    logo: `${domain}/logo.png`,
     sameAs: [
       'https://whatsapp.com/channel/0029Vb8SOImD8SDvTKYTcr15'
     ]

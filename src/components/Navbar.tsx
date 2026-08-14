@@ -17,7 +17,6 @@ import {
 import { syncUserProfile } from '../firebase/firestore';
 import { updateProfile, User as FirebaseUser } from 'firebase/auth';
 import { useToast } from './Toast';
-import inOurBudgetLogo from '../assets/images/in_our_budget_logo_1784107312483.jpg';
 import CurrencySwitcher from './CurrencySwitcher';
 import CategoryIcon from './CategoryIcon';
 import {
@@ -435,8 +434,8 @@ function Navbar({
             >
               <div className="bg-white p-0.5 sm:p-1 rounded-xl flex items-center justify-center border border-slate-100 dark:border-slate-800 shadow-2xs">
                 <img
-                  src={inOurBudgetLogo}
-                  alt="In Our Budget Logo"
+                  src="/logo.png"
+                  alt="In Our Budget"
                   className="h-7 sm:h-9 md:h-10 w-auto object-contain max-w-full hover:scale-102 transition-transform duration-200"
                   referrerPolicy="no-referrer"
                 />
@@ -1314,7 +1313,7 @@ function Navbar({
                 <div className="text-center">
                   <div className="inline-flex mb-3 bg-white p-1 rounded-2xl shadow-sm border border-slate-100">
                     <img
-                      src={inOurBudgetLogo}
+                      src="/logo.png"
                       alt="In Our Budget"
                       className="w-14 h-14 object-contain"
                       referrerPolicy="no-referrer"
