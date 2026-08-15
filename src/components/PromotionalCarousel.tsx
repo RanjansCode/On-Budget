@@ -177,14 +177,14 @@ export const PromotionalCarousel: React.FC<PromotionalCarouselProps> = ({
           {activeBanners.map((banner, index) => {
             const bw = banner.bannerWidth && banner.bannerWidth > 0 ? banner.bannerWidth : 585;
             const bh = banner.bannerHeight && banner.bannerHeight > 0 ? banner.bannerHeight : 282;
-            const fit = banner.objectFit || 'contain';
+            const fit = banner.objectFit || 'cover';
             const slideAspectRatio = `${bw} / ${bh}`;
 
             return (
               <div
                 key={banner.id || index}
                 onClick={() => handleBannerClick(banner)}
-                className="w-full h-full shrink-0 relative cursor-pointer overflow-hidden bg-slate-950 flex items-center justify-center"
+                className="w-full h-full shrink-0 relative cursor-pointer overflow-hidden bg-transparent flex items-center justify-center"
                 style={{ aspectRatio: slideAspectRatio }}
               >
                 {/* Background Poster Image */}
