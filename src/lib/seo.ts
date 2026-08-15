@@ -54,22 +54,9 @@ export function generateUniqueSlug(
  * Returns the effective SEO slug for a product
  */
 export function getProductSlug(product: Product): string {
-  const rawSeoSlug = product.seoSlug?.trim() || '';
-
-  // Never use a corrupted/full URL as the product slug.
-  // If seoSlug contains a URL or product path, safely fall back to the title.
-  if (
-    rawSeoSlug &&
-    !rawSeoSlug.includes('http://') &&
-    !rawSeoSlug.includes('https://') &&
-    !rawSeoSlug.includes('https:/') &&
-    !rawSeoSlug.includes('/product/') &&
-    !rawSeoSlug.includes('inourbudget.vercel.app')
-  ) {
-    return slugify(rawSeoSlug);
+  if (product.seoSlug && product.seoSlug.trim()) {
+    return slugify(product.seoSlug);
   }
-
-  // Generate a clean slug directly from the product title.
   return slugify(product.title) || product.id;
 }
 

@@ -22,7 +22,7 @@ export default function ProductShareButton({
   const handleShare = async (e: React.MouseEvent) => {
     e.stopPropagation();
 
-    const origin = 'https://inourbudget.vercel.app';
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
     const slug = getProductSlug(product);
     const productUrl = `${origin}/product/${slug}`;
     const shareTitle = product.title;
