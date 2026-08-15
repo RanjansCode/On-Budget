@@ -23,7 +23,7 @@ export default function ShareModal({ isOpen, onClose, product, onShareTrack }: S
     // Fallback if ToastProvider is not present
   }
 
-  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  const origin = 'https://inourbudget.vercel.app';
   const slug = getProductSlug(product);
   const shareUrl = `${origin}/product/${slug}`;
   const shareTitle = product.title;
