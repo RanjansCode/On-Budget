@@ -10,6 +10,7 @@ import { Product, Reel } from '../types';
 import SocialLinksModal from './SocialLinksModal';
 import PlatformLogo from './PlatformLogo';
 import ImageLightboxModal from './ImageLightboxModal';
+import ProductVariantSelector from './ProductVariantSelector';
 import { getPurchaseLinks } from '../utils/purchaseLinks';
 import { getNormalizedRetailerOffers, getProductBestPrice, calculateDiscountPercent } from '../utils/retailerOffers';
 import { formatUrl } from '../utils/validation';
@@ -19,6 +20,7 @@ import ImageSkeleton, { getOptimizedImageUrl } from './ImageSkeleton';
 import ProductRecommendations from './ProductRecommendations';
 import ProductShareButton from './ProductShareButton';
 import { getProductImages } from '../utils/imageUtils';
+import { findMatchingVariant, getEffectiveProductData } from '../utils/variantUtils';
 import {
   updateDocumentSEO,
   generateProductSchema,
@@ -65,14 +67,86 @@ export default function ProductDetail({
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [activeCurrencyCode, setActiveCurrencyCode] = useState(() => detectUserCurrency().currency.code);
 
+  // --- PRODUCT VARIANT SELECTION STATE ---
+  const hasActiveVariants = Boolean(
+    product.hasVariants &&
+    product.variantOptions &&
+    product.variantOptions.length > 0 &&
+    product.variants &&
+    product.variants.length > 0
+  );
+
+  const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>(() => {
+    if (!hasActiveVariants || !product.variants) return {};
+    const firstActive = product.variants.find(v => v.isActive !== false) || product.variants[0];
+    return firstActive?.options ? { ...firstActive.options } : {};
+  });
+
+  // Synchronize initial variant selection on product change or query param
+  useEffect(() => {
+    if (hasActiveVariants && product.variants && product.variants.length > 0) {
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const variantParam = urlParams.get('variant');
+        const matched = variantParam
+          ? product.variants.find(v => v.id === variantParam || v.sku === variantParam)
+          : null;
+        const target = matched || product.variants.find(v => v.isActive !== false) || product.variants[0];
+        if (target?.options) {
+          setSelectedOptions({ ...target.options });
+        }
+      } catch {
+        const firstActive = product.variants.find(v => v.isActive !== false) || product.variants[0];
+        if (firstActive?.options) {
+          setSelectedOptions({ ...firstActive.options });
+        }
+      }
+    } else {
+      setSelectedOptions({});
+    }
+    setSelectedImageIndex(0);
+  }, [product.id, product.hasVariants]);
+
+  // Resolve matching active variant
+  const selectedVariant = hasActiveVariants
+    ? findMatchingVariant(product.variants, selectedOptions)
+    : null;
+
+  // Derive effective price, MRP, discount, images, links & availability
+  const effectiveData = getEffectiveProductData(product, selectedVariant);
+  const productImages = effectiveData.images;
+
   // Gallery & Multiple Image Navigation State
-  const productImages = getProductImages(product);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
 
+  // Make sure image index is within bounds if images change
   useEffect(() => {
-    setSelectedImageIndex(0);
-  }, [product.id]);
+    if (selectedImageIndex >= productImages.length) {
+      setSelectedImageIndex(0);
+    }
+  }, [productImages.length, selectedImageIndex]);
+
+  const handleSelectOption = (optionName: string, optionValue: string) => {
+    const updated = {
+      ...selectedOptions,
+      [optionName]: optionValue,
+    };
+    setSelectedOptions(updated);
+    setSelectedImageIndex(0); // Reset gallery index to cover image of selected variant
+
+    // Maintain URL query param for easy sharing/bookmarking
+    try {
+      const matched = findMatchingVariant(product.variants, updated);
+      if (matched?.id) {
+        const url = new URL(window.location.href);
+        url.searchParams.set('variant', matched.id);
+        window.history.replaceState({}, '', url.toString());
+      }
+    } catch {
+      // Ignore if URL modification is blocked in sandbox
+    }
+  };
 
   const handlePrevImage = (e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -440,10 +514,12 @@ export default function ProductDetail({
         <div className="space-y-6">
           <div className="space-y-2.5">
             <div className="flex items-start gap-3">
-              {/* Circular Discount Badge near Product Title */}
-              {discountInfo.hasDiscount && (
+              {/* Circular Discount Badge near Product Title (dynamic for variants & base) */}
+              {(effectiveData.hasDiscount || discountInfo.hasDiscount) && (
                 <div className="w-12 h-12 sm:w-14 sm:h-14 bg-[#FF5A00] text-white rounded-full flex flex-col items-center justify-center text-center shadow-md border border-white/20 select-none font-display shrink-0 my-0.5">
-                  <span className="text-xs sm:text-sm font-black leading-none">{discountInfo.percentage}%</span>
+                  <span className="text-xs sm:text-sm font-black leading-none">
+                    {effectiveData.hasDiscount ? effectiveData.discount : discountInfo.percentage}%
+                  </span>
                   <span className="text-[8px] sm:text-[9px] font-extrabold uppercase tracking-tight leading-none mt-0.5">OFF</span>
                 </div>
               )}
@@ -476,10 +552,28 @@ export default function ProductDetail({
             {product.description}
           </p>
 
+          {/* Amazon-Style Variant Selector */}
+          {hasActiveVariants && product.variantOptions && product.variants && (
+            <ProductVariantSelector
+              variantOptions={product.variantOptions}
+              variants={product.variants}
+              selectedOptions={selectedOptions}
+              onSelectOption={handleSelectOption}
+              selectedVariant={selectedVariant}
+            />
+          )}
+
           {/* Pricing Card & Retailer Offers */}
           {(() => {
             const bestInfo = getProductBestPrice(product);
             const activeOffers = getNormalizedRetailerOffers(product, false);
+
+            // Use variant specific pricing if variant is selected and has explicit price, otherwise fallback
+            const displayPrice = hasActiveVariants && effectiveData.price > 0 ? effectiveData.price : bestInfo.bestPrice;
+            const displayOrigPrice = hasActiveVariants && effectiveData.originalPrice > 0 ? effectiveData.originalPrice : bestInfo.originalPrice;
+            const displayDiscount = hasActiveVariants ? effectiveData.discount : bestInfo.discountPercent;
+            const amountSaved = Math.max(0, displayOrigPrice - displayPrice);
+            const isVariantAvailable = effectiveData.isAvailable;
 
             return (
               <div className="p-5 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-3xl space-y-4 shadow-xs">
@@ -487,7 +581,7 @@ export default function ProductDetail({
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="text-[10px] text-[#FF5A00] font-black uppercase tracking-wider font-display bg-[#FF5A00]/10 px-2 py-0.5 rounded-md">
-                        Best Price
+                        {hasActiveVariants && selectedVariant ? 'Selected Variant Price' : 'Best Price'}
                       </span>
                       {bestInfo.retailerName && (
                         <span className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold flex items-center gap-1.5">
@@ -500,30 +594,38 @@ export default function ProductDetail({
 
                     <div className="flex items-baseline gap-2.5 mt-1.5">
                       <span className="text-2xl sm:text-3xl font-black text-slate-950 dark:text-white font-display">
-                        {formatCurrencyPrice(bestInfo.bestPrice, activeCurrencyCode).formatted}
+                        {formatCurrencyPrice(displayPrice, activeCurrencyCode).formatted}
                       </span>
-                      {bestInfo.originalPrice > bestInfo.bestPrice && (
+                      {displayOrigPrice > displayPrice && (
                         <span className="text-xs sm:text-sm text-slate-400 dark:text-slate-500 line-through">
-                          {formatCurrencyPrice(bestInfo.originalPrice, activeCurrencyCode).formatted}
+                          {formatCurrencyPrice(displayOrigPrice, activeCurrencyCode).formatted}
                         </span>
                       )}
-                      {bestInfo.discountPercent > 0 && (
+                      {displayDiscount > 0 && (
                         <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/60 dark:border-emerald-800/60 px-2 py-0.5 rounded-lg">
-                          {bestInfo.discountPercent}% OFF
+                          {displayDiscount}% OFF
                         </span>
                       )}
                     </div>
 
-                    {bestInfo.amountSaved > 0 && (
+                    {amountSaved > 0 && (
                       <p className="mt-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 font-display">
-                        <span>You Save {formatCurrencyPrice(bestInfo.amountSaved, activeCurrencyCode).formatted} ({bestInfo.discountPercent}% OFF)</span>
+                        <span>You Save {formatCurrencyPrice(amountSaved, activeCurrencyCode).formatted} ({displayDiscount}% OFF)</span>
                       </p>
                     )}
 
-                    {bestInfo.retailerName && activeOffers.length > 1 && (
+                    {bestInfo.retailerName && activeOffers.length > 1 && !hasActiveVariants && (
                       <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400 italic">
                         Lowest price available on <strong>{bestInfo.retailerName}</strong>
                       </p>
+                    )}
+
+                    {/* Variant Out of stock warning banner */}
+                    {hasActiveVariants && !isVariantAvailable && (
+                      <div className="mt-2.5 p-2.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-xl flex items-center gap-2 text-rose-700 dark:text-rose-300 text-xs font-medium">
+                        <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
+                        <span>This selected variant combination is currently out of stock or unavailable. Please choose another option.</span>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -544,28 +646,42 @@ export default function ProductDetail({
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                       {activeOffers.map((offer, idx) => {
-                        const finalUrl = formatUrl(offer.productUrl);
+                        // If variant has specific affiliateUrl, prioritize for main purchase
+                        const finalOfferUrl = (hasActiveVariants && effectiveData.affiliateUrl && idx === 0)
+                          ? formatUrl(effectiveData.affiliateUrl)
+                          : formatUrl(offer.productUrl);
+
                         const isBestOffer = offer.offerPrice === bestInfo.bestPrice && offer.offerPrice > 0;
-                        const formattedOfferPrice = formatCurrencyPrice(offer.offerPrice, activeCurrencyCode);
-                        const formattedOrigPrice = formatCurrencyPrice(offer.originalPrice, activeCurrencyCode);
-                        const disc = offer.discountPercent || calculateDiscountPercent(offer.originalPrice, offer.offerPrice);
+                        const formattedOfferPrice = formatCurrencyPrice(
+                          hasActiveVariants && effectiveData.price > 0 && idx === 0 ? effectiveData.price : offer.offerPrice,
+                          activeCurrencyCode
+                        );
+                        const formattedOrigPrice = formatCurrencyPrice(
+                          hasActiveVariants && effectiveData.originalPrice > 0 && idx === 0 ? effectiveData.originalPrice : offer.originalPrice,
+                          activeCurrencyCode
+                        );
+                        const disc = hasActiveVariants && idx === 0 ? displayDiscount : (offer.discountPercent || calculateDiscountPercent(offer.originalPrice, offer.offerPrice));
 
                         return (
                           <button
                             key={offer.id || `${offer.retailerName}-${idx}`}
                             type="button"
+                            disabled={!isVariantAvailable}
                             onClick={() => {
+                              if (!isVariantAvailable) return;
                               if (offer.retailerName) {
                                 onTrackAffiliateClick(product.id, offer.retailerName);
                               }
-                              if (finalUrl) {
-                                window.open(finalUrl, "_blank", "noopener,noreferrer");
+                              if (finalOfferUrl) {
+                                window.open(finalOfferUrl, "_blank", "noopener,noreferrer");
                               }
                             }}
-                            className={`flex flex-col justify-between p-3.5 rounded-2xl border transition-all text-left cursor-pointer group relative ${
-                              isBestOffer
-                                ? 'bg-emerald-500/5 dark:bg-emerald-950/20 border-emerald-500/30 hover:border-emerald-500/60 shadow-xs'
-                                : 'bg-slate-50 dark:bg-slate-950 hover:bg-slate-100/60 dark:hover:bg-slate-800/40 border-slate-200/50 dark:border-slate-800 hover:border-[#FF5A00]/40'
+                            className={`flex flex-col justify-between p-3.5 rounded-2xl border transition-all text-left group relative ${
+                              !isVariantAvailable
+                                ? 'opacity-50 cursor-not-allowed bg-slate-100 dark:bg-slate-900 border-slate-200 dark:border-slate-800'
+                                : isBestOffer
+                                ? 'cursor-pointer bg-emerald-500/5 dark:bg-emerald-950/20 border-emerald-500/30 hover:border-emerald-500/60 shadow-xs'
+                                : 'cursor-pointer bg-slate-50 dark:bg-slate-950 hover:bg-slate-100/60 dark:hover:bg-slate-800/40 border-slate-200/50 dark:border-slate-800 hover:border-[#FF5A00]/40'
                             }`}
                           >
                             {/* Top row: Retailer Logo & Name + Best Price / Discount badge */}
@@ -578,7 +694,7 @@ export default function ProductDetail({
                               </span>
 
                               <div className="flex items-center gap-1.5 shrink-0">
-                                {isBestOffer && (
+                                {isBestOffer && isVariantAvailable && (
                                   <span className="text-[9px] font-black bg-emerald-500 text-white px-2 py-0.5 rounded-full uppercase tracking-tight shadow-2xs">
                                     Best Price
                                   </span>
@@ -605,8 +721,8 @@ export default function ProductDetail({
                               </div>
 
                               <span className="flex items-center gap-1 text-xs font-bold text-[#FF5A00] group-hover:translate-x-0.5 transition-transform shrink-0">
-                                <span>Buy on {offer.retailerName}</span>
-                                <ExternalLink className="w-3.5 h-3.5" />
+                                <span>{isVariantAvailable ? `Buy on ${offer.retailerName}` : 'Out of Stock'}</span>
+                                {isVariantAvailable && <ExternalLink className="w-3.5 h-3.5" />}
                               </span>
                             </div>
                           </button>

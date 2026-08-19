@@ -1,5 +1,5 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { initializeFirestore, getFirestore, Firestore } from 'firebase/firestore';
+import { getFirestore } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { getStorage } from 'firebase/storage';
 import appletConfig from '../../firebase-applet-config.json';
@@ -49,22 +49,9 @@ export const isFirebaseConfigured = !!(
 // Ensure initializeApp() runs before getAuth() and auth is guaranteed to be non-null
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
-// Support custom/named database ID from applet config
+// Initialize Firestore using the configured database ID
 const dbId = getEnvVar('VITE_FIREBASE_DATABASE_ID') || appletConfig.firestoreDatabaseId;
-let db: Firestore;
-try {
-  db = initializeFirestore(
-    app,
-    {
-      experimentalAutoDetectLongPolling: true,
-      ignoreUndefinedProperties: true,
-    },
-    dbId || undefined
-  );
-} catch (e) {
-  // If Firestore is already initialized on this app instance
-  db = dbId ? getFirestore(app, dbId) : getFirestore(app);
-}
+export const db = dbId ? getFirestore(app, dbId) : getFirestore(app);
 
 const auth = getAuth(app);
 
@@ -78,5 +65,5 @@ const storage = storageBucketUrl ? getStorage(app, storageBucketUrl) : getStorag
 storage.maxUploadRetryTime = 5000;
 storage.maxOperationRetryTime = 5000;
 
-export { app, db, auth, storage };
+export { app, auth, storage };
 export default app;

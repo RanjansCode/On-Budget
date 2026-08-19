@@ -55,6 +55,27 @@ export interface ProductSpec {
   value: string;
 }
 
+export type VariantStockStatus = 'in_stock' | 'limited_stock' | 'out_of_stock' | 'unavailable';
+
+export interface ProductVariantOption {
+  id: string; // e.g. "opt_color" or "opt_size"
+  name: string; // e.g. "Color", "Size", "Storage", "Material", "Pack Size"
+  values: string[]; // e.g. ["Black", "White", "Blue"] or ["Small", "Large"]
+}
+
+export interface ProductVariant {
+  id: string; // Unique variant ID, e.g. "var-1"
+  sku?: string; // Optional SKU, e.g. "KOATY-BLK-LRG"
+  options: Record<string, string>; // e.g. { "Color": "Black", "Size": "Large" }
+  price?: number; // Variant specific offer price
+  originalPrice?: number; // Variant specific MRP
+  discount?: number; // Calculated or manual discount %
+  affiliateUrl?: string; // Specific affiliate / Buy URL
+  images?: string[]; // Variant specific image gallery
+  stockStatus?: VariantStockStatus; // In stock, limited, out of stock, unavailable
+  isActive: boolean; // Whether this variant is enabled
+}
+
 export interface Product {
   id: string;
   title: string;
@@ -72,6 +93,9 @@ export interface Product {
   affiliateLinks: AffiliateLink[];
   purchaseLinks?: PurchaseLink[];
   retailerOffers?: RetailerOffer[];
+  hasVariants?: boolean; // Whether variants are enabled
+  variantOptions?: ProductVariantOption[]; // List of option dimensions
+  variants?: ProductVariant[]; // List of concrete variant combinations
   badges: {
     seenInReel: boolean;
     personallyTested: boolean;

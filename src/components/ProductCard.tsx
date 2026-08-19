@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Heart, Sparkles, Star, Film, CheckCircle, Maximize2 } from 'lucide-react';
+import { Heart, Sparkles, Star, Film, CheckCircle, Maximize2, Layers } from 'lucide-react';
 import { Product } from '../types';
 import ImageLightboxModal from './ImageLightboxModal';
 import { formatCurrencyPrice, detectUserCurrency } from '../utils/currency';
@@ -8,6 +8,7 @@ import { getProductBestPrice } from '../utils/retailerOffers';
 import ImageSkeleton from './ImageSkeleton';
 import ProductShareButton from './ProductShareButton';
 import { getProductMainImage, getProductImages } from '../utils/imageUtils';
+import { getProductPriceRange } from '../utils/variantUtils';
 import PlatformLogo from './PlatformLogo';
 
 interface ProductCardProps {
@@ -54,9 +55,17 @@ function ProductCard({
 
   const bestPriceInfo = getProductBestPrice(product);
   const { bestPrice, originalPrice, discountPercent, retailerName, bestOffer } = bestPriceInfo;
-  const hasDiscount = discountPercent > 0;
-  const formattedMainPrice = formatCurrencyPrice(bestPrice, activeCurrencyCode);
-  const formattedOrigPrice = formatCurrencyPrice(originalPrice, activeCurrencyCode);
+  
+  // Price range calculation for variants
+  const priceRange = getProductPriceRange(product);
+  const hasVariants = product.hasVariants && priceRange.activeVariantsCount > 0;
+  const effectiveDisplayPrice = hasVariants && priceRange.minPrice > 0 ? priceRange.minPrice : bestPrice;
+  const effectiveOrigPrice = hasVariants && priceRange.minOriginalPrice > 0 ? priceRange.minOriginalPrice : originalPrice;
+  const effectiveDiscount = hasVariants ? priceRange.maxDiscount : discountPercent;
+
+  const hasDiscount = effectiveDiscount > 0;
+  const formattedMainPrice = formatCurrencyPrice(effectiveDisplayPrice, activeCurrencyCode);
+  const formattedOrigPrice = formatCurrencyPrice(effectiveOrigPrice, activeCurrencyCode);
 
   return (
     <>
@@ -117,13 +126,18 @@ function ProductCard({
           {/* Perfect Circular Discount Badge */}
           {hasDiscount && (
             <div className="absolute top-2.5 left-2.5 z-20 w-11 h-11 sm:w-13 sm:h-13 bg-[#FF5A00] text-white rounded-full flex flex-col items-center justify-center text-center shadow-md border border-white/20 select-none font-display pointer-events-none shrink-0">
-              <span className="text-[11px] sm:text-xs font-black leading-none">{discountPercent}%</span>
+              <span className="text-[11px] sm:text-xs font-black leading-none">{effectiveDiscount}%</span>
               <span className="text-[7px] sm:text-[8px] font-extrabold uppercase tracking-tight leading-none mt-0.5">OFF</span>
             </div>
           )}
 
           {/* Badges Overlay */}
           <div className="absolute bottom-2 left-2 right-12 flex flex-wrap gap-1 pointer-events-none z-10">
+            {hasVariants && (
+              <span className="inline-flex items-center gap-1 bg-slate-900/90 dark:bg-slate-800/90 text-white text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md shadow-xs">
+                <Layers className="w-2.5 h-2.5 text-[#FF5A00]" /> {priceRange.activeVariantsCount} Options
+              </span>
+            )}
             {badges.seenInReel && (
               <span className="inline-flex items-center gap-1 bg-sky-500/90 dark:bg-sky-950/90 text-white dark:text-sky-400 text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md shadow-xs">
                 <Film className="w-2.5 h-2.5" /> Reel
@@ -175,16 +189,23 @@ function ProductCard({
           <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between mt-3 gap-2">
             <div className="flex flex-col shrink-0">
               <div className="flex items-baseline gap-1.5">
+                {priceRange.hasPriceRange && (
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">From</span>
+                )}
                 <span className="text-sm font-black text-slate-950 dark:text-white">
                   {formattedMainPrice.formatted}
                 </span>
-                {originalPrice > bestPrice && (
+                {effectiveOrigPrice > effectiveDisplayPrice && (
                   <span className="text-[10px] text-slate-400 dark:text-slate-500 line-through">
                     {formattedOrigPrice.formatted}
                   </span>
                 )}
               </div>
-              {retailerName ? (
+              {hasVariants ? (
+                <span className="text-[10px] font-bold text-[#FF5A00] flex items-center gap-1">
+                  <span>Multiple options available</span>
+                </span>
+              ) : retailerName ? (
                 <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                   <PlatformLogo platformName={retailerName} retailerId={bestOffer?.retailerId} className="h-3.5 w-auto max-w-[50px] object-contain shrink-0" />
                   <span>Best price on {retailerName}</span>

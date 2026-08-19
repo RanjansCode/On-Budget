@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -15,12 +15,13 @@ import {
   SlidersHorizontal, Search, Sparkles, Image, ArrowUp, ArrowDown, Calendar, Power, Megaphone,
   RefreshCw, AlertCircle, Store
 } from 'lucide-react';
-import { Product, Category, Reel, AnalyticsData, PurchaseLink, PromotionalBanner, RetailerOffer, Retailer } from '../types';
+import { Product, Category, Reel, AnalyticsData, PurchaseLink, PromotionalBanner, RetailerOffer, Retailer, ProductVariant, ProductVariantOption } from '../types';
 import { validateSocialUrl, validatePurchaseUrl, formatUrl } from '../utils/validation';
 import { getPurchaseLinks } from '../utils/purchaseLinks';
 import { getNormalizedRetailerOffers, calculateDiscountPercent } from '../utils/retailerOffers';
 import PlatformLogo from './PlatformLogo';
 import RetailerLogo from './RetailerLogo';
+import { ProductVariantAdmin } from './ProductVariantAdmin';
 import { calculateDiscount } from '../utils/discount';
 import AdminLaunchMode from './AdminLaunchMode';
 import { LaunchSettings } from '../firebase/firestore';
@@ -1087,6 +1088,7 @@ export default function AdminPanel({
             product={editingProduct}
             categories={categories}
             existingProducts={products}
+            retailers={retailers}
             onClose={() => setProductFormOpen(false)}
             onSave={(p) => {
               if (editingProduct) {
@@ -1262,12 +1264,13 @@ interface ProductFormModalProps {
   product: Product | null;
   categories: Category[];
   existingProducts?: Product[];
+  retailers?: Retailer[];
   onClose: () => void;
   onSave: (product: Product) => void;
   imagePresets: string[];
 }
 
-function ProductFormModal({ product, categories, existingProducts = [], onClose, onSave, imagePresets }: ProductFormModalProps) {
+function ProductFormModal({ product, categories, existingProducts = [], retailers = [], onClose, onSave, imagePresets }: ProductFormModalProps) {
   const [id, setId] = useState(product?.id || `prod-${Date.now()}`);
   const [title, setTitle] = useState(product?.title || '');
   const [price, setPrice] = useState(product?.price || 0);
@@ -1277,6 +1280,13 @@ function ProductFormModal({ product, categories, existingProducts = [], onClose,
   const [brand, setBrand] = useState(product?.brand || '');
   const [category, setCategory] = useState(product?.category || categories[0]?.id || 'desk-setup');
   const [rating, setRating] = useState(product?.rating || 4.5);
+
+  const activeRetailers = useMemo(() => {
+    if (Array.isArray(retailers) && retailers.length > 0) {
+      return retailers.filter(r => r.status !== 'disabled');
+    }
+    return INITIAL_RETAILERS;
+  }, [retailers]);
   
   // Multi-Image Product Gallery State
   const [productImages, setProductImages] = useState<string[]>(() => getProductImages(product));
@@ -1383,7 +1393,7 @@ function ProductFormModal({ product, categories, existingProducts = [], onClose,
       setUploadError(null);
     }
   };
-  // Retailer Offers state initialization (supports multi-retailer pricing)
+  // Retailer Offers state initialization (supports multi-retailer pricing connected to Master Registry)
   const [retailerOffers, setRetailerOffers] = useState<RetailerOffer[]>(() => {
     if (product) {
       const norm = getNormalizedRetailerOffers(product, true);
@@ -1391,10 +1401,12 @@ function ProductFormModal({ product, categories, existingProducts = [], onClose,
     }
     const defaultOrig = Number(product?.originalPrice) || Number(originalPrice) || 0;
     const defaultCur = Number(product?.price) || Number(price) || 0;
+    const defaultRetailer = activeRetailers[0] || INITIAL_RETAILERS[0];
     return [
       {
         id: `offer-1-${Date.now()}`,
-        retailerName: 'Amazon',
+        retailerId: defaultRetailer?.id || 'amazon',
+        retailerName: defaultRetailer?.name || 'Amazon',
         productUrl: '',
         originalPrice: defaultOrig,
         offerPrice: defaultCur,
@@ -1409,12 +1421,17 @@ function ProductFormModal({ product, categories, existingProducts = [], onClose,
     [index: number]: { name?: string; url?: string; price?: string; origPrice?: string };
   }>({});
 
-  const handleAddRetailerOffer = (presetName = '') => {
+  const handleAddRetailerOffer = (presetName = '', presetId = '') => {
+    const master = getMasterRetailer(presetId || presetName);
+    const resolvedName = master?.name || presetName;
+    const resolvedId = presetId || master?.id || normalizeRetailerKey(presetName);
+
     setRetailerOffers(prev => [
       ...prev,
       {
         id: `offer-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-        retailerName: presetName,
+        retailerId: resolvedId,
+        retailerName: resolvedName,
         productUrl: '',
         originalPrice: Number(originalPrice) || Number(price) || 0,
         offerPrice: Number(price) || 0,
@@ -1471,6 +1488,15 @@ function ProductFormModal({ product, categories, existingProducts = [], onClose,
       const copy = [...prev];
       const item = { ...copy[index], [field]: value };
 
+      if (field === 'retailerName') {
+        const master = getMasterRetailer(value);
+        if (master) {
+          item.retailerId = master.id;
+        } else {
+          item.retailerId = normalizeRetailerKey(value);
+        }
+      }
+
       if (field === 'originalPrice' || field === 'offerPrice') {
         const orig = Number(field === 'originalPrice' ? value : item.originalPrice) || 0;
         const cur = Number(field === 'offerPrice' ? value : item.offerPrice) || 0;
@@ -1491,6 +1517,11 @@ function ProductFormModal({ product, categories, existingProducts = [], onClose,
       return copy;
     });
   };
+
+  // Variant System State
+  const [hasVariants, setHasVariants] = useState<boolean>(() => Boolean(product?.hasVariants));
+  const [variantOptions, setVariantOptions] = useState<ProductVariantOption[]>(() => product?.variantOptions || []);
+  const [variants, setVariants] = useState<ProductVariant[]>(() => product?.variants || []);
 
   // Photo / Video Links
   const [youtubeUrl, setYoutubeUrl] = useState(product?.youtubeUrl || '');
@@ -1708,9 +1739,11 @@ function ProductFormModal({ product, categories, existingProducts = [], onClose,
         if (Object.keys(fieldErrs).length > 0) {
           newOfferErrors[idx] = fieldErrs;
         } else {
+          const master = getMasterRetailer(offer.retailerId || trimmedName);
           validRetailerOffers.push({
             id: offer.id || `offer-${idx}-${Date.now()}`,
-            retailerName: trimmedName,
+            retailerId: offer.retailerId || master?.id || normalizeRetailerKey(trimmedName),
+            retailerName: master?.name || trimmedName,
             productUrl: formatUrl(trimmedUrl),
             originalPrice: origPrice || curPrice,
             offerPrice: curPrice,
@@ -1771,6 +1804,9 @@ function ProductFormModal({ product, categories, existingProducts = [], onClose,
       price: bestOfferPrice,
       originalPrice: bestOriginalPrice,
       discount: calculatedBestDiscount,
+      hasVariants: Boolean(hasVariants && variantOptions.length > 0 && variants.length > 0),
+      variantOptions: hasVariants ? variantOptions : [],
+      variants: hasVariants ? variants : [],
       retailerOffers: validRetailerOffers,
       description,
       whyIRecommend,
@@ -2090,6 +2126,19 @@ function ProductFormModal({ product, categories, existingProducts = [], onClose,
             </div>
           </div>
 
+          {/* Amazon-Style Product Variant Management */}
+          <ProductVariantAdmin
+            hasVariants={hasVariants}
+            onToggleHasVariants={setHasVariants}
+            variantOptions={variantOptions}
+            onChangeVariantOptions={setVariantOptions}
+            variants={variants}
+            onChangeVariants={setVariants}
+            basePrice={Number(price) || 0}
+            baseOriginalPrice={Number(originalPrice) || Number(price) || 0}
+            baseImages={finalImages}
+          />
+
           {/* Section 2: Retailer Offers & Purchase Links */}
           <div className="space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-neutral-800 pb-2.5 gap-2">
@@ -2116,21 +2165,24 @@ function ProductFormModal({ product, categories, existingProducts = [], onClose,
             {/* Quick Add Preset Retailers */}
             <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
               <span className="text-[10px] font-bold text-neutral-500 shrink-0">Quick Presets:</span>
-              {['Amazon', 'Meesho', 'Flipkart', 'Myntra', 'Croma', 'Ajio', 'Nykaa'].map(preset => {
-                const exists = retailerOffers.some(o => o.retailerName.toLowerCase() === preset.toLowerCase());
+              {activeRetailers.map(preset => {
+                const exists = retailerOffers.some(
+                  o => (o.retailerId && o.retailerId === preset.id) ||
+                       (o.retailerName && o.retailerName.toLowerCase() === preset.name.toLowerCase())
+                );
                 return (
                   <button
-                    key={preset}
+                    key={preset.id}
                     type="button"
-                    onClick={() => handleAddRetailerOffer(preset)}
+                    onClick={() => handleAddRetailerOffer(preset.name, preset.id)}
                     className={`px-2.5 py-1 text-[10px] font-bold rounded-lg border transition-all cursor-pointer shrink-0 flex items-center gap-1.5 ${
                       exists
                         ? 'bg-neutral-800/80 text-neutral-400 border-neutral-700/80 opacity-70'
                         : 'bg-neutral-900 hover:bg-neutral-800 text-neutral-200 border-neutral-700/60 hover:border-emerald-500/50'
                     }`}
                   >
-                    <PlatformLogo platformName={preset} className="h-3.5 w-auto max-w-[50px] object-contain shrink-0" />
-                    <span>{preset}</span>
+                    <PlatformLogo platformName={preset.name} retailerId={preset.id} className="h-3.5 w-auto max-w-[50px] object-contain shrink-0" />
+                    <span>{preset.name}</span>
                     <Plus className="w-2.5 h-2.5 text-emerald-400 shrink-0" />
                   </button>
                 );
@@ -2157,7 +2209,7 @@ function ProductFormModal({ product, categories, existingProducts = [], onClose,
                     {/* Header Row: Retailer Icon/Name, Active Toggle, Order Actions, Delete */}
                     <div className="flex items-center justify-between gap-2 border-b border-neutral-900 pb-2">
                       <div className="flex items-center gap-2">
-                        <PlatformLogo platformName={offer.retailerName || 'Offer'} className="h-5 w-auto max-w-[75px] object-contain shrink-0" />
+                        <PlatformLogo platformName={offer.retailerName || 'Offer'} retailerId={offer.retailerId} className="h-5 w-auto max-w-[75px] object-contain shrink-0" />
                         <span className="text-xs font-extrabold text-white">
                           {offer.retailerName || `Retailer #${idx + 1}`}
                         </span>
@@ -2296,17 +2348,9 @@ function ProductFormModal({ product, categories, existingProducts = [], onClose,
               })}
 
               <datalist id="popular-platforms-list">
-                <option value="Amazon" />
-                <option value="Flipkart" />
-                <option value="Meesho" />
-                <option value="Myntra" />
-                <option value="Ajio" />
-                <option value="Croma" />
-                <option value="Reliance Digital" />
-                <option value="Tata CliQ" />
-                <option value="Nykaa" />
-                <option value="Snapdeal" />
-                <option value="Official Website" />
+                {activeRetailers.map(r => (
+                  <option key={r.id} value={r.name} />
+                ))}
               </datalist>
             </div>
 

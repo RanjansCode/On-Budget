@@ -102,6 +102,93 @@ export const INITIAL_PRODUCTS: Product[] = [
     couponCode: 'CABLE5',
     alternatives: ['Anker Magnetic Cable Holder (costly ₹699)'],
     frequentlyBoughtTogether: ['prod-3'],
+    hasVariants: true,
+    variantOptions: [
+      {
+        id: 'opt-color',
+        name: 'Color',
+        values: ['Matte Black', 'Arctic White']
+      },
+      {
+        id: 'opt-pack',
+        name: 'Pack Size',
+        values: ['Pack of 1', 'Pack of 2', 'Pack of 4']
+      }
+    ],
+    variants: [
+      {
+        id: 'var-blk-1',
+        options: { Color: 'Matte Black', 'Pack Size': 'Pack of 1' },
+        price: 99,
+        originalPrice: 199,
+        discount: 50,
+        isActive: true,
+        stockStatus: 'in_stock',
+        sku: 'MAG-BLK-1PK',
+        images: ['https://images.unsplash.com/photo-1616440347437-b1c73416efc2?w=600&auto=format&fit=crop&q=80'],
+        affiliateUrl: 'https://amazon.in/dp/mock-magnetic-organizer?variant=blk-1'
+      },
+      {
+        id: 'var-blk-2',
+        options: { Color: 'Matte Black', 'Pack Size': 'Pack of 2' },
+        price: 179,
+        originalPrice: 398,
+        discount: 55,
+        isActive: true,
+        stockStatus: 'in_stock',
+        sku: 'MAG-BLK-2PK',
+        images: ['https://images.unsplash.com/photo-1616440347437-b1c73416efc2?w=600&auto=format&fit=crop&q=80'],
+        affiliateUrl: 'https://amazon.in/dp/mock-magnetic-organizer?variant=blk-2'
+      },
+      {
+        id: 'var-blk-4',
+        options: { Color: 'Matte Black', 'Pack Size': 'Pack of 4' },
+        price: 329,
+        originalPrice: 796,
+        discount: 59,
+        isActive: true,
+        stockStatus: 'in_stock',
+        sku: 'MAG-BLK-4PK',
+        images: ['https://images.unsplash.com/photo-1616440347437-b1c73416efc2?w=600&auto=format&fit=crop&q=80'],
+        affiliateUrl: 'https://amazon.in/dp/mock-magnetic-organizer?variant=blk-4'
+      },
+      {
+        id: 'var-wht-1',
+        options: { Color: 'Arctic White', 'Pack Size': 'Pack of 1' },
+        price: 99,
+        originalPrice: 199,
+        discount: 50,
+        isActive: true,
+        stockStatus: 'in_stock',
+        sku: 'MAG-WHT-1PK',
+        images: ['https://images.unsplash.com/photo-1541140111869-aa590cb9b06d?w=600&auto=format&fit=crop&q=80'],
+        affiliateUrl: 'https://amazon.in/dp/mock-magnetic-organizer?variant=wht-1'
+      },
+      {
+        id: 'var-wht-2',
+        options: { Color: 'Arctic White', 'Pack Size': 'Pack of 2' },
+        price: 179,
+        originalPrice: 398,
+        discount: 55,
+        isActive: true,
+        stockStatus: 'in_stock',
+        sku: 'MAG-WHT-2PK',
+        images: ['https://images.unsplash.com/photo-1541140111869-aa590cb9b06d?w=600&auto=format&fit=crop&q=80'],
+        affiliateUrl: 'https://amazon.in/dp/mock-magnetic-organizer?variant=wht-2'
+      },
+      {
+        id: 'var-wht-4',
+        options: { Color: 'Arctic White', 'Pack Size': 'Pack of 4' },
+        price: 329,
+        originalPrice: 796,
+        discount: 59,
+        isActive: true,
+        stockStatus: 'limited_stock',
+        sku: 'MAG-WHT-4PK',
+        images: ['https://images.unsplash.com/photo-1541140111869-aa590cb9b06d?w=600&auto=format&fit=crop&q=80'],
+        affiliateUrl: 'https://amazon.in/dp/mock-magnetic-organizer?variant=wht-4'
+      }
+    ],
     faqs: [
       { question: 'Will this hold thick HDMI cables?', answer: 'No, it is designed for smartphone charging and USB-C cables up to 4.5mm.' },
       { question: 'Is the adhesive reusable?', answer: 'Yes, if washed carefully and air-dried, it retains some stickiness, but we recommend placing it once.' }
