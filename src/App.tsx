@@ -83,6 +83,7 @@ import { useToast } from './components/Toast';
 import { LocationCurrencyBanner } from './components/CurrencySwitcher';
 import { calculateDiscount } from './utils/discount';
 import { detectUserCurrency, setUserCurrency } from './utils/currency';
+import { sortProductsByNewest } from './utils/productSorting';
 import {
   ProductCardSkeleton,
   ProductGridSkeleton,
@@ -105,7 +106,7 @@ export default function App() {
   const [dbLoading, setDbLoading] = useState(false);
 
   // --- Core Cloud Synchronized States ---
-  const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
+  const [products, setProducts] = useState<Product[]>(() => sortProductsByNewest(INITIAL_PRODUCTS));
   const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);
   const [reels, setReels] = useState<Reel[]>(INITIAL_REELS);
   const [promotionalBanners, setPromotionalBanners] = useState<PromotionalBanner[]>(INITIAL_PROMOTIONAL_BANNERS);
@@ -242,7 +243,7 @@ export default function App() {
         ]);
 
         if (isMounted) {
-          if (cloudProducts && cloudProducts.length > 0) setProducts(cloudProducts);
+          if (cloudProducts && cloudProducts.length > 0) setProducts(sortProductsByNewest(cloudProducts));
           if (cloudCategories && cloudCategories.length > 0) setCategories(cloudCategories);
           if (cloudBanners && cloudBanners.length > 0) setPromotionalBanners(cloudBanners);
           if (cloudRetailers && cloudRetailers.length > 0) {
@@ -351,7 +352,7 @@ export default function App() {
           try {
             const adminProducts = await fetchProductsFromFirestore();
             if (adminProducts && adminProducts.length > 0) {
-              setProducts(adminProducts);
+              setProducts(sortProductsByNewest(adminProducts));
             }
           } catch (err) {
             console.error("Failed to load admin products:", err);
@@ -366,7 +367,7 @@ export default function App() {
         try {
           const publicProducts = await fetchProductsFromFirestore();
           if (publicProducts && publicProducts.length > 0) {
-            setProducts(publicProducts);
+            setProducts(sortProductsByNewest(publicProducts));
           }
         } catch (err) {
           console.error("Failed to load public products on logout:", err);
@@ -713,12 +714,24 @@ export default function App() {
   // --- CRUD callbacks for ADMIN PANEL with firestore sync ---
 
   const handleAddProduct = async (product: Product) => {
-    setProducts(prev => [product, ...prev]);
-    await addProductToFirestore(product);
+    const productWithCreatedAt: Product = {
+      ...product,
+      createdAt: product.createdAt || new Date().toISOString()
+    };
+    setProducts(prev => sortProductsByNewest([productWithCreatedAt, ...prev.filter(p => p.id !== productWithCreatedAt.id)]));
+    await addProductToFirestore(productWithCreatedAt);
   };
 
   const handleUpdateProduct = async (product: Product) => {
-    setProducts(prev => prev.map(p => (p.id === product.id ? product : p)));
+    setProducts(prev => {
+      const existing = prev.find(p => p.id === product.id);
+      const productWithPreservedCreatedAt: Product = {
+        ...product,
+        createdAt: product.createdAt || existing?.createdAt || new Date().toISOString()
+      };
+      const updated = prev.map(p => (p.id === product.id ? productWithPreservedCreatedAt : p));
+      return sortProductsByNewest(updated);
+    });
     await updateProductInFirestore(product);
   };
 
@@ -1071,13 +1084,23 @@ export default function App() {
     return matched.sort((a, b) => {
       const s = sortOption as string;
       if (s === 'popular') return b.rating - a.rating;
-      if (s === 'latest' || s === 'newest') return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      if (s === 'latest' || s === 'newest') {
+        const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        if (timeB !== timeA) return timeB - timeA;
+        return (b.id || '').localeCompare(a.id || '');
+      }
       if (s === 'low-price') return getProductBestPrice(a).bestPrice - getProductBestPrice(b).bestPrice;
       if (s === 'high-price') return getProductBestPrice(b).bestPrice - getProductBestPrice(a).bestPrice;
       if (s === 'discount') return getProductBestPrice(b).discountPercent - getProductBestPrice(a).discountPercent;
       if (s === 'rating') return b.rating - a.rating;
       if (s === 'trending') return (b.badges.trending ? 1 : 0) - (a.badges.trending ? 1 : 0);
-      return 0;
+      
+      // Default sort is newest first
+      const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      if (timeB !== timeA) return timeB - timeA;
+      return (b.id || '').localeCompare(a.id || '');
     });
   }, [products, searchQuery, filterState, selectedCategory, selectedPriceRange, badgeFilter, sortOption]);
 

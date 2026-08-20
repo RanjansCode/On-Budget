@@ -17,6 +17,7 @@ import { auth } from './auth';
 import { Product, Category, Reel, NotificationItem, ADMIN_EMAILS, UserProfile, AnalyticsData, PromotionalBanner, Retailer } from '../types';
 import { User } from 'firebase/auth';
 import { INITIAL_PRODUCTS, INITIAL_CATEGORIES, INITIAL_REELS, INITIAL_PROMOTIONAL_BANNERS, INITIAL_RETAILERS } from '../data';
+import { sortProductsByNewest } from '../utils/productSorting';
 
 // --- FIRESTORE ERROR HANDLING ---
 export enum OperationType {
@@ -223,20 +224,25 @@ async function fetchProductsFresh(): Promise<Product[]> {
       items.push(docSnap.data() as Product);
     });
     
-    const sorted = items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    const sorted = sortProductsByNewest(items);
     if (sorted.length > 0) {
       setCachedData('products', sorted);
     }
-    return sorted.length > 0 ? sorted : INITIAL_PRODUCTS;
+    const defaultInitial = sortProductsByNewest(INITIAL_PRODUCTS);
+    return sorted.length > 0 ? sorted : defaultInitial;
   } catch (err) {
     console.warn('Firestore fetch products fallback to initial products:', err);
-    return INITIAL_PRODUCTS;
+    return sortProductsByNewest(INITIAL_PRODUCTS);
   }
 }
 
 export async function addProductToFirestore(product: Product) {
   try {
-    await setDoc(doc(db, 'products', product.id), cleanData(product));
+    const productToSave: Product = {
+      ...product,
+      createdAt: product.createdAt || new Date().toISOString()
+    };
+    await setDoc(doc(db, 'products', productToSave.id), cleanData(productToSave));
     delete MEMORY_CACHE['products'];
     localStorage.removeItem('onbudget_cache_products');
   } catch (err) {

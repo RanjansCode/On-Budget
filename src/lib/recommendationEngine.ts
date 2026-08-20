@@ -1,4 +1,5 @@
 import { Product } from '../types';
+import { sortProductsByNewest } from '../utils/productSorting';
 import { db } from './firebase';
 import { collection, addDoc, getDocs } from 'firebase/firestore';
 
@@ -158,9 +159,7 @@ export function getHomePageRecommendations(products: Product[], wishlistIds: str
     .slice(0, 10);
 
   // 4. 🆕 Newly Added
-  const newlyAdded = [...publishedProducts]
-    .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
-    .slice(0, 10);
+  const newlyAdded = sortProductsByNewest(publishedProducts).slice(0, 10);
 
   // 5. 📈 Most Viewed
   const mostViewed = [...publishedProducts]

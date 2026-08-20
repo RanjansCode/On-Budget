@@ -32,6 +32,7 @@ import CategoryIcon, { CATEGORY_ICON_OPTIONS } from './CategoryIcon';
 import { getBannerStatus, isBannerActive, PromotionalCarousel } from './PromotionalCarousel';
 import { uploadFileToStorage } from '../lib/firebase';
 import { getProductImages, getProductMainImage } from '../utils/imageUtils';
+import { sortProductsByNewest } from '../utils/productSorting';
 import { INITIAL_RETAILERS } from '../data';
 import { normalizeRetailerKey, getMasterRetailer } from '../utils/retailerLogos';
 
@@ -434,7 +435,7 @@ export default function AdminPanel({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-neutral-800 text-xs">
-                    {products.map(p => (
+                    {sortProductsByNewest(products).map(p => (
                       <tr key={p.id} className="hover:bg-neutral-850/30 transition-colors">
                         <td className="p-4 flex items-center gap-3">
                           <img
