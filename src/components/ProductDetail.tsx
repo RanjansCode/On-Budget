@@ -120,7 +120,11 @@ export default function ProductDetail({
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
 
-  // Make sure image index is within bounds if images change
+  // Make sure image index is within bounds if images change and reset safely to image 1 when switching variants
+  useEffect(() => {
+    setSelectedImageIndex(0);
+  }, [selectedVariant?.id]);
+
   useEffect(() => {
     if (selectedImageIndex >= productImages.length) {
       setSelectedImageIndex(0);

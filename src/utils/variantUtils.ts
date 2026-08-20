@@ -264,11 +264,20 @@ export function getEffectiveProductData(
   const computedDiscount = calculateDiscountPercent(variantOriginal, variantPrice) ||
     (typeof selectedVariant.discount === 'number' ? selectedVariant.discount : calculateDiscountPercent(baseOriginal, basePrice));
 
-  const variantImages = Array.isArray(selectedVariant.images) && selectedVariant.images.length > 0
-    ? selectedVariant.images.filter(img => typeof img === 'string' && img.trim().length > 0)
-    : baseImages;
+  // Extract variant-specific multi-image gallery with support for legacy fields
+  const rawVariantImages = Array.isArray(selectedVariant.images) && selectedVariant.images.length > 0
+    ? selectedVariant.images
+    : (selectedVariant as any)?.image && typeof (selectedVariant as any).image === 'string'
+    ? [(selectedVariant as any).image]
+    : [];
 
-  const finalImages = variantImages.length > 0 ? variantImages : baseImages;
+  const cleanVariantImages = rawVariantImages
+    .map(img => (typeof img === 'string' ? img.trim() : ''))
+    .filter(img => img.length > 0);
+
+  // CRITICAL: If variant has its own gallery, use ONLY that variant's gallery (do NOT mix).
+  // If variant has NO images, fallback to product-level baseImages.
+  const finalImages = cleanVariantImages.length > 0 ? cleanVariantImages : baseImages;
   const variantAffiliateUrl = selectedVariant.affiliateUrl && selectedVariant.affiliateUrl.trim().length > 0
     ? selectedVariant.affiliateUrl.trim()
     : baseAffiliateUrl;

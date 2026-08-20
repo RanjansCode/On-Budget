@@ -125,7 +125,16 @@ export const INITIAL_PRODUCTS: Product[] = [
         isActive: true,
         stockStatus: 'in_stock',
         sku: 'MAG-BLK-1PK',
-        images: ['https://images.unsplash.com/photo-1616440347437-b1c73416efc2?w=600&auto=format&fit=crop&q=80'],
+        images: [
+          'https://images.unsplash.com/photo-1616440347437-b1c73416efc2?w=800&auto=format&fit=crop&q=80',
+          'https://images.unsplash.com/photo-1593062096033-9a26b09da705?w=800&auto=format&fit=crop&q=80',
+          'https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?w=800&auto=format&fit=crop&q=80',
+          'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=800&auto=format&fit=crop&q=80',
+          'https://images.unsplash.com/photo-1507473885765-e6ed057f782c?w=800&auto=format&fit=crop&q=80',
+          'https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&auto=format&fit=crop&q=80',
+          'https://images.unsplash.com/photo-1550009158-9ebf69173e03?w=800&auto=format&fit=crop&q=80',
+          'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=800&auto=format&fit=crop&q=80'
+        ],
         affiliateUrl: 'https://amazon.in/dp/mock-magnetic-organizer?variant=blk-1'
       },
       {
@@ -137,7 +146,14 @@ export const INITIAL_PRODUCTS: Product[] = [
         isActive: true,
         stockStatus: 'in_stock',
         sku: 'MAG-BLK-2PK',
-        images: ['https://images.unsplash.com/photo-1616440347437-b1c73416efc2?w=600&auto=format&fit=crop&q=80'],
+        images: [
+          'https://images.unsplash.com/photo-1616440347437-b1c73416efc2?w=800&auto=format&fit=crop&q=80',
+          'https://images.unsplash.com/photo-1593062096033-9a26b09da705?w=800&auto=format&fit=crop&q=80',
+          'https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?w=800&auto=format&fit=crop&q=80',
+          'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=800&auto=format&fit=crop&q=80',
+          'https://images.unsplash.com/photo-1507473885765-e6ed057f782c?w=800&auto=format&fit=crop&q=80',
+          'https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&auto=format&fit=crop&q=80'
+        ],
         affiliateUrl: 'https://amazon.in/dp/mock-magnetic-organizer?variant=blk-2'
       },
       {
@@ -149,7 +165,12 @@ export const INITIAL_PRODUCTS: Product[] = [
         isActive: true,
         stockStatus: 'in_stock',
         sku: 'MAG-BLK-4PK',
-        images: ['https://images.unsplash.com/photo-1616440347437-b1c73416efc2?w=600&auto=format&fit=crop&q=80'],
+        images: [
+          'https://images.unsplash.com/photo-1616440347437-b1c73416efc2?w=800&auto=format&fit=crop&q=80',
+          'https://images.unsplash.com/photo-1593062096033-9a26b09da705?w=800&auto=format&fit=crop&q=80',
+          'https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?w=800&auto=format&fit=crop&q=80',
+          'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=800&auto=format&fit=crop&q=80'
+        ],
         affiliateUrl: 'https://amazon.in/dp/mock-magnetic-organizer?variant=blk-4'
       },
       {
@@ -161,7 +182,13 @@ export const INITIAL_PRODUCTS: Product[] = [
         isActive: true,
         stockStatus: 'in_stock',
         sku: 'MAG-WHT-1PK',
-        images: ['https://images.unsplash.com/photo-1541140111869-aa590cb9b06d?w=600&auto=format&fit=crop&q=80'],
+        images: [
+          'https://images.unsplash.com/photo-1541140111869-aa590cb9b06d?w=800&auto=format&fit=crop&q=80',
+          'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=800&auto=format&fit=crop&q=80',
+          'https://images.unsplash.com/photo-1593642632823-8f785ba67e45?w=800&auto=format&fit=crop&q=80',
+          'https://images.unsplash.com/photo-1581291518655-9523c932edcf?w=800&auto=format&fit=crop&q=80',
+          'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=800&auto=format&fit=crop&q=80'
+        ],
         affiliateUrl: 'https://amazon.in/dp/mock-magnetic-organizer?variant=wht-1'
       },
       {
@@ -173,7 +200,12 @@ export const INITIAL_PRODUCTS: Product[] = [
         isActive: true,
         stockStatus: 'in_stock',
         sku: 'MAG-WHT-2PK',
-        images: ['https://images.unsplash.com/photo-1541140111869-aa590cb9b06d?w=600&auto=format&fit=crop&q=80'],
+        images: [
+          'https://images.unsplash.com/photo-1541140111869-aa590cb9b06d?w=800&auto=format&fit=crop&q=80',
+          'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=800&auto=format&fit=crop&q=80',
+          'https://images.unsplash.com/photo-1593642632823-8f785ba67e45?w=800&auto=format&fit=crop&q=80',
+          'https://images.unsplash.com/photo-1581291518655-9523c932edcf?w=800&auto=format&fit=crop&q=80'
+        ],
         affiliateUrl: 'https://amazon.in/dp/mock-magnetic-organizer?variant=wht-2'
       },
       {
@@ -185,7 +217,11 @@ export const INITIAL_PRODUCTS: Product[] = [
         isActive: true,
         stockStatus: 'limited_stock',
         sku: 'MAG-WHT-4PK',
-        images: ['https://images.unsplash.com/photo-1541140111869-aa590cb9b06d?w=600&auto=format&fit=crop&q=80'],
+        images: [
+          'https://images.unsplash.com/photo-1541140111869-aa590cb9b06d?w=800&auto=format&fit=crop&q=80',
+          'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=800&auto=format&fit=crop&q=80',
+          'https://images.unsplash.com/photo-1593642632823-8f785ba67e45?w=800&auto=format&fit=crop&q=80'
+        ],
         affiliateUrl: 'https://amazon.in/dp/mock-magnetic-organizer?variant=wht-4'
       }
     ],
