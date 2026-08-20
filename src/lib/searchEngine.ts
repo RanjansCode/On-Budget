@@ -163,6 +163,9 @@ export function smartSearchProducts(
     const seoSlugLower = (p.seoSlug || '').toLowerCase();
     const specsText = (p.specifications || []).map(s => `${s.name} ${s.value}`.toLowerCase()).join(' ');
     const featuresText = (p.features || []).map(f => f.toLowerCase()).join(' ');
+    const variantTitlesText = (p.variants || [])
+      .map(v => `${v.title || ''} ${Object.values(v.options || {}).join(' ')}`.toLowerCase())
+      .join(' ');
 
     searchTerms.forEach(term => {
       const t = term.toLowerCase();
@@ -171,6 +174,9 @@ export function smartSearchProducts(
       // Exact title match gets huge score
       if (titleLower === t) score += 50;
       else if (titleLower.includes(t)) score += 20;
+
+      // Variant title / variant options match
+      if (variantTitlesText.includes(t)) score += 18;
 
       // Brand match
       if (brandLower === t) score += 30;

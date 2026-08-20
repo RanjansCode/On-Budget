@@ -195,24 +195,33 @@ export default function ProductDetail({
     const slug = getProductSlug(product);
     const canonicalUrl = getCanonicalUrl(`/product/${slug}`, domain);
 
-    // Format: "[Product Name] – Price, Details & Review | In Our Budget"
-    const title = product.seoTitle?.trim()
-      ? product.seoTitle
-      : `${product.title} – Price, Details & Review | In Our Budget`;
+    const effectiveTitle = effectiveData.title;
 
-    const priceText = product.price ? ` priced at ₹${product.price}` : '';
+    // Format: "[Variant Title / Product Name] – Price, Details & Review | In Our Budget"
+    const title = product.seoTitle?.trim() && !selectedVariant?.title?.trim()
+      ? product.seoTitle
+      : `${effectiveTitle} – Price, Details & Review | In Our Budget`;
+
+    const priceToDisplay = effectiveData.price || product.price;
+    const priceText = priceToDisplay ? ` priced at ₹${priceToDisplay}` : '';
     const categoryText = product.category ? ` in ${product.category}` : '';
     const brandText = product.brand ? ` by ${product.brand}` : '';
 
     const description = product.seoDescription?.trim()
       ? product.seoDescription
-      : `Discover ${product.title}${brandText}${categoryText}${priceText}. Explore specifications, key features, and honest reviews on In Our Budget.`;
+      : `Discover ${effectiveTitle}${brandText}${categoryText}${priceText}. Explore specifications, key features, and honest reviews on In Our Budget.`;
 
-    const productSchema = generateProductSchema(product, domain);
+    const productSchema = generateProductSchema({
+      ...product,
+      title: effectiveTitle,
+      price: priceToDisplay,
+      images: effectiveData.images,
+    }, domain);
+
     const breadcrumbSchema = generateBreadcrumbSchema([
       { name: 'Home', url: '/' },
       { name: product.category, url: `/category/${slugify(product.category)}` },
-      { name: product.title, url: `/product/${slug}` }
+      { name: effectiveTitle, url: `/product/${slug}` }
     ], domain);
     const orgSchema = generateOrganizationSchema(domain);
     const websiteSchema = generateWebSiteSchema(domain);
@@ -220,9 +229,9 @@ export default function ProductDetail({
     updateDocumentSEO({
       title,
       description,
-      keywords: product.searchTags || [product.title, product.brand, product.category].filter(Boolean),
+      keywords: product.searchTags || [effectiveTitle, product.brand, product.category].filter(Boolean),
       canonicalUrl,
-      imageUrl: product.images?.[0],
+      imageUrl: effectiveData.mainImage || product.images?.[0],
       ogType: 'product',
       jsonLdSchemas: [productSchema, breadcrumbSchema, orgSchema, websiteSchema]
     });
@@ -230,7 +239,7 @@ export default function ProductDetail({
     return () => {
       document.title = previousTitle;
     };
-  }, [product]);
+  }, [product, effectiveData.title, effectiveData.price, effectiveData.mainImage, selectedVariant?.id]);
 
   // AI Summary State
   const [aiSummary, setAiSummary] = useState('');
@@ -401,7 +410,7 @@ export default function ProductDetail({
               >
                 <ImageSkeleton
                   src={productImages[selectedImageIndex] || productImages[0]}
-                  alt={product.title}
+                  alt={effectiveData.title}
                   priority={selectedImageIndex === 0}
                   containerClassName="w-full h-full"
                   className="max-w-full max-h-full w-auto h-auto object-contain object-center group-hover/detailimg:scale-105 transition-transform duration-300 select-none"
@@ -539,7 +548,7 @@ export default function ProductDetail({
                 </div>
                 
                 <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight leading-tight font-display">
-                  {product.title}
+                  {effectiveData.title}
                 </h1>
               </div>
             </div>
@@ -1129,7 +1138,7 @@ export default function ProductDetail({
         onClose={() => setIsLightboxOpen(false)}
         images={productImages}
         initialIndex={selectedImageIndex}
-        productTitle={product.title}
+        productTitle={effectiveData.title}
       />
     </div>
   );

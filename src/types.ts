@@ -65,6 +65,7 @@ export interface ProductVariantOption {
 
 export interface ProductVariant {
   id: string; // Unique variant ID, e.g. "var-1"
+  title?: string; // Optional variant-specific product title (e.g. "Premium Wireless Mouse – Black – Large")
   sku?: string; // Optional SKU, e.g. "KOATY-BLK-LRG"
   options: Record<string, string>; // e.g. { "Color": "Black", "Size": "Large" }
   price?: number; // Variant specific offer price

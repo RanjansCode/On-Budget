@@ -1322,8 +1322,8 @@ function ProductFormModal({ product, categories, existingProducts = [], retailer
 
   const handleAddImageByUrl = () => {
     if (!newImageUrlInput.trim()) return;
-    if (productImages.length >= 8) {
-      setUploadError('Maximum limit of 8 images reached.');
+    if (productImages.length >= 12) {
+      setUploadError('Maximum limit of 12 images reached.');
       return;
     }
     setProductImages(prev => [...prev, newImageUrlInput.trim()]);
@@ -1336,9 +1336,9 @@ function ProductFormModal({ product, categories, existingProducts = [], retailer
     if (!files || files.length === 0) return;
 
     const fileList = Array.from(files);
-    const remainingSlots = 8 - productImages.length;
+    const remainingSlots = 12 - productImages.length;
     if (remainingSlots <= 0) {
-      setUploadError('Maximum limit of 8 product images reached.');
+      setUploadError('Maximum limit of 12 product images reached.');
       return;
     }
 
@@ -1384,8 +1384,8 @@ function ProductFormModal({ product, categories, existingProducts = [], retailer
   };
 
   const handleSelectPreset = (presetUrl: string) => {
-    if (productImages.length >= 8) {
-      setUploadError('Maximum limit of 8 images reached.');
+    if (productImages.length >= 12) {
+      setUploadError('Maximum limit of 12 images reached.');
       return;
     }
     if (!productImages.includes(presetUrl)) {
@@ -1798,15 +1798,22 @@ function ProductFormModal({ product, categories, existingProducts = [], retailer
       };
     });
 
+    const cleanVariants: ProductVariant[] = hasVariants
+      ? variants.map(v => ({
+          ...v,
+          title: typeof v.title === 'string' && v.title.trim().length > 0 ? v.title.trim() : undefined,
+        }))
+      : [];
+
     const newProduct: Product = {
       id,
       title,
       price: bestOfferPrice,
       originalPrice: bestOriginalPrice,
       discount: calculatedBestDiscount,
-      hasVariants: Boolean(hasVariants && variantOptions.length > 0 && variants.length > 0),
+      hasVariants: Boolean(hasVariants && variantOptions.length > 0 && cleanVariants.length > 0),
       variantOptions: hasVariants ? variantOptions : [],
-      variants: hasVariants ? variants : [],
+      variants: cleanVariants,
       retailerOffers: validRetailerOffers,
       description,
       whyIRecommend,
@@ -1945,20 +1952,20 @@ function ProductFormModal({ product, categories, existingProducts = [], retailer
             <div className="flex items-center justify-between border-b border-neutral-800 pb-2">
               <div>
                 <h4 className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest flex items-center gap-1.5 font-display">
-                  <Image className="w-3.5 h-3.5" /> Product Image Gallery ({productImages.length} / 8)
+                  <Image className="w-3.5 h-3.5" /> Product Image Gallery ({productImages.length} / 12)
                 </h4>
                 <p className="text-[11px] text-neutral-400 mt-0.5">
-                  Upload up to 8 product photos. Image #1 is automatically set as the <span className="text-emerald-400 font-bold">MAIN / COVER</span> image.
+                  Upload up to 12 product photos. Image #1 is automatically set as the <span className="text-emerald-400 font-bold">MAIN / COVER</span> image.
                 </p>
               </div>
               <span className="text-[10px] px-2.5 py-1 rounded-full font-mono font-bold bg-neutral-800 text-neutral-300 border border-neutral-700/60">
-                {productImages.length} / 8
+                {productImages.length} / 12
               </span>
             </div>
 
             {/* Selected Images Grid Previews */}
             {productImages.length > 0 ? (
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3">
                 {productImages.map((img, idx) => {
                   const isMain = idx === 0;
                   return (
@@ -2045,7 +2052,7 @@ function ProductFormModal({ product, categories, existingProducts = [], retailer
             )}
 
             {/* Inputs for Upload or Adding Image URLs */}
-            {productImages.length < 8 && (
+            {productImages.length < 12 && (
               <div className="space-y-3 pt-2">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <div className="sm:col-span-2 flex gap-2">
@@ -2137,6 +2144,7 @@ function ProductFormModal({ product, categories, existingProducts = [], retailer
             basePrice={Number(price) || 0}
             baseOriginalPrice={Number(originalPrice) || Number(price) || 0}
             baseImages={finalImages}
+            productTitle={title}
           />
 
           {/* Section 2: Retailer Offers & Purchase Links */}

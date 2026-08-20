@@ -60,6 +60,7 @@ export function generateVariantCombinations(
       return {
         ...existing,
         options: combo, // Update with clean casing
+        title: existing.title || '',
       };
     }
 
@@ -70,6 +71,7 @@ export function generateVariantCombinations(
 
     return {
       id: `var-${Date.now()}-${idx}-${slugParts}`,
+      title: '',
       sku: '',
       options: combo,
       price: undefined,
@@ -202,6 +204,7 @@ export function getVariantDisplayName(
 }
 
 export interface EffectiveProductData {
+  title: string;
   price: number;
   originalPrice: number;
   discount: number;
@@ -217,13 +220,14 @@ export interface EffectiveProductData {
 }
 
 /**
- * Derives the effective product view data (price, images, stock, links) based on selected variant
+ * Derives the effective product view data (title, price, images, stock, links) based on selected variant
  * with comprehensive, safe fallbacks to product-level data.
  */
 export function getEffectiveProductData(
   product?: Partial<Product> | null,
   selectedVariant?: ProductVariant | null
 ): EffectiveProductData {
+  const baseTitle = product?.title || '';
   const baseOriginal = Number(product?.originalPrice) || Number(product?.price) || 0;
   const basePrice = Number(product?.price) || 0;
   const baseImages = getProductImages(product);
@@ -237,6 +241,7 @@ export function getEffectiveProductData(
   if (!selectedVariant) {
     const computedDiscount = calculateDiscountPercent(baseOriginal, basePrice) || Number(product?.discount) || 0;
     return {
+      title: baseTitle,
       price: basePrice,
       originalPrice: baseOriginal,
       discount: computedDiscount,
@@ -251,6 +256,13 @@ export function getEffectiveProductData(
       displayName: '',
     };
   }
+
+  // Variant specific title resolution:
+  // IF selected variant has a non-empty title -> selectedVariant.title.trim()
+  // ELSE -> base product title
+  const variantTitle = (typeof selectedVariant.title === 'string' && selectedVariant.title.trim().length > 0)
+    ? selectedVariant.title.trim()
+    : baseTitle;
 
   // Variant specific resolution
   const variantPrice = typeof selectedVariant.price === 'number' && selectedVariant.price > 0
@@ -286,6 +298,7 @@ export function getEffectiveProductData(
   const isAvailable = selectedVariant.isActive !== false && stockStatus !== 'out_of_stock' && stockStatus !== 'unavailable';
 
   return {
+    title: variantTitle,
     price: variantPrice,
     originalPrice: variantOriginal,
     discount: computedDiscount,

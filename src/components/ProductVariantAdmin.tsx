@@ -35,6 +35,7 @@ interface ProductVariantAdminProps {
   basePrice: number;
   baseOriginalPrice: number;
   baseImages: string[];
+  productTitle?: string;
 }
 
 const COMMON_OPTION_PRESETS = [
@@ -73,7 +74,10 @@ const VariantGalleryEditor: React.FC<VariantGalleryEditorProps> = ({
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    const fileList = Array.from(files);
+    const remainingSlots = 12 - images.length;
+    if (remainingSlots <= 0) return;
+
+    const fileList = Array.from(files).slice(0, remainingSlots);
     setIsUploading(true);
     setUploadProgress({ current: 0, total: fileList.length });
 
@@ -94,7 +98,7 @@ const VariantGalleryEditor: React.FC<VariantGalleryEditorProps> = ({
       }
 
       if (newUrls.length > 0) {
-        onUpdateImages([...images, ...newUrls]);
+        onUpdateImages([...images, ...newUrls].slice(0, 12));
       }
     } finally {
       setIsUploading(false);
@@ -109,8 +113,9 @@ const VariantGalleryEditor: React.FC<VariantGalleryEditorProps> = ({
   const handleAddUrl = () => {
     const trimmed = urlInput.trim();
     if (!trimmed) return;
+    if (images.length >= 12) return;
     if (!images.includes(trimmed)) {
-      onUpdateImages([...images, trimmed]);
+      onUpdateImages([...images, trimmed].slice(0, 12));
     }
     setUrlInput('');
   };
@@ -143,8 +148,9 @@ const VariantGalleryEditor: React.FC<VariantGalleryEditorProps> = ({
 
   // Add image from base product images
   const handlePickBaseImage = (imgUrl: string) => {
+    if (images.length >= 12) return;
     if (!images.includes(imgUrl)) {
-      onUpdateImages([...images, imgUrl]);
+      onUpdateImages([...images, imgUrl].slice(0, 12));
     }
   };
 
@@ -153,11 +159,11 @@ const VariantGalleryEditor: React.FC<VariantGalleryEditorProps> = ({
     if (baseImages.length === 0) return;
     const combined = [...images];
     baseImages.forEach(img => {
-      if (!combined.includes(img)) {
+      if (!combined.includes(img) && combined.length < 12) {
         combined.push(img);
       }
     });
-    onUpdateImages(combined);
+    onUpdateImages(combined.slice(0, 12));
   };
 
   // Clear all images (returns to product-level fallback)
@@ -178,7 +184,7 @@ const VariantGalleryEditor: React.FC<VariantGalleryEditorProps> = ({
               Variant Image Gallery
             </span>
             <span className="text-[10px] text-neutral-400 ml-2 font-mono">
-              ({images.length > 0 ? `${images.length} Photos` : 'Fallback to Product Gallery'})
+              ({images.length > 0 ? `${images.length} / 12 Photos` : 'Fallback to Product Gallery (0 / 12)'})
             </span>
           </div>
         </div>
@@ -197,9 +203,9 @@ const VariantGalleryEditor: React.FC<VariantGalleryEditorProps> = ({
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            disabled={isUploading}
+            disabled={isUploading || images.length >= 12}
             className="bg-[#FF5A00]/15 hover:bg-[#FF5A00] text-[#FF5A00] hover:text-white border border-[#FF5A00]/30 hover:border-[#FF5A00] text-[10px] font-bold px-2.5 py-1 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-            title="Upload one or multiple images from device"
+            title={images.length >= 12 ? 'Maximum limit of 12 images reached' : 'Upload one or multiple images from device'}
           >
             {isUploading ? (
               <>
@@ -315,7 +321,7 @@ const VariantGalleryEditor: React.FC<VariantGalleryEditorProps> = ({
         <button
           type="button"
           onClick={handleAddUrl}
-          disabled={!urlInput.trim()}
+          disabled={!urlInput.trim() || images.length >= 12}
           className="bg-neutral-800 hover:bg-[#FF5A00] disabled:opacity-40 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap"
         >
           + Add URL
@@ -443,6 +449,7 @@ export const ProductVariantAdmin: React.FC<ProductVariantAdminProps> = ({
   basePrice,
   baseOriginalPrice,
   baseImages,
+  productTitle = '',
 }) => {
   const [newOptionName, setNewOptionName] = useState('');
   const [valueInputs, setValueInputs] = useState<{ [optionId: string]: string }>({});
@@ -450,6 +457,7 @@ export const ProductVariantAdmin: React.FC<ProductVariantAdminProps> = ({
   const [bulkOriginalPriceInput, setBulkOriginalPriceInput] = useState<string>('');
   const [bulkStockStatus, setBulkStockStatus] = useState<VariantStockStatus>('in_stock');
   const [bulkAffiliateUrl, setBulkAffiliateUrl] = useState<string>('');
+  const [bulkTitlePrefix, setBulkTitlePrefix] = useState<string>('');
   const [showBulkActions, setShowBulkActions] = useState(false);
   const [showGenerateConfirm, setShowGenerateConfirm] = useState(false);
 
@@ -568,6 +576,7 @@ export const ProductVariantAdmin: React.FC<ProductVariantAdminProps> = ({
 
     const newVariant: ProductVariant = {
       id: `var-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      title: '',
       options: initialSelections,
       price: basePrice || 0,
       originalPrice: baseOriginalPrice || basePrice || 0,
@@ -624,11 +633,33 @@ export const ProductVariantAdmin: React.FC<ProductVariantAdminProps> = ({
     setBulkAffiliateUrl('');
   };
 
+  const handleBulkAutoGenerateTitles = () => {
+    const prefix = (bulkTitlePrefix || productTitle || 'Product').trim();
+    const updated = variants.map(v => {
+      const optionDetails = Object.values(v.options || {}).filter(Boolean).join(' – ');
+      const newTitle = optionDetails ? `${prefix} – ${optionDetails}` : prefix;
+      return {
+        ...v,
+        title: newTitle
+      };
+    });
+    onChangeVariants(updated);
+    setBulkTitlePrefix('');
+  };
+
+  const handleBulkClearTitles = () => {
+    const updated = variants.map(v => ({
+      ...v,
+      title: ''
+    }));
+    onChangeVariants(updated);
+  };
+
   const handleBulkCopyProductGallery = () => {
     if (baseImages.length === 0) return;
     const updated = variants.map(v => ({
       ...v,
-      images: [...baseImages]
+      images: [...baseImages.slice(0, 12)]
     }));
     onChangeVariants(updated);
   };
@@ -1001,6 +1032,44 @@ export const ProductVariantAdmin: React.FC<ProductVariantAdminProps> = ({
                 </div>
               </div>
 
+              {/* Bulk Title Tools */}
+              <div className="pt-2 border-t border-neutral-850 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider font-display">
+                    Bulk Variant Titles:
+                  </span>
+                  <span className="text-[9px] text-neutral-500">
+                    Auto-formats as: [Title] – [Options]
+                  </span>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <input
+                    type="text"
+                    value={bulkTitlePrefix}
+                    onChange={e => setBulkTitlePrefix(e.target.value)}
+                    placeholder={productTitle ? `Prefix (Default: "${productTitle}")` : 'Enter product title prefix...'}
+                    className="flex-1 bg-neutral-900 border border-neutral-800 focus:border-[#FF5A00] rounded-lg px-2.5 py-1 text-xs text-white placeholder:text-neutral-600"
+                  />
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleBulkAutoGenerateTitles}
+                      className="bg-neutral-850 hover:bg-[#FF5A00]/20 text-[#FF5A00] hover:text-white border border-[#FF5A00]/30 text-[10px] font-bold px-2.5 py-1 rounded-lg transition-colors cursor-pointer flex items-center gap-1"
+                    >
+                      <Sparkles className="w-3 h-3" />
+                      <span>Auto-Generate All Titles</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleBulkClearTitles}
+                      className="bg-neutral-850 hover:bg-red-900/30 text-neutral-400 hover:text-red-400 border border-neutral-750 text-[10px] font-bold px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
+                    >
+                      Clear Titles
+                    </button>
+                  </div>
+                </div>
+              </div>
+
               {/* Bulk Gallery Tools */}
               <div className="pt-2 border-t border-neutral-850 flex items-center justify-between gap-2 flex-wrap">
                 <span className="text-[10px] text-neutral-400 font-medium">
@@ -1139,8 +1208,48 @@ export const ProductVariantAdmin: React.FC<ProductVariantAdminProps> = ({
                         </div>
                       </div>
 
-                      {/* Fields Grid (Price, MRP, SKU, Affiliate Link) */}
+                      {/* Fields Grid (Variant Title, Price, MRP, SKU, Affiliate Link) */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 text-xs">
+                        {/* Variant-Specific Title */}
+                        <div className="sm:col-span-2 lg:col-span-3">
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="text-[10px] font-bold text-neutral-300 flex items-center gap-1.5 font-display">
+                              <span>Variant-Specific Title</span>
+                              <span className="text-neutral-500 font-normal">(Optional: overrides product title when this variant is active)</span>
+                            </label>
+                            {v.title && v.title.trim().length > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => handleUpdateVariantField(v.id, 'title', '')}
+                                className="text-[9px] text-neutral-500 hover:text-red-400 font-mono transition-colors cursor-pointer"
+                                title="Clear custom title to use base product title"
+                              >
+                                Clear Title
+                              </button>
+                            )}
+                          </div>
+                          <input
+                            type="text"
+                            maxLength={250}
+                            value={v.title || ''}
+                            onChange={e => handleUpdateVariantField(v.id, 'title', e.target.value)}
+                            placeholder={productTitle ? `Default fallback: "${productTitle}"` : 'Leave empty to fallback to default product title'}
+                            className="w-full bg-neutral-900 border border-neutral-800 focus:border-[#FF5A00] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder:text-neutral-600 focus:outline-none transition-colors"
+                          />
+                          <div className="flex items-center justify-between text-[9px] text-neutral-500 mt-1">
+                            <span>
+                              {v.title && v.title.trim().length > 0 ? (
+                                <span className="text-emerald-400 font-semibold flex items-center gap-1">
+                                  <Check className="w-2.5 h-2.5" /> Custom title active
+                                </span>
+                              ) : (
+                                <span className="text-neutral-500">Using default product title</span>
+                              )}
+                            </span>
+                            <span>{(v.title || '').length} / 250</span>
+                          </div>
+                        </div>
+
                         {/* Variant Price */}
                         <div>
                           <label className="block text-[10px] font-bold text-neutral-400 mb-1">

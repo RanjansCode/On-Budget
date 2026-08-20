@@ -118,6 +118,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     variants: [
       {
         id: 'var-blk-1',
+        title: 'Magnetic Cable Organizer – Matte Black (1-Pack Single)',
         options: { Color: 'Matte Black', 'Pack Size': 'Pack of 1' },
         price: 99,
         originalPrice: 199,
@@ -139,6 +140,7 @@ export const INITIAL_PRODUCTS: Product[] = [
       },
       {
         id: 'var-blk-2',
+        title: 'Magnetic Cable Organizer – Matte Black (2-Pack Duo)',
         options: { Color: 'Matte Black', 'Pack Size': 'Pack of 2' },
         price: 179,
         originalPrice: 398,
@@ -158,6 +160,7 @@ export const INITIAL_PRODUCTS: Product[] = [
       },
       {
         id: 'var-blk-4',
+        title: 'Magnetic Cable Organizer – Matte Black (4-Pack Value Set)',
         options: { Color: 'Matte Black', 'Pack Size': 'Pack of 4' },
         price: 329,
         originalPrice: 796,
@@ -175,6 +178,7 @@ export const INITIAL_PRODUCTS: Product[] = [
       },
       {
         id: 'var-wht-1',
+        title: 'Magnetic Cable Organizer – Arctic White (1-Pack Single)',
         options: { Color: 'Arctic White', 'Pack Size': 'Pack of 1' },
         price: 99,
         originalPrice: 199,
@@ -193,6 +197,7 @@ export const INITIAL_PRODUCTS: Product[] = [
       },
       {
         id: 'var-wht-2',
+        title: 'Magnetic Cable Organizer – Arctic White (2-Pack Duo)',
         options: { Color: 'Arctic White', 'Pack Size': 'Pack of 2' },
         price: 179,
         originalPrice: 398,
