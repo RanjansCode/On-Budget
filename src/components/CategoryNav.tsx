@@ -112,7 +112,7 @@ export default function CategoryNav({
   };
 
   return (
-    <nav className="relative w-full">
+    <nav className="relative w-full z-10 bg-white dark:bg-slate-900">
       {/* Left Scroll Button (Desktop) */}
       {canScrollLeft && (
         <button

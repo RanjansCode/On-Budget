@@ -8,47 +8,45 @@ export { ImageSkeleton };
  */
 export function ProductCardSkeleton() {
   return (
-    <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-2xl overflow-hidden flex flex-col justify-between shadow-xs relative h-full">
+    <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-2xl overflow-hidden flex flex-col justify-between shadow-xs relative h-full min-w-0">
       {/* Top Wishlist Icon Skeleton */}
-      <div className="absolute top-3 right-3 z-20 w-8 h-8 rounded-xl skeleton-shimmer" />
+      <div className="absolute top-2 right-2 sm:top-3 sm:right-3 z-20 w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl skeleton-shimmer" />
 
       {/* Circular Discount Badge Skeleton */}
-      <div className="absolute top-2.5 left-2.5 z-20 w-11 h-11 sm:w-12 sm:h-12 rounded-full skeleton-shimmer" />
+      <div className="absolute top-2 left-2 sm:top-2.5 sm:left-2.5 z-20 w-9 h-9 sm:w-12 sm:h-12 rounded-full skeleton-shimmer" />
 
       {/* Main Image Area Skeleton */}
-      <div className="relative w-full h-[220px] sm:h-[240px] md:h-[260px] skeleton-shimmer shrink-0 border-b border-slate-200/40 dark:border-slate-800/60 flex items-center justify-center p-4">
+      <div className="relative w-full h-[155px] xs:h-[175px] sm:h-[220px] md:h-[240px] lg:h-[260px] skeleton-shimmer shrink-0 border-b border-slate-200/40 dark:border-slate-800/60 flex items-center justify-center p-2.5 sm:p-4">
         {/* Bottom Badges Skeleton */}
-        
-        {/* Bottom Badges Skeleton */}
-        <div className="absolute bottom-2 left-2 right-2 flex gap-1.5 z-10">
-          <div className="w-12 h-4 rounded-md skeleton-shimmer" />
-          <div className="w-16 h-4 rounded-md skeleton-shimmer" />
+        <div className="absolute bottom-1.5 left-1.5 right-2 flex gap-1 z-10">
+          <div className="w-10 sm:w-12 h-3.5 sm:h-4 rounded-md skeleton-shimmer" />
+          <div className="w-12 sm:w-16 h-3.5 sm:h-4 rounded-md skeleton-shimmer" />
         </div>
       </div>
 
       {/* Product Info Body Skeleton */}
-      <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
-        <div className="space-y-2">
+      <div className="p-2.5 sm:p-4 flex-1 flex flex-col justify-between space-y-2 sm:space-y-3 min-w-0">
+        <div className="space-y-1.5 sm:space-y-2 min-w-0">
           {/* Brand Skeleton */}
-          <div className="w-20 h-3 rounded skeleton-shimmer" />
+          <div className="w-16 sm:w-20 h-2.5 sm:h-3 rounded skeleton-shimmer" />
           {/* Title Skeleton */}
-          <div className="w-4/5 h-4 rounded-md skeleton-shimmer" />
+          <div className="w-4/5 h-3.5 sm:h-4 rounded-md skeleton-shimmer" />
           {/* Description Skeleton (2 lines) */}
-          <div className="w-full h-3 rounded skeleton-shimmer" />
-          <div className="w-2/3 h-3 rounded skeleton-shimmer" />
+          <div className="w-full h-2.5 sm:h-3 rounded skeleton-shimmer" />
+          <div className="w-2/3 h-2.5 sm:h-3 rounded skeleton-shimmer" />
         </div>
 
         {/* Pricing Row & Details Button Skeleton */}
-        <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2 mt-auto">
-          <div className="space-y-1">
-            <div className="flex items-center gap-1.5">
-              <div className="w-16 h-5 rounded-md skeleton-shimmer" />
-              <div className="w-10 h-3 rounded skeleton-shimmer" />
+        <div className="pt-2 sm:pt-3 border-t border-slate-100 dark:border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2 mt-auto min-w-0">
+          <div className="space-y-1 min-w-0">
+            <div className="flex items-center gap-1 sm:gap-1.5">
+              <div className="w-14 sm:w-16 h-4 sm:h-5 rounded-md skeleton-shimmer" />
+              <div className="w-8 sm:w-10 h-2.5 sm:h-3 rounded skeleton-shimmer" />
             </div>
-            <div className="w-12 h-2.5 rounded skeleton-shimmer" />
+            <div className="w-10 sm:w-12 h-2 sm:h-2.5 rounded skeleton-shimmer" />
           </div>
           {/* Review Details Button Skeleton */}
-          <div className="w-24 h-8 rounded-xl skeleton-shimmer shrink-0" />
+          <div className="w-full sm:w-24 h-7 sm:h-8 rounded-lg sm:rounded-xl skeleton-shimmer shrink-0" />
         </div>
       </div>
     </div>
@@ -60,7 +58,7 @@ export function ProductCardSkeleton() {
  */
 export function ProductGridSkeleton({ count = 8 }: { count?: number }) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 animate-in fade-in duration-300">
+    <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-2 sm:gap-4 md:grid-cols-3 md:gap-5 lg:grid-cols-4 lg:gap-6 xl:grid-cols-5 animate-in fade-in duration-300">
       {Array.from({ length: count }).map((_, idx) => (
         <ProductCardSkeleton key={idx} />
       ))}
@@ -296,7 +294,7 @@ export function WishlistSkeleton({ count = 4 }: { count?: number }) {
         <div className="w-28 h-9 rounded-xl skeleton-shimmer" />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-2 sm:gap-4 md:grid-cols-3 md:gap-5 lg:grid-cols-4 lg:gap-6 xl:grid-cols-5">
         {Array.from({ length: count }).map((_, idx) => (
           <ProductCardSkeleton key={idx} />
         ))}

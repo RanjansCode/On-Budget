@@ -1222,14 +1222,14 @@ export default function App() {
 
         {/* MAIN BODY WRAPPER */}
         {dbLoading ? (
-          <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8 py-6">
+          <main className="max-w-7xl mx-auto px-2.5 sm:px-6 lg:px-8 space-y-8 py-6">
             <div className="space-y-6">
               <CategoryBarSkeleton />
               <ProductGridSkeleton count={8} />
             </div>
           </main>
         ) : (
-          <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+          <main className="max-w-7xl mx-auto px-2.5 sm:px-6 lg:px-8 space-y-8">
             
             {/* DETAIL VIEW ROUTING */}
             {selectedProductId ? (() => {
@@ -1292,11 +1292,11 @@ export default function App() {
               );
             })() : (
               // STANDARD TAB RENDERING
-              <div className="space-y-12">
+              <div className="space-y-6 sm:space-y-12">
                 
                 {/* TAB 1: EXPLORE CATALOG */}
                 {activeTab === 'home' && (
-                  <div className="space-y-10">
+                  <div className="space-y-5 sm:space-y-10">
                     {/* Promotional Banner Carousel (placed below Category Navigation and above Browse by Price Bracket) */}
                     <PromotionalCarousel
                       banners={promotionalBanners}
@@ -1320,7 +1320,7 @@ export default function App() {
                     />
 
                     {/* MAIN CATALOG WITH SMART FILTERS */}
-                    <div className="space-y-6">
+                    <div className="space-y-3.5 sm:space-y-6">
                       <SmartSearchFilters
                         products={products}
                         categories={categories}
@@ -1354,7 +1354,7 @@ export default function App() {
                         </div>
                       ) : (
                         <div className="space-y-8">
-                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-2 sm:gap-4 md:grid-cols-3 md:gap-5 lg:grid-cols-4 lg:gap-6 xl:grid-cols-5">
                             {filteredProducts.slice(0, visibleCatalogCount).map((p, idx) => (
                               <ProductCard
                                 key={p.id}
@@ -1423,7 +1423,7 @@ export default function App() {
                         </button>
                       </div>
                     ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-2 sm:gap-4 md:grid-cols-3 md:gap-5 lg:grid-cols-4 lg:gap-6 xl:grid-cols-5">
                         {products
                           .filter(p => wishlist.includes(p.id))
                           .map(p => (

@@ -90,21 +90,21 @@ export default function SmartSearchFilters({
     (filterState.badge !== 'all' ? 1 : 0);
 
   return (
-    <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-2xs p-3.5 sm:p-4 space-y-3.5 transition-colors">
+    <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl sm:rounded-2xl shadow-2xs p-2.5 sm:p-4 space-y-2 sm:space-y-3.5 transition-colors">
       
       {/* Top Filter Bar Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-xl bg-[#FF5A00]/10 text-[#FF5A00] flex items-center justify-center font-bold">
-            <SlidersHorizontal className="w-4 h-4" />
+      <div className="flex flex-wrap items-center justify-between gap-1.5 sm:gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-[#FF5A00]/10 text-[#FF5A00] flex items-center justify-center font-bold shrink-0">
+            <SlidersHorizontal className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider font-display">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <h3 className="text-[11px] sm:text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider font-display">
                 Smart Filters &amp; Sorting
               </h3>
               {activeFilterCount > 0 && (
-                <span className="text-[10px] bg-[#FF5A00] text-white font-extrabold px-2 py-0.5 rounded-full">
+                <span className="text-[9px] sm:text-[10px] bg-[#FF5A00] text-white font-extrabold px-1.5 sm:px-2 py-0.5 rounded-full leading-none">
                   {activeFilterCount} active
                 </span>
               )}
@@ -112,16 +112,16 @@ export default function SmartSearchFilters({
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           {/* Quick Clear All Button */}
           {activeFilterCount > 0 && (
             <button
               type="button"
               onClick={onClearAll}
-              className="text-xs font-bold text-slate-500 hover:text-red-500 dark:text-slate-400 dark:hover:text-red-400 flex items-center gap-1 transition-colors cursor-pointer px-2.5 py-1.5 rounded-xl border border-slate-200/80 dark:border-slate-800 hover:border-red-200"
+              className="text-[10px] sm:text-xs font-bold text-slate-500 hover:text-red-500 dark:text-slate-400 dark:hover:text-red-400 flex items-center gap-1 transition-colors cursor-pointer px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg sm:rounded-xl border border-slate-200/80 dark:border-slate-800 hover:border-red-200"
             >
-              <X className="w-3.5 h-3.5" />
-              Reset Filters
+              <X className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+              <span>Reset</span>
             </button>
           )}
 
@@ -129,27 +129,27 @@ export default function SmartSearchFilters({
           <button
             type="button"
             onClick={() => setExpanded(!expanded)}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+            className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold transition-colors cursor-pointer"
           >
-            <Filter className="w-3.5 h-3.5 text-[#FF5A00]" />
+            <Filter className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#FF5A00]" />
             <span>{expanded ? 'Fewer Filters' : 'All Smart Filters'}</span>
-            <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`} />
+            <ChevronDown className={`w-3 h-3 sm:w-3.5 sm:h-3.5 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`} />
           </button>
         </div>
       </div>
 
       {/* QUICK BADGE & SORT CHIPS (ALWAYS VISIBLE) */}
-      <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-100 dark:border-slate-800/80">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pt-1.5 sm:pt-1 border-t border-slate-100 dark:border-slate-800/80">
         
         {/* Badges / Curated Filters */}
-        <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mr-1 font-display">
+        <div className="flex flex-wrap items-center gap-1 sm:gap-1.5">
+          <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mr-0.5 sm:mr-1 font-display">
             Curated:
           </span>
           <button
             type="button"
             onClick={() => setFilterState(prev => ({ ...prev, badge: 'all' }))}
-            className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            className={`px-2.5 sm:px-3 py-1 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer ${
               filterState.badge === 'all'
                 ? 'bg-[#FF5A00] text-white shadow-xs'
                 : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
@@ -160,50 +160,50 @@ export default function SmartSearchFilters({
           <button
             type="button"
             onClick={() => setFilterState(prev => ({ ...prev, badge: filterState.badge === 'tested' ? 'all' : 'tested' }))}
-            className={`px-3 py-1 rounded-xl text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${
+            className={`px-2.5 sm:px-3 py-1 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${
               filterState.badge === 'tested'
                 ? 'bg-emerald-500 text-white shadow-xs'
                 : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20'
             }`}
           >
-            <ShieldCheck className="w-3.5 h-3.5" />
+            <ShieldCheck className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
             Tested &amp; Verified
           </button>
           <button
             type="button"
             onClick={() => setFilterState(prev => ({ ...prev, badge: filterState.badge === 'recommended' ? 'all' : 'recommended' }))}
-            className={`px-3 py-1 rounded-xl text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${
+            className={`px-2.5 sm:px-3 py-1 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${
               filterState.badge === 'recommended'
                 ? 'bg-[#FF5A00] text-white shadow-xs'
                 : 'bg-[#FF5A00]/10 text-[#FF5A00] border border-[#FF5A00]/20 hover:bg-[#FF5A00]/20'
             }`}
           >
-            <Sparkles className="w-3.5 h-3.5" />
+            <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
             Curated Pick
           </button>
           <button
             type="button"
             onClick={() => setFilterState(prev => ({ ...prev, badge: filterState.badge === 'trending' ? 'all' : 'trending' }))}
-            className={`px-3 py-1 rounded-xl text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${
+            className={`px-2.5 sm:px-3 py-1 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${
               filterState.badge === 'trending'
                 ? 'bg-amber-500 text-white shadow-xs'
                 : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 hover:bg-amber-500/20'
             }`}
           >
-            <TrendingUp className="w-3.5 h-3.5" />
+            <TrendingUp className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
             Trending / Viral
           </button>
         </div>
 
         {/* Sort Selector Dropdown */}
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 font-display">
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 font-display shrink-0">
             Sort By:
           </span>
           <select
             value={sortOption}
             onChange={e => setSortOption(e.target.value as SortOption)}
-            className="bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 text-xs font-bold rounded-xl px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#FF5A00] cursor-pointer"
+            className="bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 text-[11px] sm:text-xs font-bold rounded-lg sm:rounded-xl px-2.5 sm:px-3 py-1 sm:py-1.5 focus:outline-none focus:ring-1 focus:ring-[#FF5A00] cursor-pointer"
           >
             <option value="popular">Most Popular</option>
             <option value="trending">Trending &amp; Viral</option>
@@ -218,7 +218,7 @@ export default function SmartSearchFilters({
 
       {/* EXPANDABLE SMART FILTER PANEL */}
       {expanded && (
-        <div className="pt-3 border-t border-slate-100 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+        <div className="pt-2.5 sm:pt-3 border-t border-slate-100 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4 text-xs">
           
           {/* 1. Category Filter */}
           <div className="space-y-1.5">

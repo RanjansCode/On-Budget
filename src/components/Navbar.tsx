@@ -153,7 +153,7 @@ function Navbar({
   }, [searchQuery]);
 
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
       if (
         searchContainerRef.current &&
         !searchContainerRef.current.contains(e.target as Node) &&
@@ -164,7 +164,11 @@ function Navbar({
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside, { passive: true });
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
   }, []);
 
   // Smart Search Engine computation
@@ -416,7 +420,7 @@ function Navbar({
 
   return (
     <>
-      <nav className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800/80 transition-colors">
+      <nav className="bg-white dark:bg-slate-900 border-b border-slate-200/80 dark:border-slate-800/80 transition-colors relative z-30">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-14 sm:h-16 gap-1.5 sm:gap-4 w-full max-w-full overflow-hidden">
             
@@ -857,65 +861,66 @@ function Navbar({
         </div>
 
         {/* MOBILE SUB-SEARCH BAR */}
-        <div ref={mobileSearchContainerRef} className="md:hidden px-3 sm:px-4 pb-2.5 pt-1 border-t border-slate-100 dark:border-slate-800/60 bg-white dark:bg-slate-900 w-full max-w-full overflow-visible relative">
-          <form
-            onSubmit={e => {
-              e.preventDefault();
-              handleExecuteSearch(searchQuery);
-            }}
-            className="relative flex items-center"
-          >
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 pointer-events-none" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={e => {
-                setSearchQuery(e.target.value);
-                setShowSuggestions(true);
+        <div ref={mobileSearchContainerRef} className="md:hidden px-3 sm:px-4 pb-2.5 pt-1 border-t border-slate-100 dark:border-slate-800/60 bg-white dark:bg-slate-900 w-full max-w-full relative z-30">
+          <div className="relative w-full">
+            <form
+              onSubmit={e => {
+                e.preventDefault();
+                handleExecuteSearch(searchQuery);
               }}
-              onFocus={() => {
-                setShowSuggestions(true);
-              }}
-              placeholder="Search gadgets, brands, under ₹200..."
-              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800 focus:border-[#FF5A00] dark:focus:border-[#FF5A00] focus:ring-1 focus:ring-[#FF5A00] rounded-full pl-9 pr-20 py-2 text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none transition-all"
-            />
-            <div className="absolute right-2.5 flex items-center gap-1">
-              {searchQuery && (
+              className="relative flex items-center w-full"
+            >
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 pointer-events-none" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={e => {
+                  setSearchQuery(e.target.value);
+                  setShowSuggestions(true);
+                }}
+                onFocus={() => {
+                  setShowSuggestions(true);
+                }}
+                placeholder="Search gadgets, brands, under ₹200..."
+                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800 focus:border-[#FF5A00] dark:focus:border-[#FF5A00] focus:ring-1 focus:ring-[#FF5A00] rounded-full pl-9 pr-20 py-2 text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none transition-all"
+              />
+              <div className="absolute right-2.5 flex items-center gap-1">
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchQuery('');
+                      setShowSuggestions(false);
+                    }}
+                    className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                    title="Clear search"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
                 <button
                   type="button"
-                  onClick={() => {
-                    setSearchQuery('');
-                    setShowSuggestions(false);
-                  }}
-                  className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
-                  title="Clear search"
+                  onClick={onVoiceSearch}
+                  className={`p-1 rounded-full transition-colors cursor-pointer ${
+                    isVoiceActive ? 'bg-red-500 text-white animate-pulse' : 'text-slate-400 hover:text-[#FF5A00]'
+                  }`}
+                  title="Voice Search"
                 >
-                  <X className="w-3.5 h-3.5" />
+                  <Mic className="w-3.5 h-3.5" />
                 </button>
-              )}
-              <button
-                type="button"
-                onClick={onVoiceSearch}
-                className={`p-1 rounded-full transition-colors cursor-pointer ${
-                  isVoiceActive ? 'bg-red-500 text-white animate-pulse' : 'text-slate-400 hover:text-[#FF5A00]'
-                }`}
-                title="Voice Search"
-              >
-                <Mic className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </form>
+              </div>
+            </form>
 
-          {/* MOBILE SEARCH SUGGESTIONS DROPDOWN */}
-          <AnimatePresence>
-            {showSuggestions && (
-              <motion.div
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 6 }}
-                transition={{ duration: 0.15 }}
-                className="absolute top-full left-3 right-3 mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-50 overflow-hidden text-left max-h-[380px] overflow-y-auto scrollbar-thin"
-              >
+            {/* MOBILE SEARCH SUGGESTIONS DROPDOWN */}
+            <AnimatePresence>
+              {showSuggestions && (
+                <motion.div
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 4 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute top-[calc(100%+4px)] left-0 right-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-[100] overflow-hidden text-left max-h-[60vh] sm:max-h-[420px] overflow-y-auto scrollbar-thin"
+                >
                 {!debouncedQuery.trim() ? (
                   <div className="p-3 space-y-3">
                     {/* Recent Search History */}
@@ -1065,6 +1070,7 @@ function Navbar({
               </motion.div>
             )}
           </AnimatePresence>
+          </div>
         </div>
 
         {/* BACKDROP FOR MOBILE MENU */}

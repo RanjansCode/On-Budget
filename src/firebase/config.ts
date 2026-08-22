@@ -51,7 +51,14 @@ const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
 // Initialize Firestore using the configured database ID
 const dbId = getEnvVar('VITE_FIREBASE_DATABASE_ID') || appletConfig.firestoreDatabaseId;
-export const db = dbId ? getFirestore(app, dbId) : getFirestore(app);
+export const db = (() => {
+  try {
+    return dbId ? getFirestore(app, dbId) : getFirestore(app);
+  } catch (err) {
+    console.warn('Failed to initialize Firestore with specified database ID, falling back:', err);
+    return getFirestore(app);
+  }
+})();
 
 const auth = getAuth(app);
 
