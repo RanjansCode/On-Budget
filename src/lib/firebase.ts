@@ -45,6 +45,11 @@ export {
   addRetailerToFirestore,
   updateRetailerInFirestore,
   deleteRetailerFromFirestore,
+  fetchHomepageSectionsFromFirestore,
+  saveHomepageSectionsToFirestore,
+  fetchHomepageSectionsConfigFromFirestore,
+  saveHomepageSectionsConfigToFirestore,
+  migrateLegacySectionsToConfig,
 } from '../firebase/firestore';
 
 export type { LaunchSettings } from '../firebase/firestore';

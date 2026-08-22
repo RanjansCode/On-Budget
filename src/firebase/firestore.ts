@@ -14,7 +14,22 @@ import {
 
 import { db } from './config';
 import { auth } from './auth';
-import { Product, Category, Reel, NotificationItem, ADMIN_EMAILS, UserProfile, AnalyticsData, PromotionalBanner, Retailer } from '../types';
+import {
+  Product,
+  Category,
+  Reel,
+  NotificationItem,
+  ADMIN_EMAILS,
+  UserProfile,
+  AnalyticsData,
+  PromotionalBanner,
+  Retailer,
+  HomepageSectionVisibility,
+  HomepageSectionsSettings,
+  HomepageSectionConfig,
+  DEFAULT_HOMEPAGE_SECTIONS,
+  DEFAULT_HOMEPAGE_SECTIONS_CONFIG
+} from '../types';
 import { User } from 'firebase/auth';
 import { INITIAL_PRODUCTS, INITIAL_CATEGORIES, INITIAL_REELS, INITIAL_PROMOTIONAL_BANNERS, INITIAL_RETAILERS } from '../data';
 import { sortProductsByNewest } from '../utils/productSorting';
@@ -842,4 +857,106 @@ export async function deleteRetailerFromFirestore(retailerId: string) {
     handleFirestoreError(err, OperationType.DELETE, `retailers/${retailerId}`);
   }
 }
+
+// --- HOMEPAGE SECTIONS CONFIG & BUILDER API ---
+export function migrateLegacySectionsToConfig(legacyOrConfig: any): HomepageSectionConfig[] {
+  if (Array.isArray(legacyOrConfig) && legacyOrConfig.length > 0) {
+    // Ensure all items have valid IDs and proper defaults
+    return legacyOrConfig.map((sec, idx) => ({
+      ...sec,
+      id: sec.id || `custom_${Date.now()}_${idx}`,
+      order: typeof sec.order === 'number' ? sec.order : idx + 1,
+      status: sec.status || (sec.visible ? 'published' : 'hidden'),
+      visible: sec.status === 'published' || sec.visible === true,
+      displayStyle: sec.displayStyle || 'carousel',
+      productSource: sec.productSource || 'auto',
+      maxProducts: sec.maxProducts || 10,
+    }));
+  }
+
+  // If object with customSections array
+  if (legacyOrConfig && Array.isArray(legacyOrConfig.customSections)) {
+    return legacyOrConfig.customSections;
+  }
+
+  // If legacy boolean map: { trendingToday: true, ... }
+  const legacyMap = (legacyOrConfig?.sections || legacyOrConfig || {}) as Record<string, boolean>;
+  return DEFAULT_HOMEPAGE_SECTIONS_CONFIG.map((sec, idx) => {
+    const key = sec.builtInKey || sec.id;
+    const isVisible = legacyMap[key] !== undefined ? legacyMap[key] : true;
+    return {
+      ...sec,
+      order: idx + 1,
+      visible: isVisible,
+      status: isVisible ? 'published' : 'hidden',
+    };
+  });
+}
+
+export async function fetchHomepageSectionsConfigFromFirestore(): Promise<HomepageSectionConfig[]> {
+  const cached = getCachedData<HomepageSectionConfig[]>('homepage_sections_config');
+  if (cached && Array.isArray(cached) && cached.length > 0) return cached;
+
+  try {
+    const docRef = doc(db, 'settings', 'homepage_sections');
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      const data = docSnap.data();
+      const raw = data.customSections || data.sections || data;
+      const config = migrateLegacySectionsToConfig(raw);
+      setCachedData('homepage_sections_config', config);
+      return config;
+    }
+    // Seed default settings doc if missing
+    await setDoc(docRef, cleanData({
+      id: 'homepage_sections',
+      customSections: DEFAULT_HOMEPAGE_SECTIONS_CONFIG,
+      sections: DEFAULT_HOMEPAGE_SECTIONS,
+      updatedAt: new Date().toISOString()
+    }));
+    setCachedData('homepage_sections_config', DEFAULT_HOMEPAGE_SECTIONS_CONFIG);
+    return DEFAULT_HOMEPAGE_SECTIONS_CONFIG;
+  } catch (err) {
+    console.warn('Failed to fetch homepage sections config from Firestore, returning defaults:', err);
+    return DEFAULT_HOMEPAGE_SECTIONS_CONFIG;
+  }
+}
+
+export async function saveHomepageSectionsConfigToFirestore(sections: HomepageSectionConfig[]) {
+  try {
+    const docRef = doc(db, 'settings', 'homepage_sections');
+    // Also build a backward-compatible legacy boolean map for built-in sections
+    const legacyMap: Record<string, boolean> = { ...DEFAULT_HOMEPAGE_SECTIONS };
+    sections.forEach(s => {
+      if (s.isBuiltIn && s.builtInKey) {
+        legacyMap[s.builtInKey] = s.status === 'published' && s.visible !== false;
+      }
+    });
+
+    await setDoc(docRef, cleanData({
+      id: 'homepage_sections',
+      customSections: sections,
+      sections: legacyMap,
+      updatedAt: new Date().toISOString()
+    }));
+    setCachedData('homepage_sections_config', sections);
+    delete MEMORY_CACHE['homepage_sections'];
+  } catch (err) {
+    handleFirestoreError(err, OperationType.WRITE, 'settings/homepage_sections');
+  }
+}
+
+// Backward-compatible alias
+export async function fetchHomepageSectionsFromFirestore(): Promise<HomepageSectionConfig[]> {
+  return fetchHomepageSectionsConfigFromFirestore();
+}
+
+export async function saveHomepageSectionsToFirestore(sections: HomepageSectionConfig[] | HomepageSectionVisibility) {
+  if (Array.isArray(sections)) {
+    return saveHomepageSectionsConfigToFirestore(sections);
+  }
+  const config = migrateLegacySectionsToConfig(sections);
+  return saveHomepageSectionsConfigToFirestore(config);
+}
+
 

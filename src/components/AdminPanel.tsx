@@ -13,9 +13,9 @@ import {
   ShieldAlert, LayoutDashboard, ShoppingBag, FolderOpen, Film, Plus, Edit2, Trash2,
   TrendingUp, MousePointer, Share2, DollarSign, Upload, Info, Check, Eye, HelpCircle, Save, X,
   SlidersHorizontal, Search, Sparkles, Image, ArrowUp, ArrowDown, Calendar, Power, Megaphone,
-  RefreshCw, AlertCircle, Store
+  RefreshCw, AlertCircle, Store, Sliders
 } from 'lucide-react';
-import { Product, Category, Reel, AnalyticsData, PurchaseLink, PromotionalBanner, RetailerOffer, Retailer, ProductVariant, ProductVariantOption } from '../types';
+import { Product, Category, Reel, AnalyticsData, PurchaseLink, PromotionalBanner, RetailerOffer, Retailer, ProductVariant, ProductVariantOption, HomepageSectionVisibility, HomepageSectionConfig, DEFAULT_HOMEPAGE_SECTIONS } from '../types';
 import { validateSocialUrl, validatePurchaseUrl, formatUrl } from '../utils/validation';
 import { getPurchaseLinks } from '../utils/purchaseLinks';
 import { getNormalizedRetailerOffers, calculateDiscountPercent } from '../utils/retailerOffers';
@@ -24,6 +24,7 @@ import RetailerLogo from './RetailerLogo';
 import { ProductVariantAdmin } from './ProductVariantAdmin';
 import { calculateDiscount } from '../utils/discount';
 import AdminLaunchMode from './AdminLaunchMode';
+import AdminHomepageSections from './AdminHomepageSections';
 import { LaunchSettings } from '../firebase/firestore';
 import { AdminFormSkeleton } from './Skeletons';
 import { slugify, generateUniqueSlug, getDomain, calculateProductSEOScore } from '../lib/seo';
@@ -62,6 +63,8 @@ interface AdminPanelProps {
   onDeleteRetailer?: (retailerId: string) => void;
   launchSettings: LaunchSettings;
   onSaveLaunchSettings: (settings: LaunchSettings) => Promise<void>;
+  homepageSections?: HomepageSectionVisibility | HomepageSectionConfig[];
+  onSaveHomepageSections?: (sections: HomepageSectionVisibility | HomepageSectionConfig[]) => Promise<void>;
 }
 
 export default function AdminPanel({
@@ -89,9 +92,11 @@ export default function AdminPanel({
   onDeleteRetailer,
   launchSettings,
   onSaveLaunchSettings,
+  homepageSections = DEFAULT_HOMEPAGE_SECTIONS,
+  onSaveHomepageSections,
   isLoading = false,
 }: AdminPanelProps) {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'products' | 'categories' | 'banners' | 'launch' | 'search' | 'retailers'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'products' | 'categories' | 'banners' | 'sections' | 'launch' | 'search' | 'retailers'>('dashboard');
   const [searchAnalyticsData, setSearchAnalyticsData] = useState<any>(null);
   const [loadingSearchAnalytics, setLoadingSearchAnalytics] = useState(false);
 
@@ -227,6 +232,17 @@ export default function AdminPanel({
         >
           <Image className="w-4 h-4" />
           Promotional Banners ({promotionalBanners.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('sections')}
+          className={`flex items-center gap-2 text-xs font-bold pb-3 px-4 border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+            activeTab === 'sections'
+              ? 'border-emerald-500 text-emerald-400'
+              : 'border-transparent text-neutral-400 hover:text-white'
+          }`}
+        >
+          <Sliders className="w-4 h-4" />
+          Homepage Sections (10)
         </button>
         <button
           onClick={() => setActiveTab('launch')}
@@ -555,6 +571,13 @@ export default function AdminPanel({
           </div>
         )}
 
+        {activeTab === 'sections' && (
+          <AdminHomepageSections
+            sectionVisibility={homepageSections}
+            onSaveSectionVisibility={onSaveHomepageSections || (async () => {})}
+          />
+        )}
+
         {activeTab === 'launch' && (
           <AdminLaunchMode
             launchSettings={launchSettings}
@@ -817,6 +840,25 @@ export default function AdminPanel({
               </div>
             )}
           </div>
+        )}
+
+        {/* TAB: HOMEPAGE SECTIONS VISIBILITY MANAGEMENT */}
+        {activeTab === 'sections' && (
+          <AdminHomepageSections
+            sectionVisibility={homepageSections}
+            onSaveSectionVisibility={onSaveHomepageSections || (async () => {})}
+            products={products}
+            categories={categories}
+            isLoading={isLoading}
+          />
+        )}
+
+        {/* TAB: LAUNCH MODE SETTINGS */}
+        {activeTab === 'launch' && (
+          <AdminLaunchMode
+            launchSettings={launchSettings}
+            onSaveLaunchSettings={onSaveLaunchSettings}
+          />
         )}
 
         {/* Search Engine Analytics Tab */}

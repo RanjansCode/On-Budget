@@ -8,7 +8,8 @@ import {
 } from 'lucide-react';
 
 import {
-  Product, Category, Reel, AnalyticsData, NotificationItem, ADMIN_EMAILS, PromotionalBanner, Retailer
+  Product, Category, Reel, AnalyticsData, NotificationItem, ADMIN_EMAILS, PromotionalBanner, Retailer,
+  HomepageSectionVisibility, HomepageSectionConfig, DEFAULT_HOMEPAGE_SECTIONS, DEFAULT_HOMEPAGE_SECTIONS_CONFIG
 } from './types';
 import { INITIAL_PRODUCTS, INITIAL_CATEGORIES, INITIAL_REELS, INITIAL_PROMOTIONAL_BANNERS, INITIAL_RETAILERS } from './data';
 import { registerMasterRetailers } from './utils/retailerLogos';
@@ -61,6 +62,10 @@ import {
   fetchLaunchSettingsFromFirestore,
   saveLaunchSettingsToFirestore,
   LaunchSettings,
+  fetchHomepageSectionsFromFirestore,
+  saveHomepageSectionsToFirestore,
+  saveHomepageSectionsConfigToFirestore,
+  migrateLegacySectionsToConfig,
   signOutUser
 } from './lib/firebase';
 import { onSnapshot, doc } from 'firebase/firestore';
@@ -113,7 +118,6 @@ export default function App() {
   const [retailers, setRetailers] = useState<Retailer[]>(INITIAL_RETAILERS);
   const [wishlist, setWishlist] = useState<string[]>([]);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
-  const [visibleCatalogCount, setVisibleCatalogCount] = useState(12);
 
   // --- Local / Device States ---
   const [recentlyViewed, setRecentlyViewed] = useState<string[]>(() => {
@@ -182,6 +186,17 @@ export default function App() {
     updatedAt: new Date().toISOString()
   });
 
+  // --- Homepage Sections Visibility State ---
+  const [homepageSections, setHomepageSections] = useState<HomepageSectionConfig[] | HomepageSectionVisibility>(() => {
+    try {
+      const localConfig = localStorage.getItem('onbudget_homepage_sections_config');
+      if (localConfig) return JSON.parse(localConfig);
+      const localLegacy = localStorage.getItem('onbudget_homepage_sections');
+      if (localLegacy) return migrateLegacySectionsToConfig(JSON.parse(localLegacy));
+    } catch (e) {}
+    return DEFAULT_HOMEPAGE_SECTIONS_CONFIG;
+  });
+
   // --- Filter / Sorting States ---
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
@@ -207,14 +222,16 @@ export default function App() {
   // Helper to load admin-only datasets asynchronously
   const loadAdminDataset = async () => {
     try {
-      const [cloudAnalytics, cloudReels, cloudLaunch] = await Promise.all([
+      const [cloudAnalytics, cloudReels, cloudLaunch, cloudSections] = await Promise.all([
         fetchAnalyticsFromFirestore(),
         fetchReelsFromFirestore(),
-        fetchLaunchSettingsFromFirestore()
+        fetchLaunchSettingsFromFirestore(),
+        fetchHomepageSectionsFromFirestore()
       ]);
       if (cloudAnalytics) setAnalytics(cloudAnalytics);
       if (cloudReels && cloudReels.length > 0) setReels(cloudReels);
       if (cloudLaunch) setLaunchSettings(cloudLaunch);
+      if (cloudSections) setHomepageSections(cloudSections);
     } catch (err) {
       console.warn("Failed to load admin dataset:", err);
     }
@@ -234,18 +251,20 @@ export default function App() {
         // Seed initial collections if empty
         seedDatabaseIfEmpty().catch(() => {});
 
-        // Stage 1: Critical Explore Data (Products, Categories, Promotional Banners, Retailers)
-        const [cloudProducts, cloudCategories, cloudBanners, cloudRetailers] = await Promise.all([
+        // Stage 1: Critical Explore Data (Products, Categories, Promotional Banners, Retailers, Homepage Sections)
+        const [cloudProducts, cloudCategories, cloudBanners, cloudRetailers, cloudSections] = await Promise.all([
           fetchProductsFromFirestore(),
           fetchCategoriesFromFirestore(),
           fetchPromotionalBannersFromFirestore(),
-          fetchRetailersFromFirestore()
+          fetchRetailersFromFirestore(),
+          fetchHomepageSectionsFromFirestore()
         ]);
 
         if (isMounted) {
           if (cloudProducts && cloudProducts.length > 0) setProducts(sortProductsByNewest(cloudProducts));
           if (cloudCategories && cloudCategories.length > 0) setCategories(cloudCategories);
           if (cloudBanners && cloudBanners.length > 0) setPromotionalBanners(cloudBanners);
+          if (cloudSections) setHomepageSections(cloudSections);
           if (cloudRetailers && cloudRetailers.length > 0) {
             setRetailers(cloudRetailers);
             registerMasterRetailers(cloudRetailers);
@@ -310,6 +329,38 @@ export default function App() {
       return () => unsubscribe();
     } catch (err) {
       console.error('Failed to subscribe to launch settings:', err);
+    }
+  }, []);
+
+  // --- Live Homepage Sections Real-Time Listener ---
+  useEffect(() => {
+    if (!isFirebaseConfigured) {
+      const local = localStorage.getItem('onbudget_homepage_sections_config') || localStorage.getItem('onbudget_homepage_sections');
+      if (local) {
+        try {
+          setHomepageSections(migrateLegacySectionsToConfig(JSON.parse(local)));
+        } catch (e) {}
+      }
+      return;
+    }
+
+    try {
+      const docRef = doc(db, 'settings', 'homepage_sections');
+      const unsubscribe = onSnapshot(docRef, (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          if (data.sections && Array.isArray(data.sections)) {
+            setHomepageSections(data.sections);
+          } else {
+            setHomepageSections(migrateLegacySectionsToConfig(data));
+          }
+        }
+      }, (error) => {
+        console.warn('Homepage sections subscription warning:', error);
+      });
+      return () => unsubscribe();
+    } catch (err) {
+      console.error('Failed to subscribe to homepage sections:', err);
     }
   }, []);
 
@@ -585,6 +636,21 @@ export default function App() {
       setLaunchSettings(settings);
     } catch (error) {
       console.error('Failed to save launch settings:', error);
+      throw error;
+    }
+  };
+
+  // --- Homepage Sections Visibility Callbacks ---
+  const handleSaveHomepageSections = async (sections: HomepageSectionConfig[] | HomepageSectionVisibility) => {
+    try {
+      if (Array.isArray(sections)) {
+        await saveHomepageSectionsConfigToFirestore(sections);
+      } else {
+        await saveHomepageSectionsToFirestore(sections);
+      }
+      setHomepageSections(sections);
+    } catch (error) {
+      console.error('Failed to save homepage sections:', error);
       throw error;
     }
   };
@@ -1353,32 +1419,19 @@ export default function App() {
                           <p className="text-xs text-slate-600 dark:text-slate-300 font-semibold">{t.emptyCatalog}</p>
                         </div>
                       ) : (
-                        <div className="space-y-8">
-                          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-2 sm:gap-4 md:grid-cols-3 md:gap-5 lg:grid-cols-4 lg:gap-6 xl:grid-cols-5">
-                            {filteredProducts.slice(0, visibleCatalogCount).map((p, idx) => (
-                              <ProductCard
-                                key={p.id}
-                                product={p}
-                                priority={idx < 4}
-                                onOpenProduct={handleOpenProduct}
-                                isWishlisted={wishlist.includes(p.id)}
-                                onToggleWishlist={handleToggleWishlist}
-                                onOpenSocialLinks={setSocialModalProduct}
-                                currentCurrency={currentCurrency}
-                              />
-                            ))}
-                          </div>
-
-                          {filteredProducts.length > visibleCatalogCount && (
-                            <div className="text-center pt-2">
-                              <button
-                                onClick={() => setVisibleCatalogCount(prev => prev + 12)}
-                                className="px-6 py-3 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200/80 dark:border-slate-800 rounded-2xl text-xs font-bold transition-all shadow-xs hover:shadow-md cursor-pointer inline-flex items-center gap-2"
-                              >
-                                Load More Curations ({filteredProducts.length - visibleCatalogCount} remaining)
-                              </button>
-                            </div>
-                          )}
+                        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-2 sm:gap-4 md:grid-cols-3 md:gap-5 lg:grid-cols-4 lg:gap-6 xl:grid-cols-5">
+                          {filteredProducts.map((p, idx) => (
+                            <ProductCard
+                              key={p.id}
+                              product={p}
+                              priority={idx < 4}
+                              onOpenProduct={handleOpenProduct}
+                              isWishlisted={wishlist.includes(p.id)}
+                              onToggleWishlist={handleToggleWishlist}
+                              onOpenSocialLinks={setSocialModalProduct}
+                              currentCurrency={currentCurrency}
+                            />
+                          ))}
                         </div>
                       )}
                     </div>
@@ -1391,6 +1444,8 @@ export default function App() {
                           reels={reels}
                           wishlist={wishlist}
                           recentlyViewedIds={recentlyViewed}
+                          sections={Array.isArray(homepageSections) ? homepageSections : undefined}
+                          sectionVisibility={!Array.isArray(homepageSections) ? homepageSections : undefined}
                           onOpenProduct={handleOpenProduct}
                           onToggleWishlist={handleToggleWishlist}
                           onOpenSocialLinks={setSocialModalProduct}
@@ -1583,6 +1638,8 @@ export default function App() {
                       onDeleteRetailer={handleDeleteRetailer}
                       launchSettings={launchSettings}
                       onSaveLaunchSettings={handleSaveLaunchSettings}
+                      homepageSections={homepageSections}
+                      onSaveHomepageSections={handleSaveHomepageSections}
                     />
                   </React.Suspense>
                 )}
