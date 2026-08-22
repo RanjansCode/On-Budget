@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   Sparkles, Search, MessageSquare, Heart, Bell, User, Layout, ArrowRight, ArrowLeft,
   Star, Laptop, Cpu, BookOpen, AlertCircle, Clock,
-  Package, Check, Copy, Flame, ShieldAlert, Play, Send, ChevronRight,
+  Package, Check, Copy, ShieldAlert, Play, Send, ChevronRight,
   SlidersHorizontal, CheckCircle2, Award, RefreshCw, LogOut, Loader2, Instagram
 } from 'lucide-react';
 
@@ -1104,9 +1104,6 @@ export default function App() {
     });
   }, [products, searchQuery, filterState, selectedCategory, selectedPriceRange, badgeFilter, sortOption]);
 
-  // Hot Trend Curated rows
-  const todayPicks = products.filter(p => p.badges.recommended).slice(0, 4);
-
   // Translation Dictionaries (English / Hindi)
   const dict = {
     en: {
@@ -1114,8 +1111,6 @@ export default function App() {
       heroSubtitle: "Personally Tested.",
       heroHighlight: "Strictly On Budget.",
       trendingSearches: "Trending Searches:",
-      picksTitle: "Today's Top Curation Picks",
-      picksSub: "Hand-picked viral gadgets with verified unboxings.",
       catalogTitle: "Tested Budget Catalog",
       catalogSub: "Strictly reviewed electronics, desk accents, and study materials.",
       emptyCatalog: "No matching budget curations found. Try clearing filters!",
@@ -1135,8 +1130,6 @@ export default function App() {
       heroSubtitle: "स्वयं जाँचे गए।",
       heroHighlight: "पूरी तरह बजट में।",
       trendingSearches: "ट्रेंडिंग सर्च:",
-      picksTitle: "आज के टॉप क्यूरेटेड पिक्स",
-      picksSub: "सत्यापित अनबॉक्सिंग के साथ हाथ से चुने गए वायरल गैजेट।",
       catalogTitle: "परीक्षित बजट सूची",
       catalogSub: "समीक्षा किए गए इलेक्ट्रॉनिक्स, डेस्क एक्सेसरीज और अध्ययन सामग्री।",
       emptyCatalog: "कोई बजट उत्पाद नहीं मिला। फ़िल्टर साफ़ करके देखें!",
@@ -1325,36 +1318,6 @@ export default function App() {
                       totalProducts={products.length}
                       currentCurrency={currentCurrency}
                     />
-
-                    {/* TODAY'S TOP PICKS SECTION */}
-                    {searchQuery === '' && selectedCategory === '' && selectedPriceRange === null && (
-                      <div className="space-y-4">
-                        <div className="flex justify-between items-end">
-                          <div>
-                            <h2 className="text-base sm:text-lg font-black text-slate-950 dark:text-white flex items-center gap-2 font-display">
-                              <Flame className="w-5 h-5 text-[#FF5A00] animate-pulse" />
-                              {t.picksTitle}
-                            </h2>
-                            <p className="text-xs text-slate-400">{t.picksSub}</p>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                          {todayPicks.map((p, idx) => (
-                            <ProductCard
-                              key={p.id}
-                              product={p}
-                              priority={idx < 2}
-                              onOpenProduct={handleOpenProduct}
-                              isWishlisted={wishlist.includes(p.id)}
-                              onToggleWishlist={handleToggleWishlist}
-                              onOpenSocialLinks={setSocialModalProduct}
-                              currentCurrency={currentCurrency}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    )}
 
                     {/* MAIN CATALOG WITH SMART FILTERS */}
                     <div className="space-y-6">

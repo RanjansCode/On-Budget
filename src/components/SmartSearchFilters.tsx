@@ -109,9 +109,6 @@ export default function SmartSearchFilters({
                 </span>
               )}
             </div>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-              Showing <span className="font-bold text-[#FF5A00]">{totalFilteredCount}</span> verified products
-            </p>
           </div>
         </div>
 
