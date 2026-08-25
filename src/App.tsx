@@ -1363,6 +1363,9 @@ export default function App() {
                 {/* TAB 1: EXPLORE CATALOG */}
                 {activeTab === 'home' && (
                   <div className="space-y-5 sm:space-y-8">
+                    {/* Semantic H1 for Homepage Accessibility */}
+                    <h1 className="sr-only">In Our Budget – Find the Best Products at the Right Price</h1>
+
                     {/* Promotional Banner Carousel (placed below Category Navigation and above Browse by Price Bracket) */}
                     <PromotionalCarousel
                       banners={promotionalBanners}
@@ -1755,7 +1758,7 @@ export default function App() {
           </div>
 
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-t border-slate-100 dark:border-slate-800 pt-8 text-center">
-            <p className="text-[10px] text-slate-400 dark:text-slate-500 leading-normal max-w-md mx-auto font-sans">
+            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed max-w-lg mx-auto font-sans">
               {t.footerTxt}
             </p>
           </div>

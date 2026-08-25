@@ -130,7 +130,7 @@ export default function CategoryNav({
         {/* Scrollable Container */}
         <div
           ref={scrollContainerRef}
-          className="flex items-center gap-1.5 sm:gap-2.5 overflow-x-auto py-2 sm:py-2.5 scrollbar-none scroll-smooth select-none px-1 sm:px-2"
+          className="flex items-center gap-1.5 sm:gap-2.5 overflow-x-auto py-2 sm:py-2.5 scrollbar-none scroll-smooth select-none px-3 sm:px-6 md:px-12"
           style={{
             scrollbarWidth: 'none',
             msOverflowStyle: 'none',

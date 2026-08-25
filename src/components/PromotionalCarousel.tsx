@@ -271,22 +271,28 @@ export const PromotionalCarousel: React.FC<PromotionalCarouselProps> = ({
             </button>
 
             {/* Pagination Dots */}
-            <div className="absolute bottom-2.5 sm:bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 rounded-full bg-slate-950/60 backdrop-blur-md border border-white/10 z-10">
+            <div className="absolute bottom-2.5 sm:bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1 rounded-full bg-slate-950/60 backdrop-blur-md border border-white/10 z-10">
               {activeBanners.map((_, i) => (
                 <button
                   key={i}
+                  type="button"
                   onClick={(e) => {
                     e.stopPropagation();
                     handlePauseBriefly();
                     setCurrentIndex(i);
                   }}
                   aria-label={`Go to slide ${i + 1}`}
-                  className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${
-                    i === currentIndex
-                      ? 'w-6 bg-[#FF5A00]'
-                      : 'w-2 bg-white/40 hover:bg-white/70'
-                  }`}
-                />
+                  aria-current={i === currentIndex ? 'true' : undefined}
+                  className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-full cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF5A00]"
+                >
+                  <span
+                    className={`h-2.5 rounded-full transition-all duration-300 block ${
+                      i === currentIndex
+                        ? 'w-6 bg-[#FF5A00]'
+                        : 'w-2.5 bg-white/50 hover:bg-white/80'
+                    }`}
+                  />
+                </button>
               ))}
             </div>
           </>

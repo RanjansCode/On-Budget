@@ -81,17 +81,19 @@ function ProductCard({
           <ProductShareButton
             product={product}
             showText={false}
-            className="p-1.5 sm:p-2 bg-white/80 dark:bg-slate-950/70 backdrop-blur-xs text-slate-500 hover:text-[#FF5A00] dark:text-slate-400 dark:hover:text-[#FF5A00] border border-slate-200/60 dark:border-slate-800 rounded-lg sm:rounded-xl transition-all cursor-pointer shadow-xs"
+            className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center bg-white/90 dark:bg-slate-950/80 backdrop-blur-xs text-slate-600 hover:text-[#FF5A00] dark:text-slate-300 dark:hover:text-[#FF5A00] border border-slate-200/80 dark:border-slate-800 rounded-xl transition-all cursor-pointer shadow-xs focus-visible:ring-2 focus-visible:ring-[#FF5A00]"
           />
           <button
+            type="button"
             onClick={(e) => {
               e.stopPropagation();
               onToggleWishlist(product.id);
             }}
-            className="p-1.5 sm:p-2 bg-white/80 dark:bg-slate-950/70 backdrop-blur-xs text-slate-500 hover:text-red-500 dark:text-slate-400 dark:hover:text-red-400 border border-slate-200/60 dark:border-slate-800 rounded-lg sm:rounded-xl transition-all cursor-pointer shadow-xs"
+            aria-label={isWishlisted ? `Remove ${title} from wishlist` : `Add ${title} to wishlist`}
+            className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center bg-white/90 dark:bg-slate-950/80 backdrop-blur-xs text-slate-600 hover:text-red-500 dark:text-slate-300 dark:hover:text-red-400 border border-slate-200/80 dark:border-slate-800 rounded-xl transition-all cursor-pointer shadow-xs focus-visible:ring-2 focus-visible:ring-[#FF5A00]"
             title={isWishlisted ? "Remove from Wishlist" : "Add to Wishlist"}
           >
-            <Heart className={`w-3 h-3 sm:w-3.5 sm:h-3.5 transition-all ${isWishlisted ? 'fill-red-500 text-red-500 scale-110' : ''}`} />
+            <Heart className={`w-3.5 h-3.5 sm:w-4 sm:h-4 transition-all ${isWishlisted ? 'fill-red-500 text-red-500 scale-110' : ''}`} />
           </button>
         </div>
 
@@ -209,7 +211,7 @@ function ProductCard({
 
             <button
               onClick={() => onOpenProduct(product.id)}
-              className="w-full sm:w-auto text-center justify-center bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 hover:bg-[#FF5A00] hover:text-white dark:hover:bg-[#FF5A00] dark:hover:text-white text-xs font-bold px-3.5 py-2 rounded-xl transition-all duration-200 cursor-pointer shadow-xs shrink-0 active:scale-95"
+              className="btn-secondary w-full sm:w-auto shrink-0"
             >
               Review Details
             </button>

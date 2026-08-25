@@ -74,14 +74,14 @@ function Hero({
                 <button
                   key={b.val}
                   onClick={() => setSelectedPriceRange(isSelected ? null : b.val)}
-                  className={`py-3 px-4 border rounded-xl flex flex-col items-center justify-center transition-all cursor-pointer shadow-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF5A00] ${
+                  className={`py-3 px-4 border rounded-xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer shadow-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF5A00] ${
                     isSelected
                       ? 'bg-[#FF5A00]/10 border-[#FF5A00] text-[#FF5A00] font-bold ring-1 ring-[#FF5A00]'
                       : 'bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/60'
                   }`}
                 >
                   <span className="text-xs sm:text-sm font-bold font-display">Under {formatted.formatted}</span>
-                  <span className="text-[11px] text-slate-400 dark:text-slate-500 font-medium mt-0.5">
+                  <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
                     {activeCurrencyCode === 'INR' ? 'Verified deals' : `Base: ₹${b.val}`}
                   </span>
                 </button>
@@ -95,7 +95,7 @@ function Hero({
           <div className="flex items-center justify-between gap-2">
             <button
               onClick={() => setIsMobilePriceOpen(!isMobilePriceOpen)}
-              className="flex-1 flex items-center justify-between px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl text-slate-700 dark:text-slate-200 font-bold text-xs tracking-normal shadow-xs transition-all cursor-pointer hover:border-slate-300 dark:hover:border-slate-700 active:scale-[0.99]"
+              className="flex-1 flex items-center justify-between px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl text-slate-700 dark:text-slate-200 font-bold text-xs tracking-normal shadow-xs transition-all cursor-pointer hover:border-slate-300 dark:hover:border-slate-700 active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-[#FF5A00]"
               aria-expanded={isMobilePriceOpen}
               aria-controls="mobile-price-bracket-panel"
             >
@@ -104,7 +104,7 @@ function Hero({
                   Browse by Price Bracket
                 </span>
                 {selectedPriceRange !== null && (
-                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#FF5A00]/10 text-[#FF5A00] border border-[#FF5A00]/20 shrink-0">
+                  <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-[#FF5A00]/10 text-[#FF5A00] border border-[#FF5A00]/20 shrink-0">
                     Under {formatCurrencyPrice(selectedPriceRange, activeCurrencyCode).formatted}
                   </span>
                 )}
@@ -121,7 +121,7 @@ function Hero({
                   setSelectedPriceRange(null);
                   setIsMobilePriceOpen(false);
                 }}
-                className="px-3 py-3 text-xs font-bold text-[#FF5A00] hover:bg-[#FF5A00]/10 rounded-xl transition-colors cursor-pointer shrink-0"
+                className="px-3 py-3 text-xs font-bold text-[#FF5A00] hover:bg-[#FF5A00]/10 rounded-xl transition-colors cursor-pointer shrink-0 focus-visible:ring-2 focus-visible:ring-[#FF5A00]"
               >
                 Clear
               </button>
@@ -145,15 +145,15 @@ function Hero({
                         setSelectedPriceRange(isSelected ? null : b.val);
                         setIsMobilePriceOpen(false);
                       }}
-                      className={`w-full px-4 py-2.5 rounded-xl border flex items-center justify-between transition-all cursor-pointer ${
+                      className={`w-full px-4 py-2.5 rounded-xl border flex items-center justify-between transition-all cursor-pointer focus-visible:ring-2 focus-visible:ring-[#FF5A00] ${
                         isSelected
                           ? 'bg-[#FF5A00]/10 border-[#FF5A00] text-[#FF5A00] font-black'
                           : 'bg-slate-50 dark:bg-slate-800/60 border-slate-200/60 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
                       }`}
                     >
                       <span className="text-xs font-bold font-display">Under {formatted.formatted}</span>
-                      <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
-                        {activeCurrencyCode === 'INR' ? 'Direct curations' : `Base: ₹${b.val}`}
+                      <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                        {activeCurrencyCode === 'INR' ? 'Verified deals' : `Base: ₹${b.val}`}
                       </span>
                     </button>
                   );
