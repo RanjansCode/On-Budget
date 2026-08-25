@@ -131,87 +131,77 @@ function ProductCard({
             </div>
           )}
 
-          {/* Badges Overlay */}
-          <div className="absolute bottom-1.5 left-1.5 right-8 sm:bottom-2 sm:left-2 sm:right-12 flex flex-wrap gap-1 pointer-events-none z-10">
+          {/* Clean Curated Trust Badges (Prioritized 1-2 to prevent visual noise) */}
+          <div className="absolute bottom-2 left-2 right-10 flex flex-wrap gap-1 pointer-events-none z-10">
             {hasVariants && (
-              <span className="inline-flex items-center gap-0.5 sm:gap-1 bg-slate-900/90 dark:bg-slate-800/90 text-white text-[7px] sm:text-[8px] font-bold uppercase tracking-wider px-1 sm:px-1.5 py-0.5 rounded-md shadow-xs">
-                <Layers className="w-2 sm:w-2.5 h-2 sm:h-2.5 text-[#FF5A00]" /> {priceRange.activeVariantsCount} Options
+              <span className="inline-flex items-center gap-1 bg-slate-900/90 dark:bg-slate-800/90 text-white text-[10px] sm:text-xs font-semibold px-2 py-0.5 rounded-lg shadow-xs backdrop-blur-xs">
+                <Layers className="w-3 h-3 text-[#FF5A00]" /> {priceRange.activeVariantsCount} Options
               </span>
             )}
-            {badges.seenInReel && (
-              <span className="inline-flex items-center gap-0.5 sm:gap-1 bg-sky-500/90 dark:bg-sky-950/90 text-white dark:text-sky-400 text-[7px] sm:text-[8px] font-bold uppercase tracking-wider px-1 sm:px-1.5 py-0.5 rounded-md shadow-xs">
-                <Film className="w-2 sm:w-2.5 h-2 sm:h-2.5" /> Reel
+            {badges.personallyTested ? (
+              <span className="inline-flex items-center gap-1 bg-emerald-600/90 dark:bg-emerald-950/90 text-white dark:text-emerald-300 text-[10px] sm:text-xs font-semibold px-2 py-0.5 rounded-lg shadow-xs backdrop-blur-xs">
+                <CheckCircle className="w-3 h-3 text-emerald-200" /> 100% Tested
               </span>
-            )}
-            {badges.personallyTested && (
-              <span className="inline-flex items-center gap-0.5 sm:gap-1 bg-emerald-500/90 dark:bg-emerald-950/90 text-white dark:text-emerald-400 text-[7px] sm:text-[8px] font-bold uppercase tracking-wider px-1 sm:px-1.5 py-0.5 rounded-md shadow-xs">
-                <CheckCircle className="w-2 sm:w-2.5 h-2 sm:h-2.5" /> 100% Tested
+            ) : badges.recommended ? (
+              <span className="inline-flex items-center gap-1 bg-amber-600/90 dark:bg-amber-950/90 text-white dark:text-amber-300 text-[10px] sm:text-xs font-semibold px-2 py-0.5 rounded-lg shadow-xs backdrop-blur-xs">
+                <Star className="w-3 h-3 fill-current text-amber-200" /> Curated
               </span>
-            )}
-            {badges.recommended && (
-              <span className="inline-flex items-center gap-0.5 sm:gap-1 bg-amber-500/90 dark:bg-amber-950/90 text-white dark:text-amber-400 text-[7px] sm:text-[8px] font-bold uppercase tracking-wider px-1 sm:px-1.5 py-0.5 rounded-md shadow-xs">
-                <Star className="w-2 sm:w-2.5 h-2 sm:h-2.5 fill-current" /> Curated
+            ) : badges.seenInReel ? (
+              <span className="inline-flex items-center gap-1 bg-sky-600/90 dark:bg-sky-950/90 text-white dark:text-sky-300 text-[10px] sm:text-xs font-semibold px-2 py-0.5 rounded-lg shadow-xs backdrop-blur-xs">
+                <Film className="w-3 h-3 text-sky-200" /> Seen in Reel
               </span>
-            )}
-            {badges.trending && (
-              <span className="inline-flex items-center gap-0.5 sm:gap-1 bg-red-500/90 dark:bg-red-950/90 text-white dark:text-red-400 text-[7px] sm:text-[8px] font-bold uppercase tracking-wider px-1 sm:px-1.5 py-0.5 rounded-md shadow-xs animate-pulse">
-                <Sparkles className="w-2 sm:w-2.5 h-2 sm:h-2.5" /> Viral
+            ) : badges.trending ? (
+              <span className="inline-flex items-center gap-1 bg-rose-600/90 dark:bg-rose-950/90 text-white dark:text-rose-300 text-[10px] sm:text-xs font-semibold px-2 py-0.5 rounded-lg shadow-xs backdrop-blur-xs">
+                <Sparkles className="w-3 h-3 text-rose-200" /> Trending
               </span>
-            )}
+            ) : null}
           </div>
         </div>
 
         {/* Product Information Body */}
-        <div className="p-2.5 sm:p-4 flex-1 flex flex-col justify-between min-w-0">
-          <div className="space-y-1 min-w-0">
+        <div className="p-3 sm:p-4 flex-1 flex flex-col justify-between min-w-0">
+          <div className="space-y-1.5 min-w-0">
             {brand && (
-              <span className="text-[9px] sm:text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider font-display block truncate">{brand}</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400 font-medium tracking-normal block truncate">{brand}</span>
             )}
             <h3
               onClick={() => onOpenProduct(product.id)}
               className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white hover:text-[#FF5A00] dark:hover:text-[#FF5A00] transition-colors line-clamp-2 cursor-pointer font-display leading-snug break-words"
-              style={
-                product.id === 'prod-1'
-                  ? { color: '#ff4f00' }
-                  : product.id === 'prod-3'
-                  ? { color: '#ff2c00' }
-                  : undefined
-              }
             >
               {title}
             </h3>
-            <p className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2 leading-tight sm:leading-relaxed">
+            <p className="text-xs sm:text-[13px] text-slate-600 dark:text-slate-400 line-clamp-2 leading-relaxed">
               {product.description}
             </p>
           </div>
 
           {/* Pricing Rows & Details Button */}
-          <div className="pt-2 sm:pt-3 border-t border-slate-100 dark:border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between mt-2 sm:mt-3 gap-2 min-w-0">
+          <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between mt-3 gap-2.5 min-w-0">
             <div className="flex flex-col shrink-0 min-w-0">
-              <div className="flex items-baseline gap-1 sm:gap-1.5 flex-wrap">
+              <div className="flex items-baseline gap-1.5 flex-wrap">
                 {priceRange.hasPriceRange && (
-                  <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-tight">From</span>
+                  <span className="text-xs font-bold text-slate-400">From</span>
                 )}
-                <span className="text-xs sm:text-sm font-black text-slate-950 dark:text-white">
+                <span className="text-sm sm:text-base font-black text-slate-950 dark:text-white font-display">
                   {formattedMainPrice.formatted}
                 </span>
                 {effectiveOrigPrice > effectiveDisplayPrice && (
-                  <span className="text-[9px] sm:text-[10px] text-slate-400 dark:text-slate-500 line-through">
+                  <span className="text-xs text-slate-400 dark:text-slate-500 line-through">
                     {formattedOrigPrice.formatted}
                   </span>
                 )}
               </div>
               {hasVariants ? (
-                <span className="text-[9px] sm:text-[10px] font-bold text-[#FF5A00] flex items-center gap-1 truncate">
+                <span className="text-xs font-semibold text-[#FF5A00] flex items-center gap-1 truncate mt-0.5">
                   <span>Multiple options available</span>
                 </span>
               ) : retailerName ? (
-                <span className="text-[9px] sm:text-[10px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 truncate">
-                  <PlatformLogo platformName={retailerName} retailerId={bestOffer?.retailerId} className="h-3 sm:h-3.5 w-auto max-w-[40px] sm:max-w-[50px] object-contain shrink-0" />
+                <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5 truncate mt-0.5">
+                  <PlatformLogo platformName={retailerName} retailerId={bestOffer?.retailerId} className="h-3.5 w-auto max-w-[50px] object-contain shrink-0" />
                   <span className="truncate">Best price on {retailerName}</span>
                 </span>
               ) : activeCurrencyCode !== 'INR' ? (
-                <span className="text-[8px] sm:text-[9px] text-slate-400 dark:text-slate-500 font-medium">
+                <span className="text-xs text-slate-400 dark:text-slate-500 font-medium mt-0.5">
                   Base: ₹{bestPrice}
                 </span>
               ) : null}
@@ -219,7 +209,7 @@ function ProductCard({
 
             <button
               onClick={() => onOpenProduct(product.id)}
-              className="w-full sm:w-auto text-center justify-center bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 group-hover:bg-[#FF5A00] group-hover:text-white text-[9px] sm:text-[10px] font-bold px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-lg sm:rounded-xl transition-all duration-200 cursor-pointer shrink-0"
+              className="w-full sm:w-auto text-center justify-center bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 hover:bg-[#FF5A00] hover:text-white dark:hover:bg-[#FF5A00] dark:hover:text-white text-xs font-bold px-3.5 py-2 rounded-xl transition-all duration-200 cursor-pointer shadow-xs shrink-0 active:scale-95"
             >
               Review Details
             </button>

@@ -118,16 +118,16 @@ export default function CategoryNav({
         <button
           onClick={() => scroll('left')}
           aria-label="Scroll categories left"
-          className="hidden md:flex absolute left-2 top-1/2 -translate-y-1/2 z-10 w-7 h-7 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-full items-center justify-center shadow-md hover:bg-slate-50 dark:hover:bg-slate-700 transition-all cursor-pointer opacity-90 hover:opacity-100"
+          className="hidden md:flex absolute left-1 top-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-9 sm:h-9 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-full items-center justify-center shadow-lg hover:shadow-xl hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-[#FF5A00] transition-all cursor-pointer hover:scale-105 active:scale-95"
         >
-          <ChevronLeft className="w-4 h-4" />
+          <ChevronLeft className="w-4 h-4 stroke-[2.5]" />
         </button>
       )}
 
       {/* Scrollable Container */}
       <div
         ref={scrollContainerRef}
-        className="flex items-center gap-1 sm:gap-2 overflow-x-auto py-2 sm:py-2.5 scrollbar-none scroll-smooth select-none px-1"
+        className="flex items-center gap-1.5 sm:gap-2.5 overflow-x-auto py-2 sm:py-2.5 scrollbar-none scroll-smooth select-none px-3 sm:px-6 md:px-10"
         style={{
           scrollbarWidth: 'none',
           msOverflowStyle: 'none',
@@ -141,10 +141,10 @@ export default function CategoryNav({
               key={cat.id}
               onClick={() => handleCategoryClick(cat)}
               aria-pressed={active}
-              className={`group/item flex flex-col items-center justify-center min-w-[68px] sm:min-w-[84px] md:min-w-[92px] py-1 px-1.5 sm:px-2 rounded-xl transition-all duration-200 cursor-pointer shrink-0 border border-transparent focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF5A00] ${
+              className={`group/item flex flex-col items-center justify-center shrink-0 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl transition-all duration-200 cursor-pointer border border-transparent focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF5A00] ${
                 active
-                  ? 'text-[#FF5A00]'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  ? 'bg-[#FF5A00]/10 text-[#FF5A00]'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/80'
               }`}
             >
               {/* Icon Container
@@ -157,7 +157,7 @@ export default function CategoryNav({
                     : 'w-9 h-9 sm:w-10 sm:h-10 opacity-100 scale-100 mb-1'
                 } ${
                   active
-                    ? 'bg-[#FF5A00]/10 text-[#FF5A00] scale-105'
+                    ? 'bg-[#FF5A00]/15 text-[#FF5A00] scale-105'
                     : 'bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-400 group-hover/item:bg-slate-100 dark:group-hover/item:bg-slate-800 group-hover/item:text-slate-900 dark:group-hover/item:text-white'
                 }`}
               >
@@ -168,11 +168,11 @@ export default function CategoryNav({
               </div>
 
               {/* Category Name
-                  ALWAYS VISIBLE */}
+                  ALWAYS VISIBLE without truncation */}
               <span
-                className={`text-[10px] sm:text-[12px] md:text-[13px] text-center whitespace-nowrap tracking-tight leading-tight max-w-[110px] sm:max-w-[130px] truncate transition-all duration-200 ${
+                className={`text-[11px] sm:text-[12px] md:text-[13px] text-center whitespace-nowrap tracking-tight leading-tight transition-colors duration-200 ${
                   active
-                    ? 'font-extrabold text-[#FF5A00]'
+                    ? 'font-bold text-[#FF5A00]'
                     : 'font-medium text-slate-700 dark:text-slate-300 group-hover/item:text-slate-900 dark:group-hover/item:text-white'
                 }`}
               >
@@ -183,8 +183,8 @@ export default function CategoryNav({
               <div
                 className={`h-0.5 rounded-full transition-all duration-200 ${
                   active
-                    ? 'w-6 sm:w-8 bg-[#FF5A00] mt-0.5'
-                    : 'w-0 bg-transparent'
+                    ? 'w-6 sm:w-8 bg-[#FF5A00] mt-1'
+                    : 'w-0 bg-transparent mt-1'
                 }`}
               />
             </button>
@@ -197,9 +197,9 @@ export default function CategoryNav({
         <button
           onClick={() => scroll('right')}
           aria-label="Scroll categories right"
-          className="hidden md:flex absolute right-2 top-1/2 -translate-y-1/2 z-10 w-7 h-7 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-full items-center justify-center shadow-md hover:bg-slate-50 dark:hover:bg-slate-700 transition-all cursor-pointer opacity-90 hover:opacity-100"
+          className="hidden md:flex absolute right-1 top-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-9 sm:h-9 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-full items-center justify-center shadow-lg hover:shadow-xl hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-[#FF5A00] transition-all cursor-pointer hover:scale-105 active:scale-95"
         >
-          <ChevronRight className="w-4 h-4" />
+          <ChevronRight className="w-4 h-4 stroke-[2.5]" />
         </button>
       )}
     </nav>

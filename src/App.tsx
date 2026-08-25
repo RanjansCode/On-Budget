@@ -1362,7 +1362,17 @@ export default function App() {
                 
                 {/* TAB 1: EXPLORE CATALOG */}
                 {activeTab === 'home' && (
-                  <div className="space-y-5 sm:space-y-10">
+                  <div className="space-y-5 sm:space-y-8">
+                    {/* Semantic Accessible Level-1 Page Heading */}
+                    <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-1 border-b border-slate-100 dark:border-slate-800/80 pb-3">
+                      <h1 className="text-lg sm:text-xl md:text-2xl font-black text-slate-900 dark:text-white font-display tracking-tight">
+                        In Our Budget
+                        <span className="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400 block sm:inline sm:ml-3">
+                          Curated viral gadgets, tech &amp; lifestyle finds at honest prices
+                        </span>
+                      </h1>
+                    </div>
+
                     {/* Promotional Banner Carousel (placed below Category Navigation and above Browse by Price Bracket) */}
                     <PromotionalCarousel
                       banners={promotionalBanners}

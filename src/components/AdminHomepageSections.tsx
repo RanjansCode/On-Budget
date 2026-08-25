@@ -51,7 +51,8 @@ import {
   DEFAULT_HOMEPAGE_SECTIONS_CONFIG,
   SectionDisplayStyle,
   SectionSorting,
-  SectionType
+  SectionType,
+  SectionStatus
 } from '../types';
 import { renderSectionIcon, POPULAR_SECTION_ICONS } from '../utils/iconMap';
 import { getProductsForSection } from '../utils/sectionFilterEngine';

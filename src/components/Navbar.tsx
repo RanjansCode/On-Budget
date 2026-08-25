@@ -443,8 +443,8 @@ function Navbar({
               </div>
             </div>
 
-            {/* DESKTOP SEARCH */}
-            <div ref={searchContainerRef} className="hidden md:flex flex-1 max-w-xl lg:max-w-2xl relative" id="navbar-search">
+            {/* DESKTOP SEARCH (Refined max-width for optimal visual balance) */}
+            <div ref={searchContainerRef} className="hidden md:flex flex-1 max-w-md lg:max-w-lg relative mx-auto" id="navbar-search">
               <form
                 onSubmit={e => {
                   e.preventDefault();
@@ -774,10 +774,10 @@ function Navbar({
                                 <div className="w-7 h-7 bg-[#FF5A00]/10 rounded-lg flex items-center justify-center text-[#FF5A00] shrink-0 border border-[#FF5A00]/15 mt-0.5">
                                   <Sparkles className="w-3.5 h-3.5" />
                                 </div>
-                                <div className="text-left">
+                                <div className="text-left flex-1 min-w-0">
                                   <h4 className="text-xs font-bold text-slate-900 dark:text-white leading-tight">{n.title}</h4>
-                                  <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">{n.description}</p>
-                                  <span className="text-[9px] text-slate-400 dark:text-slate-500 font-medium block mt-1">{n.date}</span>
+                                  <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 leading-relaxed">{n.description}</p>
+                                  <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium block mt-1">{n.date}</span>
                                 </div>
                               </div>
                             ))
