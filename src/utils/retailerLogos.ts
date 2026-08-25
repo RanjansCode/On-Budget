@@ -122,6 +122,7 @@ export function getRetailerBrandConfig(retailerName: string): RetailerBrandConfi
     amazon: { brandColor: '#232F3E', textColor: '#FF9900', borderColor: '#FF9900/30' },
     meesho: { brandColor: '#F43397', textColor: '#FFFFFF', borderColor: '#F43397/40' },
     flipkart: { brandColor: '#2874F0', textColor: '#FFE500', borderColor: '#2874F0/40' },
+    shopsy: { brandColor: '#E51075', textColor: '#FFFFFF', borderColor: '#E51075/40' },
     myntra: { brandColor: '#FF3F6C', textColor: '#FFFFFF', borderColor: '#FF3F6C/40' },
     ajio: { brandColor: '#111827', textColor: '#FFFFFF', borderColor: '#374151' },
     croma: { brandColor: '#00B894', textColor: '#FFFFFF', borderColor: '#00B894/40' },

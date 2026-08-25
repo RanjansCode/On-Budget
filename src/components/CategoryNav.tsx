@@ -112,96 +112,102 @@ export default function CategoryNav({
   };
 
   return (
-    <nav className="relative w-full z-10 bg-white dark:bg-slate-900">
-      {/* Left Scroll Button (Desktop) */}
-      {canScrollLeft && (
-        <button
-          onClick={() => scroll('left')}
-          aria-label="Scroll categories left"
-          className="hidden md:flex absolute left-1 top-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-9 sm:h-9 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-full items-center justify-center shadow-lg hover:shadow-xl hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-[#FF5A00] transition-all cursor-pointer hover:scale-105 active:scale-95"
-        >
-          <ChevronLeft className="w-4 h-4 stroke-[2.5]" />
-        </button>
-      )}
-
-      {/* Scrollable Container */}
-      <div
-        ref={scrollContainerRef}
-        className="flex items-center gap-1.5 sm:gap-2.5 overflow-x-auto py-2 sm:py-2.5 scrollbar-none scroll-smooth select-none px-3 sm:px-6 md:px-10"
-        style={{
-          scrollbarWidth: 'none',
-          msOverflowStyle: 'none',
-        }}
-      >
-        {categories.map((cat) => {
-          const active = isCategoryActive(cat);
-
-          return (
+    <nav className="relative w-full z-10 bg-white dark:bg-slate-900 border-b border-slate-100/80 dark:border-slate-800/80">
+      <div className="max-w-7xl mx-auto relative px-3 sm:px-6 lg:px-8">
+        {/* Left Scroll Button with Gradient Fade (Desktop) */}
+        {canScrollLeft && (
+          <div className="hidden md:flex absolute left-0 top-0 bottom-0 z-20 items-center pl-2 sm:pl-4 pr-8 bg-gradient-to-r from-white via-white/95 to-transparent dark:from-slate-900 dark:via-slate-900/95 dark:to-transparent pointer-events-none">
             <button
-              key={cat.id}
-              onClick={() => handleCategoryClick(cat)}
-              aria-pressed={active}
-              className={`group/item flex flex-col items-center justify-center shrink-0 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl transition-all duration-200 cursor-pointer border border-transparent focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF5A00] ${
-                active
-                  ? 'bg-[#FF5A00]/10 text-[#FF5A00]'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/80'
-              }`}
+              onClick={() => scroll('left')}
+              aria-label="Scroll categories left"
+              className="w-8 h-8 sm:w-9 sm:h-9 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-[#FF5A00] transition-all cursor-pointer pointer-events-auto hover:scale-105 active:scale-95"
             >
-              {/* Icon Container
-                  ONLY THIS gets hidden while page is scrolled.
-                  The actual icon is NOT removed/replaced. */}
-              <div
-                className={`flex items-center justify-center overflow-hidden rounded-xl transition-all duration-200 ${
-                  isPageScrolled
-                    ? 'w-0 h-0 max-w-0 max-h-0 opacity-0 scale-0 m-0 p-0'
-                    : 'w-9 h-9 sm:w-10 sm:h-10 opacity-100 scale-100 mb-1'
-                } ${
-                  active
-                    ? 'bg-[#FF5A00]/15 text-[#FF5A00] scale-105'
-                    : 'bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-400 group-hover/item:bg-slate-100 dark:group-hover/item:bg-slate-800 group-hover/item:text-slate-900 dark:group-hover/item:text-white'
-                }`}
-              >
-                <CategoryIcon
-                  iconKey={cat.icon}
-                  className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 transition-transform group-hover/item:scale-110"
-                />
-              </div>
-
-              {/* Category Name
-                  ALWAYS VISIBLE without truncation */}
-              <span
-                className={`text-[11px] sm:text-[12px] md:text-[13px] text-center whitespace-nowrap tracking-tight leading-tight transition-colors duration-200 ${
-                  active
-                    ? 'font-bold text-[#FF5A00]'
-                    : 'font-medium text-slate-700 dark:text-slate-300 group-hover/item:text-slate-900 dark:group-hover/item:text-white'
-                }`}
-              >
-                {cat.name}
-              </span>
-
-              {/* Subtle Active Indicator Line */}
-              <div
-                className={`h-0.5 rounded-full transition-all duration-200 ${
-                  active
-                    ? 'w-6 sm:w-8 bg-[#FF5A00] mt-1'
-                    : 'w-0 bg-transparent mt-1'
-                }`}
-              />
+              <ChevronLeft className="w-4 h-4 stroke-[2.5]" />
             </button>
-          );
-        })}
-      </div>
+          </div>
+        )}
 
-      {/* Right Scroll Button (Desktop) */}
-      {canScrollRight && (
-        <button
-          onClick={() => scroll('right')}
-          aria-label="Scroll categories right"
-          className="hidden md:flex absolute right-1 top-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-9 sm:h-9 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-full items-center justify-center shadow-lg hover:shadow-xl hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-[#FF5A00] transition-all cursor-pointer hover:scale-105 active:scale-95"
+        {/* Scrollable Container */}
+        <div
+          ref={scrollContainerRef}
+          className="flex items-center gap-1.5 sm:gap-2.5 overflow-x-auto py-2 sm:py-2.5 scrollbar-none scroll-smooth select-none px-1 sm:px-2"
+          style={{
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+          }}
         >
-          <ChevronRight className="w-4 h-4 stroke-[2.5]" />
-        </button>
-      )}
+          {categories.map((cat) => {
+            const active = isCategoryActive(cat);
+
+            return (
+              <button
+                key={cat.id}
+                onClick={() => handleCategoryClick(cat)}
+                aria-pressed={active}
+                className={`group/item flex flex-col items-center justify-center shrink-0 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl transition-all duration-200 cursor-pointer border border-transparent focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF5A00] ${
+                  active
+                    ? 'bg-[#FF5A00]/10 text-[#FF5A00]'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/80'
+                }`}
+              >
+                {/* Icon Container
+                    ONLY THIS gets hidden while page is scrolled.
+                    The actual icon is NOT removed/replaced. */}
+                <div
+                  className={`flex items-center justify-center overflow-hidden rounded-xl transition-all duration-200 ${
+                    isPageScrolled
+                      ? 'w-0 h-0 max-w-0 max-h-0 opacity-0 scale-0 m-0 p-0'
+                      : 'w-9 h-9 sm:w-10 sm:h-10 opacity-100 scale-100 mb-1'
+                  } ${
+                    active
+                      ? 'bg-[#FF5A00]/15 text-[#FF5A00] scale-105'
+                      : 'bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-400 group-hover/item:bg-slate-100 dark:group-hover/item:bg-slate-800 group-hover/item:text-slate-900 dark:group-hover/item:text-white'
+                  }`}
+                >
+                  <CategoryIcon
+                    iconKey={cat.icon}
+                    className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 transition-transform group-hover/item:scale-110"
+                  />
+                </div>
+
+                {/* Category Name
+                    ALWAYS VISIBLE without truncation */}
+                <span
+                  className={`text-[11px] sm:text-[12px] md:text-[13px] text-center whitespace-nowrap tracking-tight leading-tight transition-colors duration-200 ${
+                    active
+                      ? 'font-bold text-[#FF5A00]'
+                      : 'font-medium text-slate-700 dark:text-slate-300 group-hover/item:text-slate-900 dark:group-hover/item:text-white'
+                  }`}
+                >
+                  {cat.name}
+                </span>
+
+                {/* Subtle Active Indicator Line */}
+                <div
+                  className={`h-0.5 rounded-full transition-all duration-200 ${
+                    active
+                      ? 'w-6 sm:w-8 bg-[#FF5A00] mt-1'
+                      : 'w-0 bg-transparent mt-1'
+                  }`}
+                />
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Right Scroll Button with Gradient Fade (Desktop) */}
+        {canScrollRight && (
+          <div className="hidden md:flex absolute right-0 top-0 bottom-0 z-20 items-center pr-2 sm:pr-4 pl-8 bg-gradient-to-l from-white via-white/95 to-transparent dark:from-slate-900 dark:via-slate-900/95 dark:to-transparent pointer-events-none">
+            <button
+              onClick={() => scroll('right')}
+              aria-label="Scroll categories right"
+              className="w-8 h-8 sm:w-9 sm:h-9 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-[#FF5A00] transition-all cursor-pointer pointer-events-auto hover:scale-105 active:scale-95"
+            >
+              <ChevronRight className="w-4 h-4 stroke-[2.5]" />
+            </button>
+          </div>
+        )}
+      </div>
     </nav>
   );
 }

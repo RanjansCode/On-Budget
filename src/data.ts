@@ -9,6 +9,7 @@ export const INITIAL_RETAILERS: Retailer[] = [
   { id: 'amazon', name: 'Amazon', logoUrl: '/assets/retailers/amazon.svg', status: 'active', createdAt: new Date().toISOString() },
   { id: 'meesho', name: 'Meesho', logoUrl: '/assets/retailers/meesho.svg', status: 'active', createdAt: new Date().toISOString() },
   { id: 'flipkart', name: 'Flipkart', logoUrl: '/assets/retailers/flipkart.svg', status: 'active', createdAt: new Date().toISOString() },
+  { id: 'shopsy', name: 'Shopsy', logoUrl: '/assets/retailers/shopsy.svg', status: 'active', createdAt: new Date().toISOString() },
   { id: 'myntra', name: 'Myntra', logoUrl: '/assets/retailers/myntra.svg', status: 'active', createdAt: new Date().toISOString() },
   { id: 'ajio', name: 'Ajio', logoUrl: '/assets/retailers/ajio.svg', status: 'active', createdAt: new Date().toISOString() },
   { id: 'croma', name: 'Croma', logoUrl: '/assets/retailers/croma.svg', status: 'active', createdAt: new Date().toISOString() },

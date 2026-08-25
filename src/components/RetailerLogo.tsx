@@ -27,16 +27,19 @@ export default function RetailerLogo({
   alt,
 }: RetailerLogoProps) {
   const [hasError, setHasError] = useState(false);
+  const [triedFallback, setTriedFallback] = useState(false);
 
   // Look up master retailer from the authoritative registry
   const master = getMasterRetailer(retailerId || retailerName);
   const displayName = master?.name || (retailerName || 'Store').trim();
   const brand = getRetailerBrandConfig(displayName);
+  const localSvgFallback = `/assets/retailers/${brand.key}.svg`;
 
   // Authoritative logo URL from Master Retailer Registry (or explicit prop if provided for modal previews)
-  const resolvedLogoUrl = propLogoUrl || master?.logoUrl || getRetailerLogoUrl(retailerId || retailerName);
+  const initialLogoUrl = propLogoUrl || master?.logoUrl || getRetailerLogoUrl(retailerId || retailerName) || localSvgFallback;
+  const resolvedLogoUrl = triedFallback ? localSvgFallback : initialLogoUrl;
 
-  // If no logoUrl exists or image failed to load, render graceful fallback store badge
+  // If image failed after trying local fallback, render graceful fallback store badge
   if (hasError || !resolvedLogoUrl) {
     return (
       <span
@@ -62,7 +65,13 @@ export default function RetailerLogo({
       src={resolvedLogoUrl}
       alt={alt || `${displayName} logo`}
       className={`${className} object-contain`}
-      onError={() => setHasError(true)}
+      onError={() => {
+        if (!triedFallback && resolvedLogoUrl !== localSvgFallback) {
+          setTriedFallback(true);
+        } else {
+          setHasError(true);
+        }
+      }}
       loading="lazy"
       style={{ objectFit: 'contain' }}
     />

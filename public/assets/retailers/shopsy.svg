@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 105 32" fill="none">
+  <rect width="28" height="28" x="2" y="2" rx="7" fill="#E51075"/>
+  <path d="M11 11h10l-1.5 7h-7l-1.5-7z" stroke="#FFFFFF" stroke-width="1.8" stroke-linejoin="round"/>
+  <path d="M13 18v2a1.5 1.5 0 0 0 1.5 1.5h3A1.5 1.5 0 0 0 19 20v-2" stroke="#FFFFFF" stroke-width="1.8"/>
+  <circle cx="13.5" cy="22.5" r="1.2" fill="#FFFFFF"/>
+  <circle cx="18.5" cy="22.5" r="1.2" fill="#FFFFFF"/>
+  <text x="36" y="21" fill="#E51075" font-family="system-ui, -apple-system, sans-serif" font-weight="900" font-size="16" letter-spacing="-0.3">Shopsy</text>
+</svg>

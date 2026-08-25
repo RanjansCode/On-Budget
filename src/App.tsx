@@ -1363,16 +1363,6 @@ export default function App() {
                 {/* TAB 1: EXPLORE CATALOG */}
                 {activeTab === 'home' && (
                   <div className="space-y-5 sm:space-y-8">
-                    {/* Semantic Accessible Level-1 Page Heading */}
-                    <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-1 border-b border-slate-100 dark:border-slate-800/80 pb-3">
-                      <h1 className="text-lg sm:text-xl md:text-2xl font-black text-slate-900 dark:text-white font-display tracking-tight">
-                        In Our Budget
-                        <span className="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400 block sm:inline sm:ml-3">
-                          Curated viral gadgets, tech &amp; lifestyle finds at honest prices
-                        </span>
-                      </h1>
-                    </div>
-
                     {/* Promotional Banner Carousel (placed below Category Navigation and above Browse by Price Bracket) */}
                     <PromotionalCarousel
                       banners={promotionalBanners}
@@ -1725,7 +1715,7 @@ export default function App() {
                   </div>
                   <div>
                     <h4 className="font-bold text-slate-950 dark:text-white group-hover:text-[#FF5A00] transition-colors font-display">{t.tgTitle}</h4>
-                    <p className="text-[10px] text-slate-400 dark:text-slate-500">{t.tgSub}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{t.tgSub}</p>
                   </div>
                 </a>
 
@@ -1743,7 +1733,7 @@ export default function App() {
                   </div>
                   <div>
                     <h4 className="font-bold text-slate-950 dark:text-white group-hover:text-[#FF5A00] transition-colors font-display">{t.waTitle}</h4>
-                    <p className="text-[10px] text-slate-400 dark:text-slate-500">{t.waSub}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{t.waSub}</p>
                   </div>
                 </a>
               </div>
@@ -1751,7 +1741,7 @@ export default function App() {
 
             {/* Column 3: Sitemaps */}
             <div className="space-y-4">
-              <h3 className="text-sm font-extrabold text-slate-950 dark:text-white uppercase tracking-wider font-display">Browse Quick Links</h3>
+              <h3 className="text-sm font-extrabold text-slate-950 dark:text-white font-display">Browse Quick Links</h3>
               <div className="grid grid-cols-2 gap-2 text-xs text-slate-500 dark:text-slate-400">
                 <button onClick={() => { handleNavigate('home'); setSelectedCategory('desk-setup'); }} className="text-left hover:text-[#FF5A00] transition-colors cursor-pointer">Desk Setups</button>
                 <button onClick={() => { handleNavigate('home'); setSelectedCategory('gaming'); }} className="text-left hover:text-[#FF5A00] transition-colors cursor-pointer">Gaming Gear</button>
